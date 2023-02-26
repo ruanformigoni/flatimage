@@ -1,0 +1,117 @@
+image: "ubuntu:latest"
+
+stages:
+  - build
+  - package
+  - release
+
+build-elf:
+  stage: build
+  when: manual
+  before_script:
+    - apt update && apt -y upgrade
+    - apt install -y python3-pip build-essential cmake
+    - pip install conan==1.59.0
+    - echo JOB_ID_BUILD_ELF=$CI_JOB_ID > build.env
+  script:
+    # Build
+    - cd ./src/elf
+    - mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11 && cd ..
+    - cmake -H. -Bbuild
+    - cmake --build build
+    - cd ../.. && mkdir -p bin && mv src/elf/build/main bin/elf
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
+build-fuse2fs:
+  stage: build
+  when: manual
+  before_script:
+    - apt update && apt -y upgrade
+    - apt install -y build-essential git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
+    - echo JOB_ID_BUILD_FUSE=$CI_JOB_ID > build.env
+  script:
+    - git clone https://github.com/ruanformigoni/e2fsprogs.git
+    - cd e2fsprogs
+    - git checkout fuse2fs-offset
+    - mkdir build && cd build
+    - ../configure
+    - make -j2
+    - cd ../.. && mkdir -p bin && mv ./e2fsprogs/build/misc/fuse2fs bin/fuse2fs
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
+package-focal:
+  stage: package
+  when: manual
+  before_script:
+    - apt update && apt -y upgrade
+    - apt install -y git wget curl zstd debootstrap e2fsprogs proot fuse2fs xz-utils rsync
+    - echo JOB_ID_BUILD_BS_FOCAL=$CI_JOB_ID > build.env
+  script:
+    # Set dist
+    - dist="focal"
+    # Build
+    - ./src/scripts/_build.sh debootstrap "$dist"
+    # Set env vars
+    - echo "FOCAL_TARBALL=${dist}.tar.xz" >> build.env
+  needs:
+    - job: build-elf
+      artifacts: true
+    - job: build-fuse2fs
+      artifacts: true
+  artifacts:
+    paths:
+      - ./dist
+    reports:
+      dotenv: build.env
+
+package-arch:
+  image: "archlinux:latest"
+  stage: package
+  when: manual
+  before_script:
+    - pacman -Syu --noconfirm
+    - pacman -S python-pip patchelf git gawk wget curl zstd xz rsync binutils --noconfirm
+    - echo JOB_ID_BUILD_BS_ARCH=$CI_JOB_ID > build.env
+  script:
+    # Build
+    - ./src/scripts/_build.sh archbootstrap
+    # Set env vars
+    - echo "ARCH_TARBALL=arch.tar.xz" >> build.env
+  needs:
+    - job: build-elf
+      artifacts: true
+    - job: build-fuse2fs
+      artifacts: true
+  artifacts:
+    paths:
+      - ./dist
+    reports:
+      dotenv: build.env
+
+deploy:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Elf job id $JOB_ID_BUILD_ELF"
+    - echo "Subsystem job id $JOB_ID_BUILD_FUSE"
+  release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
+    tag_name: 'Continuous'
+    description: 'Release $CI_COMMIT_SHORT_SHA'
+    assets:
+      links:
+        - name: 'focal.arts'
+          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
+        - name: 'arch.arts'
+          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
+  needs:
+    - job: package-arch
+    - job: package-focal
+      artifacts: true

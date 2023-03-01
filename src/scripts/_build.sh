@@ -111,6 +111,12 @@ function _create_subsystem_debootstrap()
   # Build
   debootstrap "$dist" "/tmp/$dist" http://archive.ubuntu.com/ubuntu/
 
+  # Bind mounts
+  mount -t proc /proc "/tmp/$dist/proc/"
+  mount -t sysfs /sys "/tmp/$dist/sys/"
+  mount --rbind /dev "/tmp/$dist/dev/"
+  mount --make-rslave "/tmp/$dist/dev/"
+
   # Update sources
   # shellcheck disable=2002
   cat "$ARTS_SCRIPT_DIR/../../sources/${dist}.list" | tee "/tmp/$dist/etc/apt/sources.list"
@@ -119,6 +125,11 @@ function _create_subsystem_debootstrap()
   chroot "/tmp/$dist" /bin/bash -c 'apt -y update && apt -y upgrade'
   chroot "/tmp/$dist" /bin/bash -c 'apt -y clean && apt -y autoclean && apt -y autoremove'
   chroot "/tmp/$dist" /bin/bash -c 'apt install -y rsync alsa-utils alsa-base alsa-oss pulseaudio libc6 libc6-i386 libpaper1 fontconfig-config ppp man-db libnss-mdns ippusbxd gdm3'
+
+  # Umount binds
+  umount  "/tmp/$dist/proc/"
+  umount  "/tmp/$dist/sys/"
+  umount -R "/tmp/$dist/dev/"
 
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"

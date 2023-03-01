@@ -26,8 +26,8 @@ export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
 export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-3}"
-export ARTS_COMPRESSION_SLACK="${ARTS_COMPRESSION_SLACK:-10000}" # 10MB
-export ARTS_COMPRESSION_DIRS="${ARTS_COMPRESSION_DIRS:-/usr}"
+export ARTS_COMPRESSION_SLACK="${ARTS_COMPRESSION_SLACK:-50000}" # 50MB
+export ARTS_COMPRESSION_DIRS="${ARTS_COMPRESSION_DIRS:-/usr /opt}"
 
 # Emits a message in &2
 # $(1..n-1) arguments to echo
@@ -56,7 +56,7 @@ function _die()
   [ -z "$*" ] || ARTS_DEBUG=1 _msg "$*"
   # shellcheck disable=2038
   find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; |
-    xargs -I{} fusermount -qu "$ARTS_TEMP/dwarfs"/{} || true
+    xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &>/dev/null || true
   kill -s SIGTERM "$PID"
 }
 
@@ -77,18 +77,36 @@ function _help()
 }
 
 # Changes the filesystem size
-# $1 New sise
-function _resize()
+# $1 New size
+# $2 Dir to create image from
+function _rebuild()
 {
-  # Unmount
   _unmount
 
-  # Resize
-  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
-  resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
-  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
+  # Erase current file
+  rm "$ARTS_FILE"
 
-  # Mount
+  # Copy startup binary
+  cp "$ARTS_TEMP/runner" "$ARTS_FILE"
+
+  # Append static requirements
+  # shellcheck disable=2129
+  cat /tmp/arts/proot >>    "$ARTS_FILE"
+  cat /tmp/arts/fuse2fs >>  "$ARTS_FILE"
+  cat /tmp/arts/dwarfs >>   "$ARTS_FILE"
+  cat /tmp/arts/mkdwarfs >> "$ARTS_FILE"
+
+  # Create filesystem
+  truncate -s "$1" "$ARTS_TEMP/image.arts"
+  mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
+
+  # Append filesystem to binary
+  cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE"
+
+  # Remove filesystem
+  rm "$ARTS_TEMP/image.arts"
+
+  # Re-mount
   _mount
 }
 
@@ -131,32 +149,28 @@ function _exec()
   eval "${_cmd_proot[*]}"
 }
 
-# TODO
-# - Subdirectory compression
-# - Uncompression
+# Subdirectory compression
 function _compress()
 {
+  # Remove apt lists and cache
+  rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
+
+  # Create temporary directory to fit-resize fs
+  local dir_compressed="$ARTS_TEMP/dir_compressed"; mkdir "$dir_compressed"
+
   # Compress selected directories
   for i in ${ARTS_COMPRESSION_DIRS}; do
     local target="$ARTS_MOUNT/$i"
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
-    "$ARTS_BIN/mkdwarfs" -i "$target" -o "${target}.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
+    "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
   done
 
-  # Remove apt lists and cache
-  rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
-
-  # Create temporary directory to fit-resize fs, copy/move all files to within
-  local dir_compressed="$ARTS_TEMP/dir_compressed"; mkdir "$dir_compressed"
+  # Remove remaining files from dev
   rm -rf "${ARTS_MOUNT:?"Empty ARTS_MOUNT"}"/dev
+
+  # Move files to temporary directory
   mv "$ARTS_MOUNT"/* "$dir_compressed"
-
-  # Unmount
-  _unmount
-
-  # Check filesystem
-  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
 
   # Resize to fit files size + slack
   local size_files="$(du -s -BK "$dir_compressed" | awk '{ gsub("K","",$1); print $1}')"
@@ -170,14 +184,7 @@ function _compress()
   _msg "Size sum    : $size_new"
 
   # Resize
-  resize2fs  "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$size_new"K || true
-  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &>/dev/null || true
-
-  # Remount
-  _mount
-
-  # Move files back
-  mv "$dir_compressed"/* "$ARTS_MOUNT" &>/dev/null
+  _rebuild "$size_new"K "$dir_compressed"
 }
 
 
@@ -253,12 +260,11 @@ function main()
 
   if [[ "${1:-}" =~ arts-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in
-      "compress") _compress "${2:-}" ;;
+      "compress") _compress ;;
       "tarball") _install_tarball "$2" ;;
       "root") ARTS_ROOT=1; ARTS_NORM="" ;&
       "exec") _exec "${@:2:1}" "${@:3}" ;;
       "cmd") _default_cmd_set "${@:2}" ;;
-      "resize") _resize "$2" ;;
       "help") _help;;
       *) _help; _die "Unknown arts command" ;;
     esac

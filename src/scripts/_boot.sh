@@ -77,6 +77,22 @@ function _help()
 }
 
 # Changes the filesystem size
+# $1 New sise
+function _resize()
+{
+  # Unmount
+  _unmount
+
+  # Resize
+  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
+  resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
+  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
+
+  # Mount
+  _mount
+}
+
+# Re-create the filesystem with new data
 # $1 New size
 # $2 Dir to create image from
 function _rebuild()
@@ -265,6 +281,7 @@ function main()
       "root") ARTS_ROOT=1; ARTS_NORM="" ;&
       "exec") _exec "${@:2:1}" "${@:3}" ;;
       "cmd") _default_cmd_set "${@:2}" ;;
+      "resize") _resize "$2" ;;
       "help") _help;;
       *) _help; _die "Unknown arts command" ;;
     esac

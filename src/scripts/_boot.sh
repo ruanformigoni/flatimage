@@ -150,6 +150,7 @@ function _exec()
   # Export variables to chroot
   export TERM="xterm"
   export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+  export HOST_USERNAME="$(whoami)"
 
   # Remove override to avoid problems with apt
   rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"

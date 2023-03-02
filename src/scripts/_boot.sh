@@ -112,6 +112,9 @@ function _rebuild()
   cat /tmp/arts/dwarfs >>   "$ARTS_FILE"
   cat /tmp/arts/mkdwarfs >> "$ARTS_FILE"
 
+  # Update offset
+  ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"
+
   # Create filesystem
   truncate -s "$1" "$ARTS_TEMP/image.arts"
   mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"

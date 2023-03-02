@@ -15,6 +15,7 @@
   - [Package pre-compiled binaries](#package-pre-compiled-binaries)
   - [Use an apt package in non-debian systems](#use-an-apt-package-in-non-debian-systems)
   - [Use a pacman package on non-arch systems](#use-a-pacman-package-on-non-arch-systems)
+  - [Use an AUR package on non-arch systems](#use-an-aur-package-on-non-arch-systems)
   - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
   - [Use a npm package without installing npm/nodejs](#use-a-npm-package-without-installing-npmnodejs)
   - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
@@ -107,12 +108,10 @@ Avaliable options:
 
 ## Environment Variables
 
-`ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs, default is 6
-
-`ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
+* `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs, default is 6
+* `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
 compression, default is 50000 (50MB).
-
-`ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
+* `ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
 
 
 # Use cases
@@ -180,6 +179,25 @@ mv focal.arts firefox.arts
 mv arch.arts firefox.arts
  # 7. Run the application (you can also click on it in your file manager)
 ./firefox.arts
+```
+
+## Use an AUR package on non-arch systems
+
+```sh
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./arch.arts arts-resize 10G
+ # 2. Use the included aur script (root password is arch)
+./arch.arts arts-root aur librewolf-bin
+ # 3. Test the application
+./arch.arts arts-exec librewolf
+ # 4. Set the default startup command
+./arch.arts arts-cmd librewolf
+ # 5. (optional) Compress the package filesystem
+./arch.arts arts-compress
+ # 6. (optional) Rename the binary to the main application name
+mv arch.arts librewolf.arts
+ # 7. Run the application (you can also click on it in your file manager)
+./librewolf.arts
 ```
 
 ## Use a pip package without installing pip/python

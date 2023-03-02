@@ -31,7 +31,7 @@ build-fuse2fs:
   when: manual
   before_script:
     - apt update && apt -y upgrade
-    - apt install -y build-essential git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
+    - apt install -y build-essential patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
     - echo JOB_ID_BUILD_FUSE=$CI_JOB_ID > build.env
   script:
     - git clone https://github.com/ruanformigoni/e2fsprogs.git
@@ -41,6 +41,10 @@ build-fuse2fs:
     - ../configure
     - make -j2
     - cd ../.. && mkdir -p bin && mv ./e2fsprogs/build/misc/fuse2fs bin/fuse2fs
+    - pip3 install setuptools # Make fuse2fs static
+    - pip3 install staticx
+    - staticx bin/fuse2fs fuse2fs
+    - mv -f fuse2fs ./bin/fuse2fs
   artifacts:
     paths:
       - ./bin

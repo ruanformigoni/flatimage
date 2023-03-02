@@ -2,13 +2,15 @@
 
 # Table of contents
 
-- [Arts - Application Chroot Subsystem](#arts---application-chroot-subsystem)
+- [Arts - Application Root Subsystem](#arts---application-root-subsystem)
 - [Table of contents](#table-of-contents)
   - [What is Arts?](#what-is-arts?)
   - [Motivations](#motivations)
   - [Background](#background)
 - [Get Arts](#get-arts)
-- [Options](#options)
+- [Usage](#usage)
+  - [Options](#options)
+  - [Environment Variables](#environment-variables)
 - [Use cases](#use-cases)
   - [Package pre-compiled binaries](#package-pre-compiled-binaries)
   - [Use an apt package in non-debian systems](#use-an-apt-package-in-non-debian-systems)
@@ -88,7 +90,9 @@ following issues:
 
 You can get the latest release [here](https://gitlab.com/formigoni/arts/-/releases).
 
-# Options
+# Usage
+
+## Options
 
 ```
 Application Chroot Subsystem (Arts)
@@ -100,6 +104,16 @@ Avaliable options:
 - arts-resize: Resize the filesystem.
 - arts-help: Print this message.
 ```
+
+## Environment Variables
+
+`ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs, default is 6
+
+`ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
+compression, default is 50000 (50MB).
+
+`ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
+
 
 # Use cases
 

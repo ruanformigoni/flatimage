@@ -228,6 +228,9 @@ function _create_subsystem_arch()
   mkdir -p "./arch/arts/"
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "./arch/arts/boot"
 
+  # Embed AUR helper
+  cp "$ARTS_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
+
   # Set dist
   sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ARCH"/' ./arch/arts/boot
 

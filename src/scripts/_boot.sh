@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bash -euET -o pipefail -O inherit_errexit
+#!/usr/bin/env bash
 
 ######################################################################
 # @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)

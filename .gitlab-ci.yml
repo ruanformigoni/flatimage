@@ -6,12 +6,14 @@ stages:
   - release
 
 build-elf:
+  image: "ubuntu:focal"
   stage: build
   when: manual
   before_script:
+    - export DEBIAN_FRONTEND=noninteractive
     - apt update && apt -y upgrade
     - apt install -y python3-pip build-essential cmake
-    - pip install conan==1.59.0
+    - pip3 install conan==1.59.0
     - echo JOB_ID_BUILD_ELF=$CI_JOB_ID > build.env
   script:
     # Build
@@ -27,9 +29,11 @@ build-elf:
       dotenv: build.env
 
 build-fuse2fs:
+  image: "ubuntu:focal"
   stage: build
   when: manual
   before_script:
+    - export DEBIAN_FRONTEND=noninteractive
     - apt update && apt -y upgrade
     - apt install -y build-essential patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
     - echo JOB_ID_BUILD_FUSE=$CI_JOB_ID > build.env

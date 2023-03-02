@@ -13,7 +13,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 
 # Compiler
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
-add_definitions("--std=c++2a -Wall -Wextra")
+add_definitions("--std=c++17 -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -static-libgcc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -static-libstdc++")
+message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 # External libraries
 if(NOT fmt_FOUND)

@@ -6,7 +6,7 @@
 // @description : Main elf for arts
 //
 
-#include <vector>
+#include <deque>
 #include <algorithm>
 #include <numeric>
 #include <fstream>
@@ -21,7 +21,6 @@
 #include <sys/types.h>
 #include <elf.h>
 #include <fmt/ranges.h>
-#include "fun.hpp"
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
@@ -34,16 +33,15 @@ extern char** environ;
 
 // Aliases {{{
 namespace fs = std::filesystem;
-namespace fn = fun::fn;
 using u64 = unsigned long;
 // }}}
 
 // Literals {{{
 auto operator"" _fmt(const char* c_str, std::size_t)
-{ return [=]<typename... T>(T&&... args){ return fmt::format(fmt::runtime(c_str), std::forward<T>(args)...); }; }
+{ return [=](auto&&... args){ return fmt::format(fmt::runtime(c_str), args...); }; }
 
 auto operator"" _err(const char* c_str, std::size_t)
-{ return [=]<typename... T>(T&&... args){ fmt::print(fmt::runtime(c_str), std::forward<T>(args)...); exit(1); }; }
+{ return [=](auto&&... args){ fmt::print(fmt::runtime(c_str), args...); exit(1); }; }
 // }}}
 
 // fn: create_temp_dir {{{
@@ -112,11 +110,11 @@ int main(int argc, char** argv)
   // Get caller path and choose branch to execute {{{
 
   // Get arguments from 1..n-1
-  std::string str_args = fn::fn(std::vector<std::string>{argv, argv+argc})
-    .as([](auto e){ e.push_back(' '); return e; })
-    .pop_front()
-    .squash()
-    .to<std::string>();
+  std::deque<std::string> deque_args (argv, argv+argc);
+  deque_args.pop_front();
+  std::for_each(deque_args.begin(), deque_args.end(), [](auto& e){ e.push_back(' '); });
+  std::string str_args;
+  std::for_each(deque_args.begin(), deque_args.end(), [&](auto&& e){ str_args.append(e); });
 
   // /home/user/../dir/main
   auto path_absolute = fs::canonical(fs::path{argv[0]});

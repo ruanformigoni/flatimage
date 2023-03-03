@@ -86,7 +86,6 @@ build-dwarfs:
 
 package-focal:
   stage: package
-  when: manual
   before_script:
     - apt update && apt -y upgrade
     - apt install -y git wget curl zstd debootstrap e2fsprogs proot fuse2fs xz-utils rsync
@@ -98,8 +97,6 @@ package-focal:
     - ./src/scripts/_build.sh debootstrap "$dist"
     # Set env vars
     - echo "FOCAL_TARBALL=${dist}.tar.xz" >> build.env
-    # Release static fusermount3
-    - cp bin/fusermount3 dist/fusermount3
   needs:
     - job: build-elf
       artifacts: true
@@ -116,7 +113,6 @@ package-focal:
 package-arch:
   image: "archlinux:latest"
   stage: package
-  when: manual
   before_script:
     - pacman -Syu --noconfirm
     - pacman -S python-pip patchelf git gawk wget curl zstd xz rsync binutils --noconfirm

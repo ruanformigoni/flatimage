@@ -84,9 +84,9 @@ function _resize()
   _unmount
 
   # Resize
-  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
+  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
   resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
-  e2fsck -f "$ARTS_FILE"\?offset="$ARTS_OFFSET"
+  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
 
   # Mount
   _mount

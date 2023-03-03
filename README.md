@@ -7,7 +7,6 @@
   - [What is Arts?](#what-is-arts?)
   - [Motivations](#motivations)
   - [Background](#background)
-- [Dependencies](#dependencies)
 - [Get Arts](#get-arts)
 - [Usage](#usage)
   - [Options](#options)
@@ -87,17 +86,6 @@ following issues:
 * No host libraries used (Filesystem Isolation)
 * Supports selective directory compression
 * Portable user configuration within the package
-
-# Dependencies
-
-Arts requires fuse3 for compression, install with a [package manager](https://command-not-found.com/fusermount3)
-or use the provided static binary:
-
-```sh
-sudo wget -O /usr/local/bin/fusermount3 https://gitlab.com/formigoni/art/-/jobs/3867674165/artifacts/raw/dist/fusermount3
-sudo chmod u+s /usr/local/bin/fusermount3
-sudo chmod +x /usr/local/bin/fusermount3
-```
 
 # Get Arts
 

@@ -134,16 +134,6 @@ function _create_subsystem_debootstrap()
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"
 
-  # Install dwarfs
-  local tempdir="$(mktemp -d)"
-  wget -q --show-progress --progress=dot:mega \
-    https://github.com/mhx/dwarfs/releases/download/v0.6.2/dwarfs-0.6.2-Linux.tar.xz -O - |
-    tar xJ -C"$tempdir" --strip-components=1
-  rsync -K -a "$tempdir/" "/tmp/$dist"
-  cp "$tempdir/sbin/dwarfs" bin # Save to embed in final binary
-  cp "$tempdir/bin/mkdwarfs" bin # Save to embed in final binary
-  rm -rf "$tempdir"
-
   # Embed runner
   mkdir -p "/tmp/$dist/arts/"
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
@@ -213,16 +203,6 @@ function _create_subsystem_arch()
 
   # Create share symlink
   ln -sf /usr/share ./arch/share
-
-  # Install dwarfs
-  local tempdir="$(mktemp -d)"
-  wget -q --show-progress --progress=dot:mega \
-    https://github.com/mhx/dwarfs/releases/download/v0.6.2/dwarfs-0.6.2-Linux.tar.xz -O - |
-    tar xJ -C"$tempdir" --strip-components=1
-  rsync -K -a "$tempdir/" arch
-  cp "$tempdir/sbin/dwarfs" bin # Save to embed in final binary
-  cp "$tempdir/bin/mkdwarfs" bin # Save to embed in final binary
-  rm -rf "$tempdir"
 
   # Embed runner
   mkdir -p "./arch/arts/"

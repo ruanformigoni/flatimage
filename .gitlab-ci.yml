@@ -50,13 +50,39 @@ build-fuse2fs:
     # Make fuse2fs static
     - staticx bin/fuse2fs fuse2fs
     - mv -f fuse2fs ./bin/fuse2fs
-    # Make fusermount3 static, to use if the host's is missing
-    - staticx /usr/bin/fusermount3 ./bin/fusermount3
   artifacts:
     paths:
       - ./bin
     reports:
       dotenv: build.env
+
+build-dwarfs:
+  image: "ubuntu:jammy"
+  stage: build
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y git python3-pip patchelf build-essential g++ clang cmake make bison flex ronn fuse pkg-config binutils-dev libarchive-dev libboost-context-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev libboost-regex-dev libboost-system-dev libboost-thread-dev libevent-dev libjemalloc-dev libdouble-conversion-dev libiberty-dev liblz4-dev liblzma-dev libssl-dev libunwind-dev libdwarf-dev libelf-dev libfmt-dev libfuse-dev libgoogle-glog-dev ccache ninja-build libacl1-dev
+    - echo JOB_ID_BUILD_DWARFS=$CI_JOB_ID > build.env
+  script:
+    # Build
+    - git clone --recurse-submodules https://github.com/mhx/dwarfs
+    - cd dwarfs && mkdir build && cd build
+    - cmake .. -DWITH_LEGACY_FUSE=1 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DWITH_TESTS=0 -GNinja
+    - ninja
+    - cd ../..
+    - pip3 install setuptools
+    - pip3 install staticx
+    - mkdir -p bin
+    - staticx dwarfs/build/dwarfs2 bin/dwarfs
+    - staticx dwarfs/build/mkdwarfs bin/mkdwarfs
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 
 package-focal:
   stage: package
@@ -78,6 +104,8 @@ package-focal:
     - job: build-elf
       artifacts: true
     - job: build-fuse2fs
+      artifacts: true
+    - job: build-dwarfs
       artifacts: true
   artifacts:
     paths:
@@ -103,6 +131,8 @@ package-arch:
       artifacts: true
     - job: build-fuse2fs
       artifacts: true
+    - job: build-dwarfs
+      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -124,8 +154,6 @@ deploy:
           url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
         - name: 'arch.tar.xz'
           url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
-        - name: 'fusermount3'
-          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/fusermount3'
   needs:
     - job: package-arch
     - job: package-focal

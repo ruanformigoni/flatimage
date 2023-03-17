@@ -151,18 +151,12 @@ int main(int argc, char** argv)
     if( getenv("ARTS_OFFSET") ){ fmt::print("{}\n", offset); exit(0); }
 
     //
-    // Mount to temp dir
+    // Extract boot script
     //
-    if(system("{}/fuse2fs -o fakeroot,offset={} {} {}"_fmt(
-      cstr_dir_bin, offset, path_absolute.string(), str_dir_mount).c_str()) != 0)
+    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, path_absolute.c_str(), cstr_dir_temp).c_str()) != 0)
     {
-      "Could not mount {} in {}"_err(path_absolute.string(), str_dir_mount);
+      "Could not extract arts boot script from {} to {}"_err(path_absolute.c_str(), cstr_dir_temp);
     }
-
-    //
-    // Copy boot script to temp dir
-    //
-    fs::copy("{}/arts/boot"_fmt(str_dir_mount), "{}/boot"_fmt(str_dir_temp));
 
     //
     // Set environment
@@ -244,6 +238,7 @@ int main(int argc, char** argv)
     //
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "runner", 0);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "proot", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "ext2rd", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "dwarfs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "mkdwarfs", offset_end);

@@ -270,6 +270,9 @@ function main()
   _msg "ARTS_FILE        : $ARTS_FILE"
   _msg '$*               : '"$*"
 
+  # Mount filesystem
+  _mount
+
   # Check for pacman dirs
   if [ "$ARTS_DIST" = "ARCH" ] && [ ! -d /var/lib/pacman ]; then
     _die "Missing pacman dir, create with 'sudo mkdir -p /var/lib/pacman'"

@@ -55,6 +55,7 @@ function _create_elf()
 
   cp bin/elf "$out"
   cat bin/proot >> "$out"
+  cat bin/ext2rd >> "$out"
   cat bin/fuse2fs >> "$out"
   cat bin/dwarfs >> "$out"
   cat bin/mkdwarfs >> "$out"

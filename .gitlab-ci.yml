@@ -16,12 +16,13 @@ build-elf:
     - pip3 install conan==1.59.0
     - echo JOB_ID_BUILD_ELF=$CI_JOB_ID > build.env
   script:
+    - mkdir -p bin
     # Build
     - cd ./src/elf
     - mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11 && cd ..
     - cmake -H. -Bbuild
     - cmake --build build
-    - cd ../.. && mkdir -p bin && mv src/elf/build/main bin/elf
+    - cd ../.. && mv src/elf/build/main bin/elf
   artifacts:
     paths:
       - ./bin
@@ -35,21 +36,29 @@ build-fuse2fs:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt update && apt -y upgrade
-    - apt install -y fuse3 build-essential patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
+    - apt install -y wget fuse3 build-essential patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
     - echo JOB_ID_BUILD_FUSE=$CI_JOB_ID > build.env
   script:
-    - git clone https://github.com/ruanformigoni/e2fsprogs.git
-    - cd e2fsprogs
-    - git checkout fuse2fs-offset
-    - mkdir build && cd build
-    - ../configure
-    - make -j2
-    - cd ../.. && mkdir -p bin && mv ./e2fsprogs/build/misc/fuse2fs bin/fuse2fs
-    - pip3 install setuptools
-    - pip3 install staticx
-    # Make fuse2fs static
-    - staticx bin/fuse2fs fuse2fs
-    - mv -f fuse2fs ./bin/fuse2fs
+    - |
+      mkdir -p ./bin
+      # Check if has built version
+      if [ -n "$BIN_FUSE2FS" ]; then
+        wget -O ./bin/fuse2fs "$BIN_FUSE2FS"
+        exit
+      fi
+      # Else build
+      git clone https://github.com/ruanformigoni/e2fsprogs.git
+      cd e2fsprogs
+      git checkout fuse2fs-offset
+      mkdir build && cd build
+      ../configure
+      make -j2
+      cd ../.. && mv ./e2fsprogs/build/misc/fuse2fs bin/fuse2fs
+      pip3 install setuptools
+      pip3 install staticx
+      # Make fuse2fs static
+      staticx bin/fuse2fs fuse2fs
+      mv -f fuse2fs ./bin/fuse2fs
   artifacts:
     paths:
       - ./bin
@@ -63,20 +72,27 @@ build-dwarfs:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt update && apt -y upgrade
-    - apt install -y git python3-pip patchelf build-essential g++ clang cmake make bison flex ronn fuse pkg-config binutils-dev libarchive-dev libboost-context-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev libboost-regex-dev libboost-system-dev libboost-thread-dev libevent-dev libjemalloc-dev libdouble-conversion-dev libiberty-dev liblz4-dev liblzma-dev libssl-dev libunwind-dev libdwarf-dev libelf-dev libfmt-dev libfuse-dev libgoogle-glog-dev ccache ninja-build libacl1-dev
+    - apt install -y wget git python3-pip patchelf build-essential g++ clang cmake make bison flex ronn fuse pkg-config binutils-dev libarchive-dev libboost-context-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev libboost-regex-dev libboost-system-dev libboost-thread-dev libevent-dev libjemalloc-dev libdouble-conversion-dev libiberty-dev liblz4-dev liblzma-dev libssl-dev libunwind-dev libdwarf-dev libelf-dev libfmt-dev libfuse-dev libgoogle-glog-dev ccache ninja-build libacl1-dev
     - echo JOB_ID_BUILD_DWARFS=$CI_JOB_ID > build.env
   script:
-    # Build
-    - git clone --recurse-submodules https://github.com/mhx/dwarfs
-    - cd dwarfs && mkdir build && cd build
-    - cmake .. -DWITH_LEGACY_FUSE=1 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DWITH_TESTS=0 -GNinja
-    - ninja
-    - cd ../..
-    - pip3 install setuptools
-    - pip3 install staticx
-    - mkdir -p bin
-    - staticx dwarfs/build/dwarfs2 bin/dwarfs
-    - staticx dwarfs/build/mkdwarfs bin/mkdwarfs
+    - |
+      mkdir -p ./bin
+      # Check if has built version
+      if [ -n "$BIN_DWARFS" ] && [ -n "$BIN_MKDWARFS" ]; then
+        wget -O ./bin/dwarfs "$BIN_DWARFS"
+        wget -O ./bin/mkdwarfs "$BIN_MKDWARFS"
+        exit
+      fi
+      # else build
+      git clone --recurse-submodules https://github.com/mhx/dwarfs
+      cd dwarfs && mkdir build && cd build
+      cmake .. -DWITH_LEGACY_FUSE=1 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DWITH_TESTS=0 -GNinja
+      ninja
+      cd ../..
+      pip3 install setuptools
+      pip3 install staticx
+      staticx dwarfs/build/dwarfs2 bin/dwarfs
+      staticx dwarfs/build/mkdwarfs bin/mkdwarfs
   artifacts:
     paths:
       - ./bin
@@ -139,8 +155,9 @@ deploy:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
-    - echo "Elf job id $JOB_ID_BUILD_ELF"
-    - echo "Subsystem job id $JOB_ID_BUILD_FUSE"
+    - echo "ELF JID $JOB_ID_BUILD_ELF"
+    - echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
+    - echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
   release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: 'Continuous'
     description: 'Release $CI_COMMIT_SHORT_SHA'

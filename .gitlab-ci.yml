@@ -99,6 +99,36 @@ build-dwarfs:
     reports:
       dotenv: build.env
 
+build-extfstools:
+  image: "ubuntu:latest"
+  stage: build
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget build-essential cmake fuse3 patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
+    - echo JOB_ID_BUILD_EXTFS=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p bin
+      # Check if has built version
+      if [ -n "$BIN_EXT2RD" ]; then
+        wget -O ./bin/ext2rd "$BIN_EXT2RD"
+        exit
+      fi
+      # Else build
+      git clone https://github.com/nlitsme/extfstools.git
+      cd extfstools
+      make
+      # Make ext2rd static
+      pip3 install setuptools
+      pip3 install staticx
+      staticx build/ext2rd ../bin/ext2rd
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
 
 package-focal:
   stage: package
@@ -158,6 +188,7 @@ deploy:
     - echo "ELF JID $JOB_ID_BUILD_ELF"
     - echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
     - echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
+    - echo "EXTFS JID $JOB_ID_BUILD_EXTFS"
   release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: 'Continuous'
     description: 'Release $CI_COMMIT_SHORT_SHA'

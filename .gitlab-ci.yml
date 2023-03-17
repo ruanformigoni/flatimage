@@ -150,6 +150,8 @@ package-focal:
       artifacts: true
     - job: build-dwarfs
       artifacts: true
+    - job: build-extfstools
+      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -174,6 +176,8 @@ package-arch:
     - job: build-fuse2fs
       artifacts: true
     - job: build-dwarfs
+      artifacts: true
+    - job: build-extfstools
       artifacts: true
   artifacts:
     paths:

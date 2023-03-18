@@ -188,14 +188,21 @@ package-arch:
 deploy:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  before_script:
+    - apk --no-cache add curl
   script:
-    - echo "ELF JID $JOB_ID_BUILD_ELF"
-    - echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
-    - echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
-    - echo "EXTFS JID $JOB_ID_BUILD_EXTFS"
+    - |
+      export RELEASE_DESCRIPTION="$(date +"%Y-%m-%d")"
+      echo "ELF JID $JOB_ID_BUILD_ELF"
+      echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
+      echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
+      echo "EXTFS JID $JOB_ID_BUILD_EXTFS"
+      # Delete current release
+      curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
+  # Set new release
   release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: 'Continuous'
-    description: 'Release $CI_COMMIT_SHORT_SHA'
+    description: 'Release $CI_COMMIT_SHORT_SHA : ${RELEASE_DESCRIPTION}'
     assets:
       links:
         - name: 'focal.tar.xz'

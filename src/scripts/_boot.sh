@@ -68,6 +68,8 @@ function _die()
   # shellcheck disable=2038
   find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; |
     xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &>/dev/null || true
+  # Wait to unmount
+  sleep .5
   # Unmount image
   _unmount
   # Exit

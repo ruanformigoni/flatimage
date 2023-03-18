@@ -171,22 +171,6 @@ int main(int argc, char** argv)
     // Execute application
     //
     system("{}/boot {}"_fmt(str_dir_temp, str_args).c_str());
-
-    //
-    // Wait for the applicatin to stop using the filesystem
-    //
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(200ms);
-
-    //
-    // Unmount
-    //
-    if(system("fusermount -u {0}"_fmt(str_dir_mount).c_str()) != 0) { "Fuse failed to unmount {}"_err(str_dir_mount); }
-
-    //
-    // Remove dir
-    //
-    fs::remove(str_dir_mount);
   } // }}}
   
   else // Write Runner {{{

@@ -89,7 +89,7 @@ function _help()
   :- arts-resize: Resize the filesystem.
   :- arts-mount: Mount the filesystem in a specified directory
   :    - E.g.: ./focal.arts arts-mount ./mountpoint
-  :- arts-xdg: Same as the 'arts-mount' command, however is opens the
+  :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
   :- arts-help: Print this message.
 	EOF

@@ -127,6 +127,7 @@ function _rebuild()
   # Append static requirements
   # shellcheck disable=2129
   cat /tmp/arts/proot >>    "$ARTS_FILE"
+  cat /tmp/arts/ext2rd >>    "$ARTS_FILE"
   cat /tmp/arts/fuse2fs >>  "$ARTS_FILE"
   cat /tmp/arts/dwarfs >>   "$ARTS_FILE"
   cat /tmp/arts/mkdwarfs >> "$ARTS_FILE"

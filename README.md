@@ -113,10 +113,11 @@ Avaliable options:
 
 ## Environment Variables
 
-* `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs, default is 6
+* `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
 compression, default is 50000 (50MB).
 * `ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
+* `ARTS_DEBUG`: If defined to 1, print debug messages.
 
 
 # Use cases

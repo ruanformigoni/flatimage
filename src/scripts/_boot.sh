@@ -15,16 +15,26 @@ set -e
 PID="$$"
 
 export ARTS_DIST="TRUNK"
-export ARTS_ROOT="${ARTS_ROOT:=}"
-export ARTS_NORM="$(var=${ARTS_ROOT:-1}; echo "${var#"${ARTS_ROOT}"}")"
-export ARTS_DEBUG="${ARTS_DEBUG:=}"
-export ARTS_NDEBUG="$(var=${ARTS_DEBUG:-1}; echo "${var#"${ARTS_DEBUG}"}")"
+
+# Perms
+export ARTS_ROOT="${ARTS_ROOT:+1}"
+export ARTS_NORM="1"
+export ARTS_NORM="${ARTS_NORM#"${ARTS_ROOT}"}"
+
+# Debug
+export ARTS_DEBUG="${ARTS_DEBUG:+1}"
+export ARTS_NDEBUG="1"
+export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
+
+# Paths
 export ARTS_BIN="${ARTS_BIN:?ARTS_BIN is unset or null}"
 export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
 export ARTS_CONFIG="$ARTS_MOUNT/arts/config.yml"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
+
+# Compression
 export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-6}"
 export ARTS_COMPRESSION_SLACK="${ARTS_COMPRESSION_SLACK:-50000}" # 50MB
 export ARTS_COMPRESSION_DIRS="${ARTS_COMPRESSION_DIRS:-/usr /opt}"
@@ -66,8 +76,9 @@ function _die()
   [ -z "$*" ] || ARTS_DEBUG=1 _msg "$*"
   # Unmount dwarfs
   # shellcheck disable=2038
-  find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; |
-    xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &>/dev/null || true
+  find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; \
+    | xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} 2>&1 \
+    | eval "${ARTS_DEBUG:+cat}"
   # Wait to unmount
   sleep .5
   # Unmount image
@@ -166,7 +177,7 @@ function _exec()
     local mp="$ARTS_TEMP/dwarfs/${i%.dwarfs}"; mkdir -p "$mp"
     local lnk="$ARTS_MOUNT/${i%.dwarfs}"
     rm -f "$lnk" && ln -sf "$mp" "$lnk"
-    "$ARTS_BIN/dwarfs" "$fs" "$mp" &>/dev/null
+    "$ARTS_BIN/dwarfs" "$fs" "$mp" 2>&1 | tac | eval "${ARTS_DEBUG:+cat}"
   done
 
   # Export variables to chroot
@@ -286,6 +297,8 @@ function main()
 {
   _msg "ARTS_ROOT        : $ARTS_ROOT"
   _msg "ARTS_NORM        : $ARTS_NORM"
+  _msg "ARTS_DEBUG       : $ARTS_DEBUG"
+  _msg "ARTS_NDEBUG      : $ARTS_NDEBUG"
   _msg "ARTS_BIN         : $ARTS_BIN"
   _msg "ARTS_OFFSET      : $ARTS_OFFSET"
   _msg "ARTS_MOUNT       : $ARTS_MOUNT"

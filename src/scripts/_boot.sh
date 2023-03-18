@@ -40,7 +40,7 @@ function _msg()
 # Mount the main filesystem
 function _mount()
 {
-  "$ARTS_BIN"/fuse2fs -o "${ALLOW_OTHER:+allow_other,}"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT"
+  "$ARTS_BIN"/fuse2fs -o fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT"
 }
 
 # Unmount the main filesystem
@@ -49,14 +49,28 @@ function _unmount()
   fusermount -u "$ARTS_MOUNT"
 }
 
+# Re-mount the filesystem in new mountpoint
+# $1 New mountpoint
+function _re_mount()
+{
+  # Umount from initial mountpoint
+  _unmount
+  # Mount in new mountpoint
+  export ARTS_MOUNT="$1"; _mount
+}
+
 # Quits the program
 # $* = Termination message
 function _die()
 {
   [ -z "$*" ] || ARTS_DEBUG=1 _msg "$*"
+  # Unmount dwarfs
   # shellcheck disable=2038
   find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; |
     xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &>/dev/null || true
+  # Unmount image
+  _unmount
+  # Exit
   kill -s SIGTERM "$PID"
 }
 
@@ -68,10 +82,15 @@ function _help()
   :Application Chroot Subsystem (Arts), $ARTS_DIST
   :Avaliable options:
   :- arts-compress: Compress the filesystem to a read-only format.
-  :- arts-tarball: Install a tarball in '/'.
-  :- arts-exec: Execute an artitrary command.
+  :- arts-tarball: Install a tarball in the container's '/'.
+  :- arts-exec: Execute an arbitrary command.
+  :- arts-root: Execute an arbitrary command as root.
   :- arts-cmd: Set the default command to execute.
   :- arts-resize: Resize the filesystem.
+  :- arts-mount: Mount the filesystem in a specified directory
+  :    - E.g.: ./focal.arts arts-mount ./mountpoint
+  :- arts-xdg: Same as the 'arts-mount' command, however is opens the
+  :    mount directory with xdg-open
   :- arts-help: Print this message.
 	EOF
 }
@@ -263,6 +282,7 @@ function _default_cmd_set()
 function main()
 {
   _msg "ARTS_ROOT        : $ARTS_ROOT"
+  _msg "ARTS_NORM        : $ARTS_NORM"
   _msg "ARTS_BIN         : $ARTS_BIN"
   _msg "ARTS_OFFSET      : $ARTS_OFFSET"
   _msg "ARTS_MOUNT       : $ARTS_MOUNT"
@@ -289,6 +309,8 @@ function main()
       "exec") _exec "${@:2:1}" "${@:3}" ;;
       "cmd") _default_cmd_set "${@:2}" ;;
       "resize") _resize "$2" ;;
+      "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
+      "mount") _re_mount "$2"; read -r ;;
       "help") _help;;
       *) _help; _die "Unknown arts command" ;;
     esac

@@ -100,9 +100,14 @@ Application Chroot Subsystem (Arts)
 Avaliable options:
 - arts-compress: Compress the filesystem to a read-only format.
 - arts-tarball: Install a tarball in the container's '/'.
-- arts-exec: Execute an artitrary command.
+- arts-exec: Execute an arbitrary command.
+- arts-root: Execute an arbitrary command as root.
 - arts-cmd: Set the default command to execute.
 - arts-resize: Resize the filesystem.
+- arts-mount: Mount the filesystem in a specified directory
+    - E.g.: ./focal.arts arts-mount ./mountpoint
+- arts-xdg: Same as the 'arts-mount' command, however is opens the
+    mount directory with xdg-open
 - arts-help: Print this message.
 ```
 

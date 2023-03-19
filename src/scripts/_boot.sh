@@ -306,6 +306,9 @@ function main()
   _msg "ARTS_FILE        : $ARTS_FILE"
   _msg '$*               : '"$*"
 
+  # Check filesystem
+  { e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" 2>&1 | tac | eval "${ARTS_DEBUG:+cat}"; } || true
+
   # Mount filesystem
   _mount
 

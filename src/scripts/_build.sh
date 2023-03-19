@@ -106,9 +106,6 @@ function _create_subsystem_debootstrap()
 
   [[ "$dist" =~ bionic|focal|jammy ]] || _die "Invalid distribution $1"
 
-  # Fetch proot
-  wget -qO bin/proot https://proot.gitlab.io/proot/bin/proot
-
   # Build
   debootstrap "$dist" "/tmp/$dist" http://archive.ubuntu.com/ubuntu/
 
@@ -164,9 +161,6 @@ function _create_subsystem_arch()
 {
   mkdir -p dist
   mkdir -p bin
-
-  # Fetch proot
-  wget -qO bin/proot https://proot.gitlab.io/proot/bin/proot
 
   # Fetch bootstrap
   git clone https://github.com/tokland/arch-bootstrap.git

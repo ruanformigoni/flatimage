@@ -130,6 +130,40 @@ build-extfstools:
     reports:
       dotenv: build.env
 
+build-proot:
+  image: "ubuntu:focal"
+  stage: build
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y build-essential clang-tools-6.0 curl docutils-common gdb git lcov libarchive-dev libtalloc-dev lzop patchelf python3-dev python3-pip sloccount strace swig uthash-dev wget xsltproc
+    - echo JOB_ID_BUILD_PROOT=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p ./bin
+      # Check if has built version
+      if [ -n "$BIN_PROOT" ]; then
+        wget -O ./bin/proot "$BIN_PROOT"
+        exit
+      fi
+      # Else build
+      git clone https://github.com/proot-me/proot.git
+      cd proot
+      sed -i "416s%if (path\[0\] != '/')%if (path[0] != '/' || path[0] == 0)%" src/path/path.c
+      sed -i 's/if (t_referrer != NULL) {/if (t_referrer != NULL \&\& t_referrer[0] != 0) {/' src/path/path.c
+      sed -i "546,547d" src/path/path.c
+      make -C src proot
+      # Make proot static
+      pip3 install setuptools
+      pip3 install staticx
+      staticx src/proot ../bin/proot
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 package-focal:
   stage: package
   before_script:
@@ -151,6 +185,8 @@ package-focal:
     - job: build-dwarfs
       artifacts: true
     - job: build-extfstools
+      artifacts: true
+    - job: build-proot
       artifacts: true
   artifacts:
     paths:
@@ -179,6 +215,8 @@ package-arch:
       artifacts: true
     - job: build-extfstools
       artifacts: true
+    - job: build-proot
+      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -197,6 +235,7 @@ deploy:
       echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
       echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
       echo "EXTFS JID $JOB_ID_BUILD_EXTFS"
+      echo "PROOT JID $JOB_ID_BUILD_PROOT"
       # Delete current release
       curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
   # Set new release

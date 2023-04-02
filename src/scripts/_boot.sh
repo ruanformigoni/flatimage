@@ -21,6 +21,11 @@ export ARTS_ROOT="${ARTS_ROOT:+1}"
 export ARTS_NORM="1"
 export ARTS_NORM="${ARTS_NORM#"${ARTS_ROOT}"}"
 
+# Mode
+export ARTS_RW="${ARTS_RW:+1}"
+export ARTS_RO="1"
+export ARTS_RO="${ARTS_RO#"${ARTS_RW}"}"
+
 # Debug
 export ARTS_DEBUG="${ARTS_DEBUG:+1}"
 export ARTS_NDEBUG="1"
@@ -39,6 +44,10 @@ export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-6}"
 export ARTS_COMPRESSION_SLACK="${ARTS_COMPRESSION_SLACK:-50000}" # 50MB
 export ARTS_COMPRESSION_DIRS="${ARTS_COMPRESSION_DIRS:-/usr /opt}"
 
+# Output stream
+export ARTS_STREAM="${ARTS_DEBUG:+/dev/stdout}"
+export ARTS_STREAM="${ARTS_STREAM:-/dev/null}"
+
 # Emits a message in &2
 # $(1..n-1) arguments to echo
 # $n message
@@ -50,7 +59,9 @@ function _msg()
 # Mount the main filesystem
 function _mount()
 {
-  "$ARTS_BIN"/fuse2fs -o fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT"
+  local mode="${ARTS_RW:-ro,}"
+  local mode="${mode#1}"
+  "$ARTS_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT" &> "$ARTS_STREAM"
 }
 
 # Unmount the main filesystem
@@ -186,7 +197,7 @@ function _exec()
   export HOST_USERNAME="$(whoami)"
 
   # Remove override to avoid problems with apt
-  rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"
+  [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"
 
   # Run proot
   declare -a _cmd_proot
@@ -276,6 +287,8 @@ function _config_fetch()
 {
   local opt="$1"
 
+  [ -f "$ARTS_CONFIG" ] || { echo "/bin/bash"; exit; }
+
   if [[ "$(cat "$ARTS_CONFIG")" =~ $opt\ \=\ (.*) ]]; then
     echo "${BASH_REMATCH[1]}"
   fi
@@ -295,6 +308,9 @@ function _config_set()
 
 function main()
 {
+  _msg "ARTS_RO          : $ARTS_RO"
+  _msg "ARTS_RW          : $ARTS_RW"
+  _msg "ARTS_STREAM      : $ARTS_STREAM"
   _msg "ARTS_ROOT        : $ARTS_ROOT"
   _msg "ARTS_NORM        : $ARTS_NORM"
   _msg "ARTS_DEBUG       : $ARTS_DEBUG"
@@ -317,8 +333,8 @@ function main()
     _die "Missing pacman dir, create with 'sudo mkdir -p /var/lib/pacman'"
   fi
 
-  # Check if config is written
-  [ -f "$ARTS_CONFIG" ] || touch "$ARTS_CONFIG"
+  # Check if config exists, else try to touch if mounted as RW
+  [ -f "$ARTS_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_CONFIG"; }
 
   if [[ "${1:-}" =~ arts-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in

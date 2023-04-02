@@ -272,26 +272,26 @@ function _install_tarball()
   rm -rf "$dir_temp"
 }
 
-function _default_cmd_fetch()
+function _config_fetch()
 {
-  if [[ "$(cat "$ARTS_CONFIG")" =~ cmd_default\ \=\ (.*) ]]; then
+  local opt="$1"
+
+  if [[ "$(cat "$ARTS_CONFIG")" =~ $opt\ \=\ (.*) ]]; then
     echo "${BASH_REMATCH[1]}"
-  else
-    echo "/bin/bash"
   fi
 }
 
-function _default_cmd_set()
+function _config_set()
 {
-  local cmd_default="cmd_default = $*"
+  local opt="$1"; shift
+  local entry="$opt = $*"
 
-  if grep "cmd_default" "$ARTS_CONFIG" &>/dev/null; then
-    sed -i "s|cmd_default =.*|$cmd_default|" "$ARTS_CONFIG"
+  if grep "$opt" "$ARTS_CONFIG" &>/dev/null; then
+    sed -i "s|$opt =.*|$entry|" "$ARTS_CONFIG"
   else
-    echo "$cmd_default" >> "$ARTS_CONFIG"
+    echo "$entry" >> "$ARTS_CONFIG"
   fi
 }
-
 
 function main()
 {
@@ -326,7 +326,7 @@ function main()
       "tarball") _install_tarball "$2" ;;
       "root") ARTS_ROOT=1; ARTS_NORM="" ;&
       "exec") _exec "${@:2:1}" "${@:3}" ;;
-      "cmd") _default_cmd_set "${@:2}" ;;
+      "cmd") _config_set "cmd" "${@:2}" ;;
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
@@ -334,7 +334,8 @@ function main()
       *) _help; _die "Unknown arts command" ;;
     esac
   else
-    _exec "$(_default_cmd_fetch)" "$*"
+    local cmd="$(_config_fetch "cmd")"
+    _exec  "${cmd:-/bin/bash}" "$*"
   fi
 
 }

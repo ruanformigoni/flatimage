@@ -88,8 +88,7 @@ function _die()
   # Unmount dwarfs
   # shellcheck disable=2038
   find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; \
-    | xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} 2>&1 \
-    | eval "${ARTS_DEBUG:+cat}"
+    | xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &> "$ARTS_STREAM"
   # Wait to unmount
   sleep .5
   # Unmount image
@@ -187,8 +186,8 @@ function _exec()
     local fs="$ARTS_MOUNT/$i"
     local mp="$ARTS_TEMP/dwarfs/${i%.dwarfs}"; mkdir -p "$mp"
     local lnk="$ARTS_MOUNT/${i%.dwarfs}"
-    rm -f "$lnk" && ln -sf "$mp" "$lnk"
-    "$ARTS_BIN/dwarfs" "$fs" "$mp" 2>&1 | tac | eval "${ARTS_DEBUG:+cat}"
+    [ -n "$ARTS_RO" ] || { rm -f "$lnk" && ln -sf "$mp" "$lnk"; }
+    "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
   # Export variables to chroot
@@ -323,7 +322,7 @@ function main()
   _msg '$*               : '"$*"
 
   # Check filesystem
-  { e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" 2>&1 | tac | eval "${ARTS_DEBUG:+cat}"; } || true
+  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Mount filesystem
   _mount

@@ -155,6 +155,59 @@ function _create_subsystem_debootstrap()
   mv "$dist.tar.xz" dist/
 }
 
+# Creates an alpine subsystem
+# Requires root permissions
+function _create_subsystem_alpine()
+{
+  mkdir -p dist
+  mkdir -p bin
+
+  local dist="alpine"
+
+  # Build
+  wget http://dl-cdn.alpinelinux.org/alpine/v3.12/main/x86_64/apk-tools-static-2.10.8-r1.apk
+  tar zxf apk-tools-static-*.apk
+  ./sbin/apk.static --arch x86_64 -X http://dl-cdn.alpinelinux.org/alpine/latest-stable/main/ -U --allow-untrusted --root /tmp/"$dist" --initdb add alpine-base
+
+  rm -rf /tmp/"$dist"/dev /tmp/"$dist"/target
+
+  # Touch sources
+  { sed -E 's/^\s+://' | tee /tmp/"$dist"/etc/apk/repositories; } <<-END
+    :http://dl-cdn.alpinelinux.org/alpine/v3.16/main
+    :http://dl-cdn.alpinelinux.org/alpine/v3.16/community
+    :http://dl-cdn.alpinelinux.org/alpine/edge/main
+    :http://dl-cdn.alpinelinux.org/alpine/edge/community
+    :http://dl-cdn.alpinelinux.org/alpine/edge/testing
+	END
+
+  # Update packages
+  ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
+  ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
+  ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'
+
+  # Embed runner
+  mkdir -p "/tmp/$dist/arts/"
+  cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
+
+  # Set dist
+  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ALPINE"/' "/tmp/$dist/arts/boot"
+
+  # Set permissions
+  chown -R "$(id -u)":users "/tmp/$dist"
+  chmod 777 -R "/tmp/$dist"
+
+  # Create image
+  _create_image  "/tmp/$dist" "$dist.img"
+
+  # Create elf
+  _create_elf "$dist.img" "$dist.arts"
+
+  tar -cf "$dist.tar" "$dist.arts"
+  xz -3zv "$dist.tar"
+
+  mv "$dist.tar.xz" dist/
+}
+
 # Creates an arch subsystem
 # Requires root permissions
 function _create_subsystem_arch()
@@ -230,6 +283,7 @@ function main()
   case "$1" in
     "debootstrap")   _create_subsystem_debootstrap "${@:2}" ;;
     "archbootstrap") _create_subsystem_arch ;;
+    "alpinebootstrap") _create_subsystem_alpine ;;
     *) _die "Invalid option $2" ;;
   esac
 }

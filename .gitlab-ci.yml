@@ -223,6 +223,35 @@ package-arch:
     reports:
       dotenv: build.env
 
+package-alpine:
+  image: "archlinux:latest"
+  stage: package
+  before_script:
+    - pacman -Syu --noconfirm
+    - pacman -S python-pip patchelf git gawk wget curl zstd xz rsync binutils --noconfirm
+    - echo JOB_ID_BUILD_BS_ALPINE=$CI_JOB_ID > build.env
+  script:
+    # Build
+    - ./src/scripts/_build.sh alpinebootstrap
+    # Set env vars
+    - echo "ALPINE_TARBALL=alpine.tar.xz" >> build.env
+  needs:
+    - job: build-elf
+      artifacts: true
+    - job: build-fuse2fs
+      artifacts: true
+    - job: build-dwarfs
+      artifacts: true
+    - job: build-extfstools
+      artifacts: true
+    - job: build-proot
+      artifacts: true
+  artifacts:
+    paths:
+      - ./dist
+    reports:
+      dotenv: build.env
+
 deploy:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -248,7 +277,10 @@ deploy:
           url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
         - name: 'arch.tar.xz'
           url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
+        - name: 'alpine.tar.xz'
+          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ALPINE}/artifacts/raw/dist/${ALPINE_TARBALL}'
   needs:
     - job: package-arch
     - job: package-focal
+    - job: package-alpine
       artifacts: true

@@ -89,8 +89,8 @@ function _die()
   local sha="$(_config_fetch "sha")"
   if [ -n "$sha" ]; then
     shopt -s nullglob
-    for i in /tmp/arts/"$sha"/mounts/*; do
-      fusermount -u /tmp/arts/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+    for i in /tmp/arts/root/"$sha"/mounts/*; do
+      fusermount -u /tmp/arts/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
     done
   fi
   # Wait to unmount
@@ -192,7 +192,7 @@ function _exec()
   for i in $(find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
     local fs="$ARTS_MOUNT/$i"
-    local mp="/tmp/arts/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
+    local mp="/tmp/arts/root/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
     "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
@@ -241,7 +241,7 @@ function _compress()
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
     "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
-    ln -sf "/tmp/arts/$sha/mounts/$i" "$target"
+    ln -sf "/tmp/arts/root/$sha/mounts/$i" "$target"
   done
 
 

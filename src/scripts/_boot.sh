@@ -86,13 +86,17 @@ function _die()
 {
   [ -z "$*" ] || ARTS_DEBUG=1 _msg "$*"
   # Unmount dwarfs
-  # shellcheck disable=2038
-  find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs" -exec basename -s .dwarfs "{}" \; \
-    | xargs -I{} fusermount -u "$ARTS_TEMP/dwarfs"/{} &> "$ARTS_STREAM"
+  local sha="$(_config_fetch "sha")"
+  if [ -n "$sha" ]; then
+    shopt -s nullglob
+    for i in /tmp/arts/"$sha"/mounts/*; do
+      fusermount -u /tmp/arts/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+    done
+  fi
   # Wait to unmount
   sleep .5
   # Unmount image
-  _unmount
+  _unmount &> "$ARTS_STREAM"
   # Exit
   kill -s SIGTERM "$PID"
 }
@@ -179,14 +183,16 @@ function _exec()
   # Check for empty string
   local cmd="${*:?"Empty arguments for exec"}"
 
+  # Fetch SHA
+  local sha="$(_config_fetch "sha")"
+  _msg "sha: $sha"
+
   # Mount dwarfs files is exist
   # shellcheck disable=2044
   for i in $(find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
     local fs="$ARTS_MOUNT/$i"
-    local mp="$ARTS_TEMP/dwarfs/${i%.dwarfs}"; mkdir -p "$mp"
-    local lnk="$ARTS_MOUNT/${i%.dwarfs}"
-    [ -n "$ARTS_RO" ] || { rm -f "$lnk" && ln -sf "$mp" "$lnk"; }
+    local mp="/tmp/arts/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
     "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
@@ -215,11 +221,19 @@ function _exec()
 # Subdirectory compression
 function _compress()
 {
+  [ -n "$ARTS_RW" ] || _die "Set ARTS_RW to 1 before compression"
+  [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
+
   # Remove apt lists and cache
   rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
   local dir_compressed="$ARTS_TEMP/dir_compressed"; mkdir "$dir_compressed"
+
+  # Get SHA and save to re-mount (used as unique identifier)
+  local sha="$(sha256sum "$ARTS_FILE" | awk '{print $1}')"
+  _config_set "sha" "$sha"
+  _msg "sha: $sha"
 
   # Compress selected directories
   for i in ${ARTS_COMPRESSION_DIRS}; do
@@ -227,7 +241,9 @@ function _compress()
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
     "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
+    ln -sf "/tmp/arts/$sha/mounts/$i" "$target"
   done
+
 
   # Remove remaining files from dev
   rm -rf "${ARTS_MOUNT:?"Empty ARTS_MOUNT"}"/dev
@@ -286,7 +302,7 @@ function _config_fetch()
 {
   local opt="$1"
 
-  [ -f "$ARTS_CONFIG" ] || { echo "/bin/bash"; exit; }
+  [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
 
   if [[ "$(cat "$ARTS_CONFIG")" =~ $opt\ \=\ (.*) ]]; then
     echo "${BASH_REMATCH[1]}"

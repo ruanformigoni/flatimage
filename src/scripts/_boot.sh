@@ -34,7 +34,7 @@ export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
 # Paths
 export ARTS_BIN="${ARTS_BIN:?ARTS_BIN is unset or null}"
 export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
-export ARTS_CONFIG="$ARTS_MOUNT/arts/config.yml"
+export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
@@ -304,9 +304,7 @@ function _config_fetch()
 
   [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
 
-  if [[ "$(cat "$ARTS_CONFIG")" =~ $opt\ \=\ (.*) ]]; then
-    echo "${BASH_REMATCH[1]}"
-  fi
+  pcregrep -o1 "$opt = (.*)" "$ARTS_CONFIG"
 }
 
 function _config_set()

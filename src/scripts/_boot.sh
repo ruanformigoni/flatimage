@@ -253,7 +253,7 @@ function _compress()
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
     "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
-    ln -sf "/tmp/arts/root/$sha/mounts/$i" "$target"
+    ln -sf "/tmp/arts/root/$sha/mounts/$i" "${dir_compressed}/${i}"
   done
 
 
@@ -261,7 +261,12 @@ function _compress()
   rm -rf "${ARTS_MOUNT:?"Empty ARTS_MOUNT"}"/dev
 
   # Move files to temporary directory
-  mv "$ARTS_MOUNT"/* "$dir_compressed"
+  for i in "$ARTS_MOUNT"/{arts,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
+    [ ! -d "$i" ] || mv "$i" "$dir_compressed"
+  done
+
+  # Update permissions
+  chmod -R +rw "$dir_compressed"
 
   # Resize to fit files size + slack
   local size_files="$(du -s -BK "$dir_compressed" | awk '{ gsub("K","",$1); print $1}')"

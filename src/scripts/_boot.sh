@@ -118,7 +118,7 @@ trap _die SIGINT EXIT
 function _help()
 {
   sed -E 's/^\s+://' <<-EOF
-  :Application Chroot Subsystem (Arts), $ARTS_DIST
+  :Application Root Subsystem (Arts), $ARTS_DIST
   :Avaliable options:
   :- arts-compress: Compress the filesystem to a read-only format.
   :- arts-tarball: Install a tarball in the container's '/'.

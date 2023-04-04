@@ -67,7 +67,16 @@ function _mount()
 # Unmount the main filesystem
 function _unmount()
 {
+  # Get parent pid
+  local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE")"
+
   fusermount -u "$ARTS_MOUNT"
+
+  # Wait for process to finish
+  while kill -0 "$ppid" 2>/dev/null; do
+    _msg "Pid $ppid running"
+    sleep .5
+  done
 }
 
 # Re-mount the filesystem in new mountpoint
@@ -90,7 +99,10 @@ function _die()
   if [ -n "$sha" ]; then
     shopt -s nullglob
     for i in /tmp/arts/root/"$sha"/mounts/*; do
-      fusermount -u /tmp/arts/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+      # Check if is mounted
+      if mount | grep "$i" &>/dev/null; then
+        fusermount -u /tmp/arts/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+      fi
     done
   fi
   # Wait to unmount
@@ -312,7 +324,7 @@ function _config_set()
   local opt="$1"; shift
   local entry="$opt = $*"
 
-  if grep "$opt" "$ARTS_CONFIG" &>/dev/null; then
+  if grep "$opt" "$ARTS_CONFIG" &>"$ARTS_STREAM"; then
     sed -i "s|$opt =.*|$entry|" "$ARTS_CONFIG"
   else
     echo "$entry" >> "$ARTS_CONFIG"

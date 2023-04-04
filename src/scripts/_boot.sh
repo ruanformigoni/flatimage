@@ -56,6 +56,22 @@ function _msg()
   [ -z "$ARTS_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[\033[32m*\033[m] ${*: -1}" >&2;
 }
 
+# Wait for a pid to finish execution, similar to 'wait'
+# but also works for non-child pids
+# $1: pid
+function _wait()
+{
+  # Get pid
+  local pid="$1"
+
+  # Wait for process to finish
+  while kill -0 "$pid" 2>/dev/null; do
+    _msg "Pid $pid running..."
+    sleep .1
+  done
+  _msg "Pid $pid finished..."
+}
+
 # Mount the main filesystem
 function _mount()
 {
@@ -70,13 +86,9 @@ function _unmount()
   # Get parent pid
   local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE")"
 
-  fusermount -u "$ARTS_MOUNT"
+  fusermount -zu "$ARTS_MOUNT"
 
-  # Wait for process to finish
-  while kill -0 "$ppid" 2>/dev/null; do
-    _msg "Pid $ppid running"
-    sleep .5
-  done
+  _wait "$ppid"
 }
 
 # Re-mount the filesystem in new mountpoint
@@ -101,12 +113,13 @@ function _die()
     for i in /tmp/arts/root/"$sha"/mounts/*; do
       # Check if is mounted
       if mount | grep "$i" &>/dev/null; then
-        fusermount -u /tmp/arts/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+        # Get parent pid
+        local ppid="$(pgrep -f "dwarfs2.*$i")"
+        fusermount -zu /tmp/arts/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+        _wait "$ppid"
       fi
     done
   fi
-  # Wait to unmount
-  sleep .5
   # Unmount image
   _unmount &> "$ARTS_STREAM"
   # Exit

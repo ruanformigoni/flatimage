@@ -337,7 +337,7 @@ function _install_tarball()
   local depth
   read -r depth < <( tar tf "$tarball" |
     grep -Ei '.*/$' |
-    pcregrep -o1 "(.*bin/|.*share/|.*lib/)" |
+    "$ARTS_BIN"/pcregrep -o1 "(.*bin/|.*share/|.*lib/)" |
     head -n1 |
     awk -F/ '{print NF-1}' )
   depth="$((depth-1))"
@@ -358,7 +358,7 @@ function _config_fetch()
 
   [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
 
-  pcregrep -o1 "$opt = (.*)" "$ARTS_CONFIG"
+  "$ARTS_BIN"/pcregrep -o1 "$opt = (.*)" "$ARTS_CONFIG"
 }
 
 function _config_set()
@@ -393,7 +393,7 @@ function main()
   "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
-  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs"
+  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "pcregrep"
 
   # Mount filesystem
   _mount

@@ -54,11 +54,9 @@ function _create_elf()
   local out="$2"
 
   cp bin/elf "$out"
-  cat bin/proot >> "$out"
   cat bin/ext2rd >> "$out"
   cat bin/fuse2fs >> "$out"
-  cat bin/dwarfs >> "$out"
-  cat bin/mkdwarfs >> "$out"
+  cat bin/e2fsck >> "$out"
   cat "$img" >> "$out"
 
 }
@@ -132,8 +130,13 @@ function _create_subsystem_debootstrap()
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"
 
+  # Create arts tools dir
+  mkdir -p "/tmp/$dist/arts/static"
+
+  # Embed static binaries
+  cp -r ./bin/* "/tmp/$dist/arts/static"
+
   # Embed runner
-  mkdir -p "/tmp/$dist/arts/"
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
 
   # Set dist
@@ -186,8 +189,13 @@ function _create_subsystem_alpine()
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'
 
+  # Create arts tools dir
+  mkdir -p "/tmp/$dist/arts/static"
+
+  # Embed static binaries
+  cp -r ./bin/* "/tmp/$dist/arts/static"
+
   # Embed runner
-  mkdir -p "/tmp/$dist/arts/"
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
 
   # Set dist
@@ -253,8 +261,13 @@ function _create_subsystem_arch()
   # Create share symlink
   ln -sf /usr/share ./arch/share
 
+  # Create arts tools dir
+  mkdir -p "./arch/arts/static"
+
+  # Embed static binaries
+  cp -r ./bin/* "./arch/arts/static"
+
   # Embed runner
-  mkdir -p "./arch/arts/"
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "./arch/arts/boot"
 
   # Embed AUR helper

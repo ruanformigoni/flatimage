@@ -36,6 +36,7 @@ export ARTS_BIN="${ARTS_BIN:?ARTS_BIN is unset or null}"
 export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
 export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
+export ARTS_SECTOR=$((ARTS_OFFSET/512))
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
 
@@ -128,6 +129,22 @@ function _die()
 
 trap _die SIGINT EXIT
 
+function _copy_tools()
+{
+  ARTS_RO=1 ARTS_RW="" _mount
+
+  for i; do
+    local tool="$i"
+
+    if [ ! -f "$ARTS_BIN"/"$tool" ]; then
+      cp "$ARTS_MOUNT/arts/static/$tool" "$ARTS_BIN"
+      chmod +x "$ARTS_BIN"/"$tool"
+    fi
+  done
+
+  _unmount
+}
+
 function _help()
 {
   sed -E 's/^\s+://' <<-EOF
@@ -155,9 +172,9 @@ function _resize()
   _unmount
 
   # Resize
-  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
-  resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
-  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
 
   # Mount
   _mount
@@ -176,13 +193,10 @@ function _rebuild()
   # Copy startup binary
   cp "$ARTS_TEMP/runner" "$ARTS_FILE"
 
-  # Append static requirements
-  # shellcheck disable=2129
-  cat /tmp/arts/proot >>    "$ARTS_FILE"
-  cat /tmp/arts/ext2rd >>    "$ARTS_FILE"
-  cat /tmp/arts/fuse2fs >>  "$ARTS_FILE"
-  cat /tmp/arts/dwarfs >>   "$ARTS_FILE"
-  cat /tmp/arts/mkdwarfs >> "$ARTS_FILE"
+  # Append tools
+  cat /tmp/arts/ext2rd  >> "$ARTS_FILE"
+  cat /tmp/arts/fuse2fs  >> "$ARTS_FILE"
+  cat /tmp/arts/e2fsck  >> "$ARTS_FILE"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"
@@ -253,6 +267,11 @@ function _compress()
 {
   [ -n "$ARTS_RW" ] || _die "Set ARTS_RW to 1 before compression"
   [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
+
+  # Copy compressor to binary dir
+  [ -f "$ARTS_BIN/dwarfs"   ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BIN"/dwarfs
+  [ -f "$ARTS_BIN/mkdwarfs" ]  || cp "$ARTS_MOUNT/arts/static/mkdwarfs" "$ARTS_BIN"/mkdwarfs
+  chmod +x "$ARTS_BIN/dwarfs" "$ARTS_BIN/mkdwarfs"
 
   # Remove apt lists and cache
   rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
@@ -371,7 +390,10 @@ function main()
   _msg '$*               : '"$*"
 
   # Check filesystem
-  e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+
+  # Copy tools
+  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs"
 
   # Mount filesystem
   _mount

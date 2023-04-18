@@ -221,11 +221,9 @@ int main(int argc, char** argv)
     // Write binaries
     //
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "runner", 0);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "proot", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "ext2rd", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "dwarfs", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "mkdwarfs", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
 
     //
     // Launch Runner

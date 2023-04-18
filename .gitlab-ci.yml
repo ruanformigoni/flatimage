@@ -221,7 +221,7 @@ deploy:
       export RELEASE_DESCRIPTION="$(date +"%Y-%m-%d")"
       echo "ELF JID $JOB_ID_BUILD_ELF"
       echo "FUSE2FS JID $JOB_ID_FETCH_E2FSPROGS"
-      echo "EXTFS JID $JOB_ID_FETCH_EXTFS"
+      echo "EXTFS JID $JOB_ID_FETCH_SLEUTH"
       echo "PROOT JID $JOB_ID_FETCH_PROOT"
       echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
       # Delete current release

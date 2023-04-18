@@ -244,6 +244,7 @@ function _exec()
   export TERM="xterm"
   export XDG_RUNTIME_DIR="/run/user/$(id -u)"
   export HOST_USERNAME="$(whoami)"
+  export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
 
   # Remove override to avoid problems with apt
   [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"

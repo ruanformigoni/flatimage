@@ -181,6 +181,7 @@ function _create_subsystem_alpine()
 	END
 
   # Update packages
+  chmod +x ./bin/proot
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'

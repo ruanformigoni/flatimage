@@ -1,9 +1,69 @@
 image: "ubuntu:latest"
 
 stages:
+  - fetch
   - build
   - package
   - release
+
+fetch-e2fsprogs:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget
+    - echo JOB_ID_FETCH_E2FSPROGS=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p bin
+      wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/fuse2fs"
+      wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/e2fsck"
+      wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/resize2fs"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
+fetch-extfstools:
+  image: "ubuntu:latest"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget
+    - echo JOB_ID_FETCH_EXTFS=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p bin
+      wget -O ./bin/ext2rd "https://github.com/ruanformigoni/extfstools/releases/download/c48b48f/ext2rd"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
+fetch-proot:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget
+    - echo JOB_ID_FETCH_PROOT=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p ./bin
+      wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/9516c79/proot"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
 
 build-elf:
   image: "ubuntu:focal"
@@ -23,42 +83,6 @@ build-elf:
     - cmake -H. -Bbuild
     - cmake --build build
     - cd ../.. && mv src/elf/build/main bin/elf
-  artifacts:
-    paths:
-      - ./bin
-    reports:
-      dotenv: build.env
-
-build-fuse2fs:
-  image: "ubuntu:focal"
-  stage: build
-  when: manual
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y wget fuse3 build-essential patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
-    - echo JOB_ID_BUILD_FUSE=$CI_JOB_ID > build.env
-  script:
-    - |
-      mkdir -p ./bin
-      # Check if has built version
-      if [ -n "$BIN_FUSE2FS" ]; then
-        wget -O ./bin/fuse2fs "$BIN_FUSE2FS"
-        exit
-      fi
-      # Else build
-      git clone https://github.com/ruanformigoni/e2fsprogs.git
-      cd e2fsprogs
-      git checkout fuse2fs-offset
-      mkdir build && cd build
-      ../configure
-      make -j2
-      cd ../.. && mv ./e2fsprogs/build/misc/fuse2fs bin/fuse2fs
-      pip3 install setuptools
-      pip3 install staticx
-      # Make fuse2fs static
-      staticx bin/fuse2fs fuse2fs
-      mv -f fuse2fs ./bin/fuse2fs
   artifacts:
     paths:
       - ./bin
@@ -99,71 +123,6 @@ build-dwarfs:
     reports:
       dotenv: build.env
 
-build-extfstools:
-  image: "ubuntu:latest"
-  stage: build
-  when: manual
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y wget build-essential cmake fuse3 patchelf python3-pip git udev systemd pkg-config gettext gawk texinfo libacl1-dev libfuse-dev
-    - echo JOB_ID_BUILD_EXTFS=$CI_JOB_ID > build.env
-  script:
-    - |
-      mkdir -p bin
-      # Check if has built version
-      if [ -n "$BIN_EXT2RD" ]; then
-        wget -O ./bin/ext2rd "$BIN_EXT2RD"
-        exit
-      fi
-      # Else build
-      git clone https://github.com/nlitsme/extfstools.git
-      cd extfstools
-      make
-      # Make ext2rd static
-      pip3 install setuptools
-      pip3 install staticx
-      staticx build/ext2rd ../bin/ext2rd
-  artifacts:
-    paths:
-      - ./bin
-    reports:
-      dotenv: build.env
-
-build-proot:
-  image: "ubuntu:focal"
-  stage: build
-  when: manual
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y build-essential clang-tools-6.0 curl docutils-common gdb git lcov libarchive-dev libtalloc-dev lzop patchelf python3-dev python3-pip sloccount strace swig uthash-dev wget xsltproc
-    - echo JOB_ID_BUILD_PROOT=$CI_JOB_ID > build.env
-  script:
-    - |
-      mkdir -p ./bin
-      # Check if has built version
-      if [ -n "$BIN_PROOT" ]; then
-        wget -O ./bin/proot "$BIN_PROOT"
-        exit
-      fi
-      # Else build
-      git clone https://github.com/proot-me/proot.git
-      cd proot
-      sed -i "416s%if (path\[0\] != '/')%if (path[0] != '/' || path[0] == 0)%" src/path/path.c
-      sed -i 's/if (t_referrer != NULL) {/if (t_referrer != NULL \&\& t_referrer[0] != 0) {/' src/path/path.c
-      sed -i "546,547d" src/path/path.c
-      make -C src proot
-      # Make proot static
-      pip3 install setuptools
-      pip3 install staticx
-      staticx src/proot ../bin/proot
-  artifacts:
-    paths:
-      - ./bin
-    reports:
-      dotenv: build.env
-
 package-focal:
   stage: package
   before_script:
@@ -180,13 +139,13 @@ package-focal:
   needs:
     - job: build-elf
       artifacts: true
-    - job: build-fuse2fs
+    - job: fetch-e2fsprogs
       artifacts: true
     - job: build-dwarfs
       artifacts: true
-    - job: build-extfstools
+    - job: fetch-extfstools
       artifacts: true
-    - job: build-proot
+    - job: fetch-proot
       artifacts: true
   artifacts:
     paths:
@@ -209,13 +168,13 @@ package-arch:
   needs:
     - job: build-elf
       artifacts: true
-    - job: build-fuse2fs
+    - job: fetch-e2fsprogs
       artifacts: true
     - job: build-dwarfs
       artifacts: true
-    - job: build-extfstools
+    - job: fetch-extfstools
       artifacts: true
-    - job: build-proot
+    - job: fetch-proot
       artifacts: true
   artifacts:
     paths:
@@ -238,13 +197,13 @@ package-alpine:
   needs:
     - job: build-elf
       artifacts: true
-    - job: build-fuse2fs
+    - job: fetch-e2fsprogs
       artifacts: true
     - job: build-dwarfs
       artifacts: true
-    - job: build-extfstools
+    - job: fetch-extfstools
       artifacts: true
-    - job: build-proot
+    - job: fetch-proot
       artifacts: true
   artifacts:
     paths:
@@ -261,10 +220,10 @@ deploy:
     - |
       export RELEASE_DESCRIPTION="$(date +"%Y-%m-%d")"
       echo "ELF JID $JOB_ID_BUILD_ELF"
-      echo "FUSE2FS JID $JOB_ID_BUILD_FUSE"
+      echo "FUSE2FS JID $JOB_ID_FETCH_E2FSPROGS"
+      echo "EXTFS JID $JOB_ID_FETCH_EXTFS"
+      echo "PROOT JID $JOB_ID_FETCH_PROOT"
       echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
-      echo "EXTFS JID $JOB_ID_BUILD_EXTFS"
-      echo "PROOT JID $JOB_ID_BUILD_PROOT"
       # Delete current release
       curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
   # Set new release

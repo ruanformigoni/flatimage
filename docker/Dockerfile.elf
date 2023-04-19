@@ -1,0 +1,20 @@
+FROM alpine:latest
+
+# Install deps
+RUN apk update && apk upgrade
+RUN apk add --no-cache build-base git libbsd-dev py3-pip git patchelf cmake gcc
+RUN pip3 install conan==1.59.0
+RUN git clone "https://gitlab.com/formigoni/arts.git"
+
+WORKDIR /arts
+
+# Compile
+WORKDIR /arts/src/elf
+RUN mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11
+RUN cmake -H. -Bbuild
+RUN cmake --build build
+
+# Move to dist dir
+WORKDIR /arts
+RUN mkdir -p dist
+RUN mv /arts/src/elf/build/main dist/main

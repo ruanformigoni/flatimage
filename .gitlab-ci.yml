@@ -88,26 +88,26 @@ fetch-pcregrep:
 
 
 build-elf:
-  image: "ubuntu:focal"
+  image: docker:latest
   stage: build
   when: manual
+  services:
+    - docker:dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_NAME: alpine:arts
+
   before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y python3-pip build-essential cmake
-    - pip3 install conan==1.59.0
-    - echo JOB_ID_BUILD_ELF=$CI_JOB_ID > build.env
+    - echo GE_JOB_ID=$CI_JOB_ID >> build.env
+
   script:
     - mkdir -p bin
-    # Build
-    - cd ./src/elf
-    - mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11 && cd ..
-    - cmake -H. -Bbuild
-    - cmake --build build
-    - cd ../.. && mv src/elf/build/main bin/elf
+    - docker build . -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf
+
   artifacts:
     paths:
-      - ./bin
+      - ./bin/elf
     reports:
       dotenv: build.env
 
@@ -247,11 +247,6 @@ deploy:
   script:
     - |
       export RELEASE_DESCRIPTION="$(date +"%Y-%m-%d")"
-      echo "ELF JID $JOB_ID_BUILD_ELF"
-      echo "FUSE2FS JID $JOB_ID_FETCH_E2FSPROGS"
-      echo "EXTFS JID $JOB_ID_FETCH_SLEUTH"
-      echo "PROOT JID $JOB_ID_FETCH_PROOT"
-      echo "DWARFS JID $JOB_ID_BUILD_DWARFS"
       # Delete current release
       curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
   # Set new release

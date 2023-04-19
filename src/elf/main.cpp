@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <elf.h>
+#define FMT_HEADER_ONLY
 #include <fmt/ranges.h>
 
 #if defined(__LP64__)

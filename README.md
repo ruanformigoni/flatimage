@@ -5,8 +5,12 @@
 - [Arts - Application Root Subsystem](#arts---application-root-subsystem)
 - [Table of contents](#table-of-contents)
   - [What is Arts?](#what-is-arts?)
-  - [Motivations](#motivations)
   - [Background](#background)
+  - [Comparison](#comparison)
+    - [Docker](#docker)
+    - [AppImage](#appimage)
+  - [Further Considerations](#further-considerations)
+  - [Motivations](#motivations)
 - [Get Arts](#get-arts)
 - [Usage](#usage)
   - [Options](#options)
@@ -19,18 +23,74 @@
   - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
   - [Use a npm package without installing npm/nodejs](#use-a-npm-package-without-installing-npmnodejs)
   - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
-- [Todo](#todo)
-- [Related Projects](#related-projects)
+  - [Related Projects](#related-projects)
 
 ## What is Arts?
 
-Application Root Subsystem (Arts), is a tool to package software into a portable
-binary. It packs all the software dependencies, and the software itself, within
-an executable that works across several linux distributions. The differences
-between the available alternatives, such as `AppImage`, is that it uses a
-`proot` based approach, i.e., it does not allow the software to use host
-libraries by default. With that, it also solves issues with hard-coded binary
-paths for dynamic libraries.
+Application Root Subsystem (Arts), is a portable container and a tool to package
+software that aims to work across several linux distros. It bundles all the
+software dependencies and the software itself, within an executable. Unlike
+alternatives such as `AppImage`, Arts employs a `proot` based approach,
+preventing software from using host libraries by default. This also resolves
+issues with hard-coded binary paths for dynamic libraries.
+
+## Background
+
+The diverse `GNU/Linux` ecosystem includes a vast array of distributions, each
+with its own advantages and use cases. This can lead to cross-distribution
+software compatibility challenges. Arts addresses these issues by:
+
+* Extending the "one app = one file" concept, allowing users to save
+  configurations within the application itself
+* Utilizing its own root directory, enabling dynamic libraries with hard-coded
+    paths to be packaged alongside the software without binary patching.
+* Generating packaged software compatible with multiple Linux distributions
+* Producing a binary that works without installation - simply click and use
+* Operating without root permissions
+* Restricting application access to user-specified files/folders
+* Ensuring updates to host system libraries do not break Arts applications
+* Supporting reconfiguration without rebuild
+* Isolating the filesystem, therefore, not using host libraries that might be
+    outdated/incompatible with the application.
+* Enabling selective directory compression
+* Allowing portable user configuration within the package
+
+## Comparison
+
+| Feature                                                                   | Arts          | Docker                     | AppImage |
+| :---                                                                      | :---:         | :---:                      | :---:    |
+| No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
+| No installation necessary                                                 | x             | Requires docker on the host| x
+| Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
+| Runs without mounting the filesystem                                      | x<sup>1</sup> |                            | x
+| Straightforward build process                                             | x             | x                          |
+| Desktop integration                                                       | x             |                            | x
+| Extract the contents                                                      | x             | x                          | x
+| Supports reconfiguration without rebuild                                  | x             | x (layers)                 |
+| No host libraries used (Filesystem Isolation)                             | x             | x                          |
+| Supports compression of specific directories/files in the package         | x             |                            |
+| Portable mutable user configuration                                       | x             | x                          |
+| Granular control over containerization                                    |               | x                          |
+| Works without fuse installed (still requires kernel support)              | x<sup>4</sup> | x                          | x<sup>5</sup>
+| Layered filesystem                                                        |               | x                          |
+| Advanced networking management                                            |               | x                          |
+| Advanced security features                                                |               | x                          |
+
+> 1. Requires superuser privileges
+> 1. Only if the user is part of the docker group
+> 1. Only as read-only, you can mount ARTS as read-write, before compression.
+> 1. Works without libfuse/libfuse3, still requires fusermount to be available.
+> 1. Experimental implementations, available [here](https://github.com/probonopd/go-appimage) and [here](https://github.com/AppImage/type2-runtime)
+
+
+## Further Considerations
+
+Arts offers on build simplicity, packaging applications should be as simple as
+installing them natively on the host system. This is an effort for the end-user
+to not depend on the application developer to provide the portable binary (or to
+handle how to package the application, dependencies and create a runner script).
+It also simplifies the quality of life of the package developer, simplifying
+the packaging process of applications.
 
 ## Motivations
 
@@ -62,30 +122,6 @@ paths for dynamic libraries.
    operating system. However, doing so could hinder the operating system
    integrity, to avoid this issue `Arts` can install tarballs into itself and
    turn them into a portable binary.
-
-
-## Background
-
-In today's `GNU/Linux` ecosystem there is a daunting number of distributions with
-their own advantages and use cases, this raises an issue with cross-distro
-software compatibility. Arts is a tool to mitigate this issue, it solves the
-following issues:
-
-* Arts extends on the one app = one file, giving the user the option to keep
-    their configurations saved inside the application itself.
-* Arts uses its own root directory, so dynamic libraries can be packaged together
-    with the software without binary patching.
-* From the previous bullet, arts generates packaged software that work in several
-    linux distributions.
-* Arts generates a binary that works without requiring installation, click
-    and use.
-* Arts does not require root permissions.
-* The application only has access files/folders the user specifies.
-* Updates to the host system libraries do not break arts application.
-* Supports reconfiguration without rebuild
-* No host libraries used (Filesystem Isolation)
-* Supports selective directory compression
-* Portable user configuration within the package
 
 # Get Arts
 
@@ -286,12 +322,6 @@ cd htop
 ```
 
 In this case `focal.arts` is now a portable building environment for htop.
-
-
-# Todo
-
-- [ ] Desktop Integration
-- [ ] Application themes (as in linux mint)
 
 # Related Projects
 

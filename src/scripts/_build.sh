@@ -178,9 +178,9 @@ function _create_subsystem_alpine()
   { sed -E 's/^\s+://' | tee /tmp/"$dist"/etc/apk/repositories; } <<-END
     :http://dl-cdn.alpinelinux.org/alpine/v3.16/main
     :http://dl-cdn.alpinelinux.org/alpine/v3.16/community
-    :http://dl-cdn.alpinelinux.org/alpine/edge/main
-    :http://dl-cdn.alpinelinux.org/alpine/edge/community
-    :http://dl-cdn.alpinelinux.org/alpine/edge/testing
+    :#http://dl-cdn.alpinelinux.org/alpine/edge/main
+    :#http://dl-cdn.alpinelinux.org/alpine/edge/community
+    :#http://dl-cdn.alpinelinux.org/alpine/edge/testing
 	END
 
   # Update packages

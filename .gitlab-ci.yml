@@ -58,7 +58,7 @@ fetch-proot:
   script:
     - |
       mkdir -p ./bin
-      wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/9516c79/proot"
+      wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/dd32b56/proot"
   artifacts:
     paths:
       - ./bin

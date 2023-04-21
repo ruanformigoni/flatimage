@@ -401,7 +401,7 @@ function main()
 
   # Check for pacman dirs
   if [ "$ARTS_DIST" = "ARCH" ] && [ ! -d /var/lib/pacman ]; then
-    _die "Missing pacman dir, create with 'sudo mkdir -p /var/lib/pacman'"
+    ARTS_DEBUG=1 _msg "Missing pacman dir, create it with 'sudo mkdir -p /var/lib/pacman' if you want to use pacman"
   fi
 
   # Check if config exists, else try to touch if mounted as RW

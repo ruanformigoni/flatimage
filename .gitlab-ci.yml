@@ -39,7 +39,7 @@ fetch-extfstools:
   script:
     - |
       mkdir -p bin
-      wget -O ./bin/ext2rd "https://github.com/ruanformigoni/extfstools/releases/download/c48b48f/ext2rd"
+      wget -O ./bin/ext2rd "https://github.com/ruanformigoni/extfstools/releases/download/58d896b/ext2rd"
   artifacts:
     paths:
       - ./bin

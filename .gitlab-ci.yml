@@ -18,9 +18,9 @@ fetch-e2fsprogs:
   script:
     - |
       mkdir -p bin
-      wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/fuse2fs"
-      wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/e2fsck"
-      wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/5ed8444/resize2fs"
+      wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/9f146d8/fuse2fs"
+      wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/9f146d8/e2fsck"
+      wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/9f146d8/resize2fs"
   artifacts:
     paths:
       - ./bin

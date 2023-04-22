@@ -203,7 +203,7 @@ function _rebuild()
 
   # Create filesystem
   truncate -s "$1" "$ARTS_TEMP/image.arts"
-  mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
+  "$ARTS_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
 
   # Append filesystem to binary
   cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE"
@@ -394,7 +394,7 @@ function main()
   "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
-  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "pcregrep"
+  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "pcregrep" "mke2fs"
 
   # Mount filesystem
   _mount

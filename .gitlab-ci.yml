@@ -119,27 +119,35 @@ build-dwarfs:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt update && apt -y upgrade
-    - apt install -y wget git python3-pip patchelf build-essential g++ clang cmake make bison flex ronn fuse pkg-config binutils-dev libarchive-dev libboost-context-dev libboost-filesystem-dev libboost-program-options-dev libboost-python-dev libboost-regex-dev libboost-system-dev libboost-thread-dev libevent-dev libjemalloc-dev libdouble-conversion-dev libiberty-dev liblz4-dev liblzma-dev libssl-dev libunwind-dev libdwarf-dev libelf-dev libfmt-dev libfuse-dev libgoogle-glog-dev ccache ninja-build libacl1-dev
+    - apt install -y wget
     - echo JOB_ID_BUILD_DWARFS=$CI_JOB_ID > build.env
   script:
     - |
       mkdir -p ./bin
-      # Check if has built version
+      # Check for ci built version
       if [ -n "$BIN_DWARFS" ] && [ -n "$BIN_MKDWARFS" ]; then
         wget -O ./bin/dwarfs "$BIN_DWARFS"
         wget -O ./bin/mkdwarfs "$BIN_MKDWARFS"
-        exit
-      fi
+      else
       # else build
-      git clone --recurse-submodules https://github.com/mhx/dwarfs
-      cd dwarfs && mkdir build && cd build
-      cmake .. -DWITH_LEGACY_FUSE=1 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DWITH_TESTS=0 -GNinja
-      ninja
-      cd ../..
-      pip3 install setuptools
-      pip3 install staticx
-      staticx dwarfs/build/dwarfs2 bin/dwarfs
-      staticx dwarfs/build/mkdwarfs bin/mkdwarfs
+        apt install -y git python3-pip patchelf build-essential g++ clang \
+          cmake make bison flex ronn fuse pkg-config binutils-dev libarchive-dev \
+          libboost-context-dev libboost-filesystem-dev libboost-program-options-dev \
+          libboost-python-dev libboost-regex-dev libboost-system-dev \
+          libboost-thread-dev libevent-dev libjemalloc-dev libdouble-conversion-dev \
+          libiberty-dev liblz4-dev liblzma-dev libssl-dev libunwind-dev libdwarf-dev \
+          libelf-dev libfmt-dev libfuse-dev libgoogle-glog-dev ccache ninja-build \
+          libacl1-dev
+        git clone --recurse-submodules https://github.com/mhx/dwarfs
+        cd dwarfs && mkdir build && cd build
+        cmake .. -DWITH_LEGACY_FUSE=1 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DWITH_TESTS=0 -GNinja
+        ninja
+        cd ../..
+        pip3 install setuptools
+        pip3 install staticx
+        staticx dwarfs/build/dwarfs2 bin/dwarfs
+        staticx dwarfs/build/mkdwarfs bin/mkdwarfs
+      fi
   artifacts:
     paths:
       - ./bin

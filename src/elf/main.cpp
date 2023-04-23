@@ -22,6 +22,7 @@
 #include <elf.h>
 #define FMT_HEADER_ONLY
 #include <fmt/ranges.h>
+#include <memory>
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
@@ -46,13 +47,14 @@ auto operator"" _err(const char* c_str, std::size_t)
 // }}}
 
 // fn: create_temp_dir {{{
-std::string create_temp_dir()
+std::string create_temp_dir(std::string const& prefix)
 {
-  // Create temp dir
-  char dir_template[] = "/tmp/tmpdir.XXXXXX";
-  char *dir_tmp = mkdtemp(dir_template);
-  if (dir_tmp == NULL) { "Failed to create temporary dir"_err(); }
-  return dir_tmp;
+  std::string temp_dir_template = prefix + "XXXXXX";
+  auto temp_dir_template_cstr = std::unique_ptr<char[]>(new char[temp_dir_template.size() + 1]);
+  std::strcpy(temp_dir_template_cstr.get(), temp_dir_template.c_str());
+  char* temp_dir_cstr = mkdtemp(temp_dir_template_cstr.get());
+  if (temp_dir_cstr == NULL) { "Failed to create temporary dir"_err(); }
+  return std::string{temp_dir_cstr};
 } // function: create_temp_dir }}}
 
 // fn: write_from_offset {{{
@@ -183,13 +185,14 @@ int main(int argc, char** argv)
     //
     // Create binary dir
     //
-    std::string str_dir_bin = "/tmp/arts";
+    std::string str_dir_bin = "/tmp/arts/";
     fs::create_directory(str_dir_bin);
 
     //
     // Create temp dir
     //
-    std::string str_dir_temp = create_temp_dir();
+    fs::create_directory(str_dir_bin + "mounts/");
+    std::string str_dir_temp = create_temp_dir(str_dir_bin + "mounts/");
 
     //
     // Starting offsets

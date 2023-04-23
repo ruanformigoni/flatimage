@@ -39,6 +39,7 @@ export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_SECTOR=$((ARTS_OFFSET/512))
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
+export ARTS_RCFILE="$ARTS_TEMP/.bashrc"
 
 # Compression
 export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-6}"
@@ -245,6 +246,9 @@ function _exec()
   export XDG_RUNTIME_DIR="/run/user/$(id -u)"
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
+  tee "$ARTS_RCFILE" &>/dev/null <<- 'EOF'
+    export PS1="(arts@$(echo "$ARTS_DIST" | tr '[:upper:]' '[:lower:]')) → "
+	EOF
 
   # Remove override to avoid problems with apt
   [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"
@@ -422,7 +426,7 @@ function main()
     esac
   else
     local cmd="$(_config_fetch "cmd")"
-    _exec  "${cmd:-/bin/bash}" "$*"
+    _exec  "${cmd:-/bin/bash --rcfile "$ARTS_RCFILE"}" "$*"
   fi
 
 }

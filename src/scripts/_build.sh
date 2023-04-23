@@ -140,7 +140,7 @@ function _create_subsystem_debootstrap()
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
 
   # Set dist
-  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="FOCAL"/' "/tmp/$dist/arts/boot"
+  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="UBUNTU"/' "/tmp/$dist/arts/boot"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"

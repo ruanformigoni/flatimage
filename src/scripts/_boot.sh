@@ -191,7 +191,7 @@ function _rebuild()
   rm "$ARTS_FILE"
 
   # Copy startup binary
-  cp "$ARTS_TEMP/runner" "$ARTS_FILE"
+  cp "$ARTS_BIN/main" "$ARTS_FILE"
 
   # Append tools
   cat /tmp/arts/ext2rd  >> "$ARTS_FILE"

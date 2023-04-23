@@ -221,7 +221,7 @@ int main(int argc, char** argv)
     //
     // Write binaries
     //
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "runner", 0);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "main", 0);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "ext2rd", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
@@ -231,7 +231,7 @@ int main(int argc, char** argv)
     //
     setenv("ARTS_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
-    execve("{}/runner"_fmt(str_dir_temp).c_str(), argv, environ);
+    execve("{}/main"_fmt(str_dir_bin).c_str(), argv, environ);
   }
   // }}}
 

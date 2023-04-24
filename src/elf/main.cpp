@@ -156,12 +156,9 @@ int main(int argc, char** argv)
     //
     // Extract boot script
     //
-    if ( ! fs::exists(fmt::format("{}/boot", cstr_dir_bin)) )
+    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, path_absolute.c_str(), cstr_dir_temp).c_str()) != 0)
     {
-      if(system("{0}/ext2rd -o{1} {2} ./arts/boot:{0}/boot"_fmt(cstr_dir_bin, offset, path_absolute.c_str()).c_str()) != 0)
-      {
-        "Could not extract arts boot script from {} to {}"_err(path_absolute.c_str(), cstr_dir_temp);
-      }
+      "Could not extract arts boot script from {} to {}"_err(path_absolute.c_str(), cstr_dir_temp);
     }
 
     //
@@ -176,7 +173,7 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    system("{}/boot {}"_fmt(cstr_dir_bin, str_args).c_str());
+    system("{}/boot {}"_fmt(cstr_dir_temp, str_args).c_str());
   } // }}}
   
   else // Write Runner {{{

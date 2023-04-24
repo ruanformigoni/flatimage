@@ -104,7 +104,7 @@ fetch-dwarfs:
       mkdir -p ./bin
       mv ./dwarfs/bin/mkdwarfs      ./bin
       mv ./dwarfs/bin/dwarfsextract ./bin
-      mv ./dwarfs/sbin/dwarfs2      ./bin
+      mv ./dwarfs/sbin/dwarfs2      ./bin/dwarfs
   artifacts:
     paths:
       - ./bin

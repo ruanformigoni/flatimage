@@ -195,9 +195,7 @@ function _rebuild()
   cp "$ARTS_BIN/main" "$ARTS_FILE"
 
   # Append tools
-  cat /tmp/arts/ext2rd  >> "$ARTS_FILE"
-  cat /tmp/arts/fuse2fs  >> "$ARTS_FILE"
-  cat /tmp/arts/e2fsck  >> "$ARTS_FILE"
+  cat /tmp/arts/{ext2rd,fuse2fs,e2fsck}  >> "$ARTS_FILE"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"
@@ -393,8 +391,8 @@ function main()
       *) _help; _die "Unknown arts command" ;;
     esac
   else
-    local cmd="$(_config_fetch "cmd")"
-    _exec  "${cmd:-/bin/bash --rcfile "$ARTS_RCFILE"}" "$*"
+    local default_cmd="$(_config_fetch "cmd")"
+    _exec  "${default_cmd:-/bin/bash --rcfile "$ARTS_RCFILE"}" "$*"
   fi
 
 }

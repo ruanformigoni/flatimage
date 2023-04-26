@@ -152,7 +152,6 @@ function _help()
   :Application Root Subsystem (Arts), $ARTS_DIST
   :Avaliable options:
   :- arts-compress: Compress the filesystem to a read-only format.
-  :- arts-tarball: Install a tarball in the container's '/'.
   :- arts-exec: Execute an arbitrary command.
   :- arts-root: Execute an arbitrary command as root.
   :- arts-cmd: Set the default command to execute.

@@ -325,38 +325,6 @@ function _compress()
   _rebuild "$size_new"K "$dir_compressed"
 }
 
-
-# Deploy a tarball in arts
-# $1 tarball
-# $2 main binary to execute
-function _install_tarball()
-{
-  local tarball="$1"
-
-  # Validate files
-  [ -f "$tarball" ] || _die "Invalid tarball $tarball"
-
-  _msg "Tarball: $tarball"
-
-  # Get depth to binaries
-  local depth
-  read -r depth < <( tar tf "$tarball" |
-    grep -Ei '.*/$' |
-    "$ARTS_BIN"/pcregrep -o1 "(.*bin/|.*share/|.*lib/)" |
-    head -n1 |
-    awk -F/ '{print NF-1}' )
-  depth="$((depth-1))"
-
-  _msg "Depth: $depth"
-
-  # Copy tarball files
-  _msg "Copying files to $ARTS_MOUNT..."
-  dir_temp="$(mktemp -d)"
-  tar -xf "$tarball" --strip-components="$depth" -C"$dir_temp" 
-  rsync -K -a "$dir_temp/" "$ARTS_MOUNT"
-  rm -rf "$dir_temp"
-}
-
 function _config_fetch()
 {
   local opt="$1"

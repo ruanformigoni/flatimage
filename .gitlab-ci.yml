@@ -66,27 +66,6 @@ fetch-proot:
     reports:
       dotenv: build.env
 
-fetch-pcregrep:
-  image: "ubuntu:focal"
-  stage: fetch
-  when: manual
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y wget git python3-pip patchelf build-essential pcregrep
-    - echo JOB_ID_BUILD_DWARFS=$CI_JOB_ID > build.env
-  script:
-    - |
-      mkdir -p bin
-      pip3 install setuptools
-      pip3 install staticx
-      staticx "$(command -v pcregrep)" bin/pcregrep
-  artifacts:
-    paths:
-      - ./bin
-    reports:
-      dotenv: build.env
-
 fetch-dwarfs:
   image: "ubuntu:jammy"
   stage: fetch
@@ -160,8 +139,6 @@ package-focal:
       artifacts: true
     - job: fetch-proot
       artifacts: true
-    - job: fetch-pcregrep
-      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -191,8 +168,6 @@ package-arch:
       artifacts: true
     - job: fetch-proot
       artifacts: true
-    - job: fetch-pcregrep
-      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -221,8 +196,6 @@ package-alpine:
     - job: fetch-extfstools
       artifacts: true
     - job: fetch-proot
-      artifacts: true
-    - job: fetch-pcregrep
       artifacts: true
   artifacts:
     paths:

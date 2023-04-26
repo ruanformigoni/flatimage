@@ -331,7 +331,7 @@ function _config_fetch()
 
   [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
 
-  "$ARTS_BIN"/pcregrep -o1 "$opt = (.*)" "$ARTS_CONFIG"
+  grep -io "$opt = .*" "$ARTS_CONFIG" | awk '{print $3}'
 }
 
 function _config_set()
@@ -366,7 +366,7 @@ function main()
   "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
-  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "pcregrep" "mke2fs"
+  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "mke2fs"
 
   # Mount filesystem
   _mount

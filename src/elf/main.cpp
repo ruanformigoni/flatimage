@@ -115,9 +115,9 @@ int main(int argc, char** argv)
   // Get arguments from 1..n-1
   std::deque<std::string> deque_args (argv, argv+argc);
   deque_args.pop_front();
-  std::for_each(deque_args.begin(), deque_args.end(), [](auto& e){ e.push_back(' '); });
   std::string str_args;
-  std::for_each(deque_args.begin(), deque_args.end(), [&](auto&& e){ str_args.append(e); });
+  std::for_each(deque_args.begin(), deque_args.end(),
+    [&](std::string e) { str_args.append(fmt::format("\"{}\" ", e)); });
 
   // /home/user/../dir/main
   auto path_absolute = fs::canonical(fs::path{argv[0]});
@@ -170,7 +170,8 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    system("{}/boot {}"_fmt(cstr_dir_temp, str_args).c_str());
+    std::string cmd = "{}/boot {}"_fmt(cstr_dir_temp, str_args);
+    system(cmd.c_str());
   } // }}}
   
   else // Write Runner {{{
@@ -232,10 +233,14 @@ int main(int argc, char** argv)
     if( getenv("ARTS_MAIN_OFFSET") ){ fmt::print("{}\n", offset_end); exit(0); }
 
     //
-    // Launch Runner
+    // Set env variables to execve
     //
     setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
+
+    //
+    // Launch Runner
+    //
     execve("{}/main"_fmt(str_dir_bin).c_str(), argv, environ);
   }
   // }}}

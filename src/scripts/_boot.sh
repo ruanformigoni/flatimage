@@ -218,13 +218,12 @@ function _rebuild()
 # $* Command and args
 function _exec()
 {
+  # Check for empty string
   [ -n "$*" ] || ARTS_DEBUG=1 _msg "Empty arguments for exec"
 
-  declare -a cmd
-  for i; do cmd+=("$i"); done
-
-  # Check for empty string
-  _msg "cmd: ${cmd[*]}"
+  # Fetch CMD
+  local cmd="$*"
+  _msg "cmd: $cmd"
 
   # Fetch SHA
   local sha="$(_config_fetch "sha")"
@@ -258,7 +257,7 @@ function _exec()
   _cmd_proot+=("${ARTS_NDEBUG:+--verbose=-1}")
   _cmd_proot+=("${ARTS_ROOT:+-S \"$ARTS_MOUNT\"}")
   _cmd_proot+=("${ARTS_NORM:+-R \"$ARTS_MOUNT\"}")
-  _cmd_proot+=("/bin/bash -c '${cmd[@]}'")
+  _cmd_proot+=("/bin/bash -c '$cmd'")
 
   _msg "cmd_proot: ${_cmd_proot[*]}"
 

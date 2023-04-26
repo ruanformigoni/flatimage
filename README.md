@@ -7,8 +7,6 @@
   - [What is Arts?](#what-is-arts?)
   - [Background](#background)
   - [Comparison](#comparison)
-    - [Docker](#docker)
-    - [AppImage](#appimage)
   - [Further Considerations](#further-considerations)
   - [Motivations](#motivations)
 - [Get Arts](#get-arts)
@@ -16,14 +14,14 @@
   - [Options](#options)
   - [Environment Variables](#environment-variables)
 - [Use cases](#use-cases)
-  - [Package pre-compiled binaries](#package-pre-compiled-binaries)
-  - [Use an apt package in non-debian systems](#use-an-apt-package-in-non-debian-systems)
-  - [Use a pacman package on non-arch systems](#use-a-pacman-package-on-non-arch-systems)
-  - [Use an AUR package on non-arch systems](#use-an-aur-package-on-non-arch-systems)
+  - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
+  - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
+  - [Use AUR packages on non-arch systems](#use-aur-packages-on-non-arch-systems)
+  - [Use alpine (apk) packages](#use-alpine-apk-packages)
   - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
   - [Use a npm package without installing npm/nodejs](#use-a-npm-package-without-installing-npmnodejs)
   - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
-  - [Related Projects](#related-projects)
+- [Related Projects](#related-projects)
 
 ## What is Arts?
 
@@ -162,31 +160,7 @@ the [releases](https://gitlab.com/formigoni/art/-/releases) page, i.e., `focal
 (ubuntu)` or `arch`. The archive is compressed, extract it and use it as shown
 in the following examples.
 
-## Package pre-compiled binaries
-
-For this example, we use the [neovim](https://github.com/neovim/neovim/releases)
-`.tar.gz` package.
-
-```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 10G
- # 3. Install tarball in ubuntu root
-./focal.arts arts-tarball nvim-linux64.tar.gz
- # 4. Test the program
-./focal.arts arts-exec nvim
- # 5. Set the default startup command
-./focal.arts arts-cmd nvim
- # 6. (optional) Compress the package filesystem
-./focal.arts arts-compress
- # 7. (optional) Rename the binary to the main application name
-mv focal.arts nvim.arts
- # 8. Run the application
-./nvim.arts
-```
-
-## Use an apt package in non-debian systems
+## Use apt packages in non-debian systems
 
 ```sh
  # 1. Set the filesystem as RW
@@ -207,7 +181,7 @@ mv focal.arts firefox.arts
 ./firefox.arts
 ```
 
-## Use a pacman package on non-arch systems
+## Use pacman packages on non-arch systems
 
 ```sh
  # 1. Set the filesystem as RW
@@ -228,7 +202,7 @@ mv arch.arts firefox.arts
 ./firefox.arts
 ```
 
-## Use an AUR package on non-arch systems
+## Use AUR packages on non-arch systems
 
 ```sh
  # 1. Set the filesystem as RW
@@ -247,6 +221,27 @@ mv arch.arts firefox.arts
 mv arch.arts librewolf.arts
  # 8. Run the application (you can also click on it in your file manager)
 ./librewolf.arts
+```
+
+## Use alpine (apk) packages
+
+```sh
+ # 1. Set the filesystem as RW
+ export ARTS_RW=1
+ # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./alpine.arts arts-resize 2G
+ # 3. Install firefox with apk
+./alpine.arts arts-root apk add firefox font-noto
+ # 4. Test the application
+./alpine.arts arts-exec firefox
+ # 5. Set the default startup command
+./alpine.arts arts-cmd firefox
+ # 6. (optional) Compress the package filesystem
+./alpine.arts arts-compress
+ # 7. (optional) Rename the binary to the main application name
+mv alpine.arts firefox.arts
+ # 8. Run the application (you can also click on it in your file manager)
+./firefox.arts
 ```
 
 ## Use a pip package without installing pip/python

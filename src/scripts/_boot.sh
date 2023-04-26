@@ -380,7 +380,6 @@ function main()
   if [[ "${1:-}" =~ arts-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in
       "compress") _compress ;;
-      "tarball") _install_tarball "$2" ;;
       "root") ARTS_ROOT=1; ARTS_NORM="" ;&
       "exec") shift; _exec "$@" ;;
       "cmd") _config_set "cmd" "${@:2}" ;;

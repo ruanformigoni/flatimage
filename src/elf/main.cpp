@@ -125,7 +125,7 @@ int main(int argc, char** argv)
   // }}}
 
   // Launch program {{{
-  if ( auto str_offset_fs = getenv("ARTS_LAUNCH") )
+  if ( auto str_offset_fs = getenv("ARTS_MAIN_LAUNCH") )
   {
     // This part of the code executes the runner, it mounts the image as a
     // readable/writeable filesystem, and then executes the application
@@ -149,9 +149,6 @@ int main(int argc, char** argv)
     // Get offset
     //
     int offset {std::stoi(str_offset_fs)};
-
-    // Option to show offset and exit
-    if( getenv("ARTS_OFFSET") ){ fmt::print("{}\n", offset); exit(0); }
 
     //
     // Extract boot script
@@ -230,9 +227,14 @@ int main(int argc, char** argv)
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
 
     //
+    // Option to show offset and exit
+    //
+    if( getenv("ARTS_MAIN_OFFSET") ){ fmt::print("{}\n", offset_end); exit(0); }
+
+    //
     // Launch Runner
     //
-    setenv("ARTS_LAUNCH", std::to_string(offset_end).c_str(), 1);
+    setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
     execve("{}/main"_fmt(str_dir_bin).c_str(), argv, environ);
   }

@@ -281,10 +281,10 @@ mv focal.arts youtube-dl.arts
 ./focal.arts arts-resize 10G
  # 3. Install npm/nodejs into the image
 ./focal.arts arts-root apt install -y curl
-./focal.arts arts-root 'curl -fsSL https://deb.nodesource.com/setup_19.x \| bash -'
+./focal.arts arts-root 'curl -fsSL https://deb.nodesource.com/setup_19.x | bash -'
 ./focal.arts arts-root apt-get install -y nodejs mpv
  # 4. Install the npm application inside the image
-./focal.arts arts-root npm install webtorrent-cli
+./focal.arts arts-root npm install -g webtorrent-cli
  # 5. Test the application
 ./focal.arts arts-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
  # 6. Set the default startup command

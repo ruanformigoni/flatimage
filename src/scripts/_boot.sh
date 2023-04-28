@@ -303,7 +303,7 @@ function _compress()
 
   # Move files to temporary directory
   for i in "$ARTS_MOUNT"/{arts,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
-    [ ! -d "$i" ] || mv "$i" "$dir_compressed"
+    { mv "$i" "$dir_compressed" || true; } &>"$ARTS_STREAM"
   done
 
   # Update permissions

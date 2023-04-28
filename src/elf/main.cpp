@@ -110,7 +110,7 @@ u64 read_elf_header(const char* elfFile, u64 offset = 0) {
 int main(int argc, char** argv)
 {
 
-  // Get caller path and choose branch to execute {{{
+  // Parse arguments {{{
 
   // Get arguments from 1..n-1
   std::deque<std::string> deque_args (argv, argv+argc);
@@ -118,9 +118,6 @@ int main(int argc, char** argv)
   std::string str_args;
   std::for_each(deque_args.begin(), deque_args.end(),
     [&](std::string e) { str_args.append(fmt::format("\"{}\" ", e)); });
-
-  // /home/user/../dir/main
-  auto path_absolute = fs::canonical(fs::path{argv[0]});
 
   // }}}
 
@@ -135,13 +132,19 @@ int main(int argc, char** argv)
     // Get base dir
     //
     char* cstr_dir_base = getenv("ARTS_BASE");
-    if ( cstr_dir_base == NULL ) { "Base dir variable is empty"_err(); }
+    if ( cstr_dir_base == NULL ) { "ARTS_BASE dir variable is empty"_err(); }
 
     //
     // Get bin dir
     //
     char* cstr_dir_bin = getenv("ARTS_BIN");
-    if ( cstr_dir_bin == NULL ) { "Bin dir variable is empty"_err(); }
+    if ( cstr_dir_bin == NULL ) { "ARTS_BIN dir variable is empty"_err(); }
+
+    //
+    // Get file path
+    //
+    char* cstr_dir_file = getenv("ARTS_FILE");
+    if ( cstr_dir_bin == NULL ) { "ARTS_FILE file variable is empty"_err(); }
 
     //
     // Get temp dir
@@ -160,9 +163,9 @@ int main(int argc, char** argv)
     //
     // Extract boot script
     //
-    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, path_absolute.c_str(), cstr_dir_bin).c_str()) != 0)
+    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, cstr_dir_file, cstr_dir_bin).c_str()) != 0)
     {
-      "Could not extract arts boot script from {} to {}"_err(path_absolute.c_str(), cstr_dir_temp);
+      "Could not extract arts boot script from {} to {}"_err(cstr_dir_file, cstr_dir_temp);
     }
 
     //
@@ -172,7 +175,6 @@ int main(int argc, char** argv)
     setenv("ARTS_MOUNT", str_dir_mount.c_str(), 1);
     setenv("ARTS_OFFSET", str_offset_fs, 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
-    setenv("ARTS_FILE", path_absolute.c_str(), 1);
 
     //
     // Execute application
@@ -186,6 +188,14 @@ int main(int argc, char** argv)
     // This part of the code is executed to write the runner,
     // rightafter the code is replaced by the runner.
     // This is done because the current executable cannot mount itself.
+
+    //
+    // Get path to called executable
+    //
+    if (!std::filesystem::exists("/proc/self/exe")) {
+      "Error retrieving executable path for self"_err();
+    }
+    auto path_absolute = fs::read_symlink("/proc/self/exe");
 
     //
     // Create base dir
@@ -274,6 +284,7 @@ int main(int argc, char** argv)
     setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("ARTS_BASE", str_dir_base.c_str(), 1);
     setenv("ARTS_BIN", str_dir_bin.c_str(), 1);
+    setenv("ARTS_FILE", path_absolute.c_str(), 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
 
     //

@@ -229,7 +229,10 @@ function _exec()
   local sha="$(_config_fetch "sha")"
   _msg "sha: $sha"
 
-  # Mount dwarfs files is exist
+  # Mount dwarfs files if exist
+  [ -f "$ARTS_BIN/dwarfs" ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BIN"/dwarfs
+  chmod +x "$ARTS_BIN/dwarfs"
+
   # shellcheck disable=2044
   for i in $(find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
@@ -271,9 +274,8 @@ function _compress()
   [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
 
   # Copy compressor to binary dir
-  [ -f "$ARTS_BIN/dwarfs"   ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BIN"/dwarfs
   [ -f "$ARTS_BIN/mkdwarfs" ]  || cp "$ARTS_MOUNT/arts/static/mkdwarfs" "$ARTS_BIN"/mkdwarfs
-  chmod +x "$ARTS_BIN/dwarfs" "$ARTS_BIN/mkdwarfs"
+  chmod +x "$ARTS_BIN/mkdwarfs"
 
   # Remove apt lists and cache
   rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}

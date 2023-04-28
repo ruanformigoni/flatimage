@@ -167,10 +167,8 @@ int main(int argc, char** argv)
     //
     // Set environment
     //
-    setenv("ARTS_BASE", cstr_dir_base, 1);
     setenv("ARTS_MOUNT", str_dir_mount.c_str(), 1);
     setenv("ARTS_OFFSET", str_offset_fs, 1);
-    setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
 
     //
     // Execute application

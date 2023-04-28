@@ -6,7 +6,7 @@
 // @description : Main elf for arts
 //
 
-#include <deque>
+#include <sstream>
 #include <algorithm>
 #include <numeric>
 #include <fstream>
@@ -113,12 +113,8 @@ int main(int argc, char** argv)
   // Parse arguments {{{
 
   // Get arguments from 1..n-1
-  std::deque<std::string> deque_args (argv, argv+argc);
-  deque_args.pop_front();
   std::string str_args;
-  std::for_each(deque_args.begin(), deque_args.end(),
-    [&](std::string e) { str_args.append(fmt::format("\"{}\" ", e)); });
-
+  std::for_each(argv+1, argv+argc, [&](char* p) { str_args.append(fmt::format("\"{}\" ", p)); });
   // }}}
 
   // Launch program {{{

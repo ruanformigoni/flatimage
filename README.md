@@ -259,17 +259,17 @@ mv alpine.arts firefox.arts
  # 3. Install python-pip
 ./focal.arts arts-root apt install -y python3-pip
  # 4. Install the pip application inside the image
-./focal.arts arts-root pip3 install youtube-dl
+./focal.arts arts-root pip3 install yt-dlp
  # 5. Test the application
-./focal.arts arts-exec youtube-dl -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
+./focal.arts arts-exec yt-dlp -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
  # 6. Set the default startup command
-./focal.arts arts-cmd youtube-dl
+./focal.arts arts-cmd yt-dlp
  # 7. (optional) Compress the package filesystem
 ./focal.arts arts-compress
  # 8. (optional) Rename the binary to the main application name
-mv focal.arts youtube-dl.arts
+mv focal.arts yt-dlp.arts
  # 9. Use the application (download youtube video)
-./youtube-dl.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
+./yt-dlp.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
 ```
 
 ## Use a npm package without installing npm/nodejs

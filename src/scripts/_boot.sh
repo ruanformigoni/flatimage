@@ -33,6 +33,7 @@ export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
 
 # Paths
 export ARTS_BASE="${ARTS_BASE:?ARTS_BASE is unset or null}"
+export ARTS_BIN="${ARTS_BASE}/bin"
 export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
 export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
@@ -79,7 +80,7 @@ function _mount()
 {
   local mode="${ARTS_RW:-ro,}"
   local mode="${mode#1}"
-  "$ARTS_BASE"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT" &> "$ARTS_STREAM"
+  "$ARTS_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT" &> "$ARTS_STREAM"
 }
 
 # Unmount the main filesystem
@@ -137,9 +138,9 @@ function _copy_tools()
   for i; do
     local tool="$i"
 
-    if [ ! -f "$ARTS_BASE"/"$tool" ]; then
-      cp "$ARTS_MOUNT/arts/static/$tool" "$ARTS_BASE"
-      chmod +x "$ARTS_BASE"/"$tool"
+    if [ ! -f "$ARTS_BIN"/"$tool" ]; then
+      cp "$ARTS_MOUNT/arts/static/$tool" "$ARTS_BIN"
+      chmod +x "$ARTS_BIN"/"$tool"
     fi
   done
 
@@ -172,9 +173,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$ARTS_BASE"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
-  "$ARTS_BASE"/resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
-  "$ARTS_BASE"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
 
   # Mount
   _mount
@@ -191,17 +192,17 @@ function _rebuild()
   rm "$ARTS_FILE"
 
   # Copy startup binary
-  cp "$ARTS_BASE/main" "$ARTS_FILE"
+  cp "$ARTS_BIN/main" "$ARTS_FILE"
 
   # Append tools
-  cat "$ARTS_BASE"/{ext2rd,fuse2fs,e2fsck}  >> "$ARTS_FILE"
+  cat "$ARTS_BIN"/{ext2rd,fuse2fs,e2fsck}  >> "$ARTS_FILE"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"
 
   # Create filesystem
   truncate -s "$1" "$ARTS_TEMP/image.arts"
-  "$ARTS_BASE"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
+  "$ARTS_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
 
   # Append filesystem to binary
   cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE"
@@ -234,7 +235,7 @@ function _exec()
     i="$(basename "$i")"
     local fs="$ARTS_MOUNT/$i"
     local mp="$ARTS_BASE/root/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
-    "$ARTS_BASE/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
+    "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
   # Export variables to chroot
@@ -252,7 +253,7 @@ function _exec()
   # Run proot
   declare -a _cmd_proot
 
-  _cmd_proot+=("$ARTS_BASE/proot")
+  _cmd_proot+=("$ARTS_BIN/proot")
   _cmd_proot+=("${ARTS_NDEBUG:+--verbose=-1}")
   _cmd_proot+=("${ARTS_ROOT:+-S \"$ARTS_MOUNT\"}")
   _cmd_proot+=("${ARTS_NORM:+-R \"$ARTS_MOUNT\"}")
@@ -270,9 +271,9 @@ function _compress()
   [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
 
   # Copy compressor to binary dir
-  [ -f "$ARTS_BASE/dwarfs"   ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BASE"/dwarfs
-  [ -f "$ARTS_BASE/mkdwarfs" ]  || cp "$ARTS_MOUNT/arts/static/mkdwarfs" "$ARTS_BASE"/mkdwarfs
-  chmod +x "$ARTS_BASE/dwarfs" "$ARTS_BASE/mkdwarfs"
+  [ -f "$ARTS_BIN/dwarfs"   ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BIN"/dwarfs
+  [ -f "$ARTS_BIN/mkdwarfs" ]  || cp "$ARTS_MOUNT/arts/static/mkdwarfs" "$ARTS_BIN"/mkdwarfs
+  chmod +x "$ARTS_BIN/dwarfs" "$ARTS_BIN/mkdwarfs"
 
   # Remove apt lists and cache
   rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
@@ -289,7 +290,7 @@ function _compress()
   for i in ${ARTS_COMPRESSION_DIRS}; do
     local target="$ARTS_MOUNT/$i"
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
-    "$ARTS_BASE/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
+    "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
     ln -sf "$ARTS_BASE/root/$sha/mounts/$i" "${dir_compressed}/${i}"
   done
@@ -352,6 +353,7 @@ function main()
   _msg "ARTS_DEBUG       : $ARTS_DEBUG"
   _msg "ARTS_NDEBUG      : $ARTS_NDEBUG"
   _msg "ARTS_BASE        : $ARTS_BASE"
+  _msg "ARTS_BIN         : $ARTS_BIN"
   _msg "ARTS_OFFSET      : $ARTS_OFFSET"
   _msg "ARTS_MOUNT       : $ARTS_MOUNT"
   _msg "ARTS_TEMP        : $ARTS_TEMP"
@@ -359,7 +361,7 @@ function main()
   _msg '$*               : '"$*"
 
   # Check filesystem
-  "$ARTS_BASE"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
   _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "mke2fs"

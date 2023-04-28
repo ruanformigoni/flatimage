@@ -132,10 +132,16 @@ int main(int argc, char** argv)
     // contained inside of it.
 
     //
-    // Get bin dir
+    // Get base dir
     //
     char* cstr_dir_base = getenv("ARTS_BASE");
     if ( cstr_dir_base == NULL ) { "Base dir variable is empty"_err(); }
+
+    //
+    // Get bin dir
+    //
+    char* cstr_dir_bin = getenv("ARTS_BIN");
+    if ( cstr_dir_bin == NULL ) { "Bin dir variable is empty"_err(); }
 
     //
     // Get temp dir
@@ -154,7 +160,7 @@ int main(int argc, char** argv)
     //
     // Extract boot script
     //
-    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_base, offset, path_absolute.c_str(), cstr_dir_temp).c_str()) != 0)
+    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, path_absolute.c_str(), cstr_dir_bin).c_str()) != 0)
     {
       "Could not extract arts boot script from {} to {}"_err(path_absolute.c_str(), cstr_dir_temp);
     }
@@ -171,7 +177,7 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    std::string cmd = "{}/boot {}"_fmt(cstr_dir_temp, str_args);
+    std::string cmd = "{}/boot {}"_fmt(cstr_dir_bin, str_args);
     system(cmd.c_str());
   } // }}}
   
@@ -204,6 +210,15 @@ int main(int argc, char** argv)
     }
 
     //
+    // Create bin dir
+    //
+    std::string str_dir_bin = str_dir_base + "/bin/";
+    if ( ! fs::exists(str_dir_bin) && ! fs::create_directories(str_dir_bin) )
+    {
+      "Failed to create directory {}"_err(str_dir_bin);
+    }
+
+    //
     // Create temp dir
     //
     std::string str_dir_mounts = str_dir_base + "/mounts/";
@@ -222,13 +237,13 @@ int main(int argc, char** argv)
     //
     // Write by binary offset
     //
-    auto f_write_bin = [&](std::string str_dir, std::string str_base, u64 offset_end)
+    auto f_write_bin = [&](std::string str_dir, std::string str_bin, u64 offset_end)
     {
       // Update offsets
       offset_beg = offset_end;
       offset_end = read_elf_header(path_absolute.c_str(), offset_beg) + offset_beg;
       // Create output path to write binary into
-      std::string str_file = "{}/{}"_fmt(str_dir, str_base);
+      std::string str_file = "{}/{}"_fmt(str_dir, str_bin);
       // Write binary only if it doesnt already exist
       if ( ! fs::exists(str_file) )
       {
@@ -243,10 +258,10 @@ int main(int argc, char** argv)
     //
     // Write binaries
     //
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_base, "main", 0);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_base, "ext2rd", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_base, "fuse2fs", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_base, "e2fsck", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "main", 0);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "ext2rd", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
 
     //
     // Option to show offset and exit
@@ -258,12 +273,13 @@ int main(int argc, char** argv)
     //
     setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("ARTS_BASE", str_dir_base.c_str(), 1);
+    setenv("ARTS_BIN", str_dir_bin.c_str(), 1);
     setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
 
     //
     // Launch Runner
     //
-    execve("{}/main"_fmt(str_dir_base).c_str(), argv, environ);
+    execve("{}/main"_fmt(str_dir_bin).c_str(), argv, environ);
   }
   // }}}
 

@@ -194,19 +194,7 @@ int main(int argc, char** argv)
     //
     // Create base dir
     //
-    std::string str_dir_base;
-    if ( char* str_cache_home = getenv("XDG_CACHE_HOME")  )
-    {
-      str_dir_base = std::string{str_cache_home} + "/arts";
-    } // if
-    else if ( char* str_home = getenv("HOME") )
-    {
-      str_dir_base = std::string{str_home} + "/.cache/arts";
-    } // else if
-    else
-    {
-      str_dir_base = "/tmp/arts";
-    } // else
+    std::string str_dir_base = "/tmp/arts";
 
     if ( ! fs::exists(str_dir_base) && ! fs::create_directories(str_dir_base) )
     {

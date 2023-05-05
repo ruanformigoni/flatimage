@@ -152,10 +152,7 @@ compression, default is 50000 (50MB).
 * `ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
 * `ARTS_DEBUG`: If defined to 1, print debug messages.
 
-The default path of `ARTS` temporary files are, in order of creation attempt:
-- `$XDG_CACHE_HOME`
-- `$HOME/.cache/arts`
-- `/tmp/arts`
+The default path of `ARTS` temporary files is `/tmp/arts`.
 
 
 # Use cases

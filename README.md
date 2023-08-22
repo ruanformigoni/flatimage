@@ -25,50 +25,45 @@
 
 ## What is Arts?
 
-Application Root Subsystem (Arts), is a portable container and a tool to package
-software that aims to work across several linux distros. It bundles all the
-software dependencies and the software itself, within an executable. Unlike
-alternatives such as `AppImage`, Arts employs a `proot` based approach,
-preventing software from using host libraries by default. This also resolves
-issues with hard-coded binary paths for dynamic libraries.
+Application Root Subsystem (Arts), is the bastard child of
+[Flatpak](https://github.com/flatpak/flatpak) and
+[AppImage](https://github.com/AppImage/AppImageKit).
 
-## Background
+Arts use case is twofold:
+
+* A tool to package software that aims to work across several linux distros,
+it bundles all the software dependencies and the software itself, within an
+executable; unlike `AppImage`, Arts runs the application in a container, which
+increases portability and compatibility at the cost of file size.
+
+* A portable container image that requires no superuser permissions to run.
 
 The diverse `GNU/Linux` ecosystem includes a vast array of distributions, each
 with its own advantages and use cases. This can lead to cross-distribution
 software compatibility challenges. Arts addresses these issues by:
 
-* Extending the "one app = one file" concept, allowing users to save
-  configurations within the application itself
 * Utilizing its own root directory, enabling dynamic libraries with hard-coded
-    paths to be packaged alongside the software without binary patching.
-* Generating packaged software compatible with multiple Linux distributions
-* Producing a binary that works without installation - simply click and use
-* Operating without root permissions
-* Restricting application access to user-specified files/folders
-* Ensuring updates to host system libraries do not break Arts applications
-* Supporting reconfiguration without rebuild
-* Isolating the filesystem, therefore, not using host libraries that might be
-    outdated/incompatible with the application.
-* Enabling selective directory compression
-* Allowing portable user configuration within the package
+    paths to be packaged alongside the software without
+    [binary patching](https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications).
+* Running the application in its own gnu system, therefore, not using host
+    libraries that might be outdated/incompatible with the application.
 
 ## Comparison
 
 | Feature                                                                   | Arts          | Docker                     | AppImage |
 | :---                                                                      | :---:         | :---:                      | :---:    |
 | No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
-| No installation necessary                                                 | x             | Requires docker on the host| x
+| No installation necessary (click and use)                                 | x             | Requires docker on the host| x
 | Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
 | Runs without mounting the filesystem                                      | x<sup>1</sup> |                            | x
 | Straightforward build process                                             | x             | x                          |
-| Desktop integration                                                       | x             |                            | x
+| Desktop integration                                                       |               |                            | x
 | Extract the contents                                                      | x             | x                          | x
 | Supports reconfiguration without rebuild                                  | x             | x (layers)                 |
 | No host libraries used (Filesystem Isolation)                             | x             | x                          |
 | Supports compression of specific directories/files in the package         | x             |                            |
 | Portable mutable user configuration                                       | x             | x                          |
-| Granular control over containerization                                    |               | x                          |
+| Granular control over containerization                                    | x             | x                          |
 | Works without fuse installed (still requires kernel support)              | x<sup>4</sup> | x                          | x<sup>5</sup>
 | Layered filesystem                                                        |               | x                          |
 | Advanced networking management                                            |               | x                          |
@@ -81,46 +76,6 @@ software compatibility challenges. Arts addresses these issues by:
 > 1. Experimental implementations, available [here](https://github.com/probonopd/go-appimage) and [here](https://github.com/AppImage/type2-runtime)
 
 
-## Further Considerations
-
-Arts offers on build simplicity, packaging applications should be as simple as
-installing them natively on the host system. This is an effort for the end-user
-to not depend on the application developer to provide the portable binary (or to
-handle how to package the application, dependencies and create a runner script).
-It also simplifies the quality of life of the package developer, simplifying
-the packaging process of applications.
-
-## Motivations
-
-1. The idea of this application sprung with the challenge to package software
-   and dynamic libraries, such as `wine`, when there are hard-coded paths. The
-   best solution is invasive
-   [https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications](https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications)
-   , which patches the binaries of wine directly to use a custom path for the
-   32-bit libraries (an implementation of this concept is available
-   [here](https://github.com/ruanformigoni/wine)), not only that, it requires to
-   patch the `32-bit` pre-loader `ld-linux.so` as well, however, sometimes it
-   still fails to execute properly. This is an over exceeding complexity for the
-   end-user, which should package applications with no effort; `Arts` changes
-   the root filesystem the application runs in, to a minimal gnu subsystem, and
-   with that, it solves the previous issues with dynamic libraries no
-   workarounds required. No host libraries are used, which decreases issues of
-   portable applications working on one machine and not in other.
-
-1. The fragmentation of the linux package management is considerable in modern
-   times, e.g., `apt`, `pip`, `npm`, and more. To mitigate this issue `Arts` can
-   perform the installation through the preferred package manager, and turn the
-   program into an executable file, that can run in any linux distribution.
-   E.g.: The user of `Arts` can create a binary of `youtube-dl`, from the `pip`
-   package manager, without having either pip or python installed on the host
-   operating system.
-
-1. Some applications are offered as pre-compiled compressed tar files
-   (tarballs), which sometimes only work when installed on the root of the
-   operating system. However, doing so could hinder the operating system
-   integrity, to avoid this issue `Arts` can install tarballs into itself and
-   turn them into a portable binary.
-
 # Get Arts
 
 You can get the latest release [here](https://gitlab.com/formigoni/arts/-/releases).
@@ -130,22 +85,26 @@ You can get the latest release [here](https://gitlab.com/formigoni/arts/-/releas
 ## Options
 
 ```
-Application Chroot Subsystem (Arts)
+Application Root Subsystem (Arts)
 Avaliable options:
 - arts-compress: Compress the filesystem to a read-only format.
-- arts-exec: Execute an arbitrary command.
 - arts-root: Execute an arbitrary command as root.
-- arts-cmd: Set the default command to execute.
+- arts-exec: Execute an arbitrary command.
+- arts-cmd: Set the default command to execute when no argument is passed.
 - arts-resize: Resize the filesystem.
 - arts-mount: Mount the filesystem in a specified directory
     - E.g.: ./focal.arts arts-mount ./mountpoint
 - arts-xdg: Same as the 'arts-mount' command, however it opens the
     mount directory with xdg-open
+- arts-perms: Set the permission for the container, available options are:
+    pulseaudio, wayland, x11, session_bus, system_bus, gpu
+    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
 - arts-help: Print this message.
 ```
 
 ## Environment Variables
 
+* `ARTS_TOOL`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
 compression, default is 50000 (50MB).
@@ -159,8 +118,8 @@ The default path of `ARTS` temporary files is `/tmp/arts`.
 
 To use arts there is no need to install anything, simply download an image in
 the [releases](https://gitlab.com/formigoni/art/-/releases) page, i.e., `focal
-(ubuntu)` or `arch`. The archive is compressed, extract it and use it as shown
-in the following examples.
+(ubuntu)`, `alpine` or `arch`. The archive is compressed, extract it and use it
+as shown in the following examples.
 
 ## Use apt packages in non-debian systems
 
@@ -318,6 +277,47 @@ cd htop
 ```
 
 In this case `focal.arts` is now a portable building environment for htop.
+
+## Further Considerations
+
+Arts offers on build simplicity, packaging applications should be as simple as
+installing them natively on the host system. This is an effort for the end-user
+to not depend on the application developer to provide the portable binary (or to
+handle how to package the application, dependencies and create a runner script).
+It also simplifies the quality of life of the package developer, simplifying
+the packaging process of applications.
+
+## Motivations
+
+1. The idea of this application sprung with the challenge to package software
+   and dynamic libraries, such as `wine`, when there are hard-coded paths. The
+   best solution is invasive
+   [https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications](https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications)
+   , which patches the binaries of wine directly to use a custom path for the
+   32-bit libraries (an implementation of this concept is available
+   [here](https://github.com/ruanformigoni/wine)), not only that, it requires to
+   patch the `32-bit` pre-loader `ld-linux.so` as well, however, sometimes it
+   still fails to execute properly. This is an over exceeding complexity for the
+   end-user, which should package applications with no effort; `Arts` changes
+   the root filesystem the application runs in, to a minimal gnu subsystem, and
+   with that, it solves the previous issues with dynamic libraries no
+   workarounds required. No host libraries are used, which decreases issues of
+   portable applications working on one machine and not in other.
+
+1. The fragmentation of the linux package management is considerable in modern
+   times, e.g., `apt`, `pip`, `npm`, and more. To mitigate this issue `Arts` can
+   perform the installation through the preferred package manager, and turn the
+   program into an executable file, that can run in any linux distribution.
+   E.g.: The user of `Arts` can create a binary of `youtube-dl`, from the `pip`
+   package manager, without having either pip or python installed on the host
+   operating system.
+
+1. Some applications are offered as pre-compiled compressed tar files
+   (tarballs), which sometimes only work when installed on the root of the
+   operating system. However, doing so could hinder the operating system
+   integrity, to avoid this issue `Arts` can install tarballs into itself and
+   turn them into a portable binary.
+
 
 # Related Projects
 

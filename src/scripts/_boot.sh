@@ -187,7 +187,8 @@ function _help()
   :    - E.g.: ./focal.arts arts-mount ./mountpoint
   :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
-  :- arts-perms: Set the permission for the container, available options are: pulseaudio, wayland, x11, session_bus, system_bus, gpu
+  :- arts-perms: Set the permission for the container, available options are:
+  :    pulseaudio, wayland, x11, session_bus, system_bus, gpu
   :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
   :- arts-help: Print this message.
 	EOF
@@ -344,8 +345,10 @@ function _exec()
     if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]] &&
        [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
       _msg "PERM: SESSION BUS"
+      local dbus_session_bus_path="${DBUS_SESSION_BUS_ADDRESS#*=}"
+      dbus_session_bus_path="${dbus_session_bus_path%%,*}"
       _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
-      _cmd+=("--bind ${DBUS_SESSION_BUS_ADDRESS#*=} ${DBUS_SESSION_BUS_ADDRESS#*=}")
+      _cmd+=("--bind $dbus_session_bus_path $dbus_session_bus_path")
     fi
 
     # dbus (system)

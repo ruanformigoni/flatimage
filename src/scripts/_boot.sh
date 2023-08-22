@@ -25,9 +25,9 @@ export ARTS_NORM="1"
 export ARTS_NORM="${ARTS_NORM#"${ARTS_ROOT}"}"
 
 # Mode
-export ARTS_RW="${ARTS_RW:+1}"
-export ARTS_RO="1"
-export ARTS_RO="${ARTS_RO#"${ARTS_RW}"}"
+export ARTS_RO="${ARTS_RO:+1}"
+export ARTS_RW="1"
+export ARTS_RW="${ARTS_RW#"${ARTS_RO}"}"
 
 # Debug
 export ARTS_DEBUG="${ARTS_DEBUG:+1}"

@@ -24,6 +24,8 @@
 #include <fmt/ranges.h>
 #include <memory>
 
+#include "boot.h" // boot script
+
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
 #else
@@ -137,12 +139,6 @@ int main(int argc, char** argv)
     if ( cstr_dir_bin == NULL ) { "ARTS_BIN dir variable is empty"_err(); }
 
     //
-    // Get file path
-    //
-    char* cstr_dir_file = getenv("ARTS_FILE");
-    if ( cstr_dir_bin == NULL ) { "ARTS_FILE file variable is empty"_err(); }
-
-    //
     // Get temp dir
     //
     char* cstr_dir_temp = getenv("ARTS_TEMP");
@@ -152,17 +148,13 @@ int main(int argc, char** argv)
     fs::create_directory(str_dir_mount);
 
     //
-    // Get offset
+    // Write boot script
     //
-    int offset {std::stoi(str_offset_fs)};
-
-    //
-    // Extract boot script
-    //
-    if(system("{}/ext2rd -o{} {} ./arts/boot:{}/boot"_fmt(cstr_dir_bin, offset, cstr_dir_file, cstr_dir_bin).c_str()) != 0)
-    {
-      "Could not extract arts boot script from {} to {}"_err(cstr_dir_file, cstr_dir_temp);
-    }
+    std::ofstream script_boot("{}/boot"_fmt(cstr_dir_bin), std::ios::binary);
+    fs::permissions("{}/boot"_fmt(cstr_dir_bin), fs::perms::all);
+    // -1 to exclude the trailing null byte
+    script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
+    script_boot.close();
 
     //
     // Set environment
@@ -251,7 +243,6 @@ int main(int argc, char** argv)
     // Write binaries
     //
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "main", 0);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "ext2rd", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
 

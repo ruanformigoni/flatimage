@@ -54,7 +54,7 @@ function _create_elf()
   local out="$2"
 
   cp bin/elf "$out"
-  cat bin/{ext2rd,fuse2fs,e2fsck} >> "$out"
+  cat bin/{fuse2fs,e2fsck} >> "$out"
   cat "$img" >> "$out"
 
 }

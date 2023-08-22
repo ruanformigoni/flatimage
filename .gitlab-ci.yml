@@ -28,25 +28,6 @@ fetch-e2fsprogs:
     reports:
       dotenv: build.env
 
-fetch-extfstools:
-  image: "ubuntu:latest"
-  stage: fetch
-  when: manual
-  before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update && apt -y upgrade
-    - apt install -y wget
-    - echo JOB_ID_FETCH_EXTFS=$CI_JOB_ID > build.env
-  script:
-    - |
-      mkdir -p bin
-      wget -O ./bin/ext2rd "https://github.com/ruanformigoni/extfstools/releases/download/58d896b/ext2rd"
-  artifacts:
-    paths:
-      - ./bin
-    reports:
-      dotenv: build.env
-
 fetch-proot:
   image: "ubuntu:focal"
   stage: fetch
@@ -156,8 +137,6 @@ package-focal:
       artifacts: true
     - job: fetch-dwarfs
       artifacts: true
-    - job: fetch-extfstools
-      artifacts: true
     - job: fetch-proot
       artifacts: true
   artifacts:
@@ -187,8 +166,6 @@ package-arch:
       artifacts: true
     - job: fetch-dwarfs
       artifacts: true
-    - job: fetch-extfstools
-      artifacts: true
     - job: fetch-proot
       artifacts: true
   artifacts:
@@ -217,8 +194,6 @@ package-alpine:
     - job: fetch-bwrap
       artifacts: true
     - job: fetch-dwarfs
-      artifacts: true
-    - job: fetch-extfstools
       artifacts: true
     - job: fetch-proot
       artifacts: true

@@ -224,7 +224,7 @@ function _rebuild()
   cp "$ARTS_BIN/main" "$ARTS_FILE"
 
   # Append tools
-  cat "$ARTS_BIN"/{ext2rd,fuse2fs,e2fsck}  >> "$ARTS_FILE"
+  cat "$ARTS_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"

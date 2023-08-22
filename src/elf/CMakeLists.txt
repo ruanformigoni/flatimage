@@ -19,6 +19,23 @@ message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 set(CMAKE_BUILD_TYPE Debug)
 
+# Tools
+## XXD
+find_program(XXD_COMMAND xxd)
+if(NOT XXD_COMMAND)
+  message(FATAL_ERROR "xxd command not found")
+endif()
+
+# Define the command to generate script.h from script.sh
+add_custom_command(
+  OUTPUT boot.h
+  COMMAND ${XXD_COMMAND} -i "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_boot.sh" > "${CMAKE_CURRENT_SOURCE_DIR}/boot.h"
+  COMMAND sed -Ei "s|unsigned char.*=|unsigned char _script_boot\[\] =|g" "${CMAKE_CURRENT_SOURCE_DIR}/boot.h"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_boot.sh"
+  COMMENT "Generating boot.h from _boot.sh"
+  VERBATIM
+)
+
 # External libraries
 if(NOT fmt_FOUND)
   find_package(fmt REQUIRED)
@@ -28,6 +45,6 @@ if(NOT range-v3_FOUND)
   find_package(range-v3 REQUIRED)
 endif()
 
-add_executable(main main.cpp)
+add_executable(main main.cpp boot.h)
 target_link_libraries(main PRIVATE fmt::fmt)
 target_link_libraries(main PRIVATE range-v3::range-v3)

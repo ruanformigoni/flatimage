@@ -16,6 +16,9 @@ PID="$$"
 
 export ARTS_DIST="TRUNK"
 
+# Rootless tool
+export ARTS_TOOL="${ARTS_TOOL:-bwrap}"
+
 # Perms
 export ARTS_ROOT="${ARTS_ROOT:+1}"
 export ARTS_NORM="1"
@@ -253,18 +256,163 @@ function _exec()
   # Remove override to avoid problems with apt
   [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"
 
-  # Run proot
-  declare -a _cmd_proot
+  declare -a _cmd
 
-  _cmd_proot+=("$ARTS_BIN/proot")
-  _cmd_proot+=("${ARTS_NDEBUG:+--verbose=-1}")
-  _cmd_proot+=("${ARTS_ROOT:+-S \"$ARTS_MOUNT\"}")
-  _cmd_proot+=("${ARTS_NORM:+-R \"$ARTS_MOUNT\"}")
-  _cmd_proot+=("/bin/bash -c '$cmd'")
+  # Fetch permissions
+  source "$ARTS_MOUNT/arts/perms"
 
-  _msg "cmd_proot: ${_cmd_proot[*]}"
+  # Run in container
+  if [[ "$ARTS_TOOL" = "bwrap" ]]; then
+    _msg "Using bubblewrap"
 
-  eval "${_cmd_proot[*]}"
+    # Main binary
+    _cmd+=("$ARTS_BIN/bwrap")
+
+    # Root binding
+    _cmd+=("${ARTS_ROOT:+--uid 0 --gid 0}")
+
+    # Path to subsystem
+    _cmd+=("--bind \"$ARTS_MOUNT\" /")
+
+    # User home
+    _cmd+=("--bind \"$HOME\" \"$HOME\"")
+
+    # System bindings
+    _cmd+=("--dev /dev")
+    _cmd+=("--proc /proc")
+    _cmd+=("--bind /tmp /tmp")
+    _cmd+=("--bind /sys /sys")
+
+    # Pulseaudio
+    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]]; then
+      _msg "PERM: Pulseaudio"
+      local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
+      _cmd+=("--setenv PULSE_SERVER unix:$PULSE_SOCKET")
+      _cmd+=("--bind $PULSE_SOCKET $PULSE_SOCKET")
+    fi
+
+    # Wayland
+    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]]; then
+      _msg "PERM: Wayland"
+      local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+      _cmd+=("--bind $WAYLAND_SOCKET_PATH $WAYLAND_SOCKET_PATH")
+      _cmd+=("--setenv WAYLAND_DISPLAY $WAYLAND_DISPLAY")
+      _cmd+=("--setenv XDG_RUNTIME_DIR $XDG_RUNTIME_DIR")
+    fi
+
+    # X11
+    if [[ "$ARTS_PERM_X11" -eq 1 ]]; then
+      _msg "PERM: X11"
+      _cmd+=("--setenv DISPLAY $DISPLAY")
+      _cmd+=("--setenv XAUTHORITY $XAUTHORITY")
+      _cmd+=("--ro-bind $XAUTHORITY $XAUTHORITY")
+    fi
+
+    # dbus (user)
+    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]]; then
+      _msg "PERM: SESSION BUS"
+      _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
+      _cmd+=("--bind ${DBUS_SESSION_BUS_ADDRESS#*=} ${DBUS_SESSION_BUS_ADDRESS#*=}")
+    fi
+
+    # dbus (system)
+    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]]; then
+      _msg "PERM: SYSTEM BUS"
+      _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
+      _cmd+=("--bind /run/dbus/system_bus_socket /run/dbus/system_bus_socket")
+    fi
+
+    # GPU
+    if [[ "$ARTS_PERM_GPU" -eq 1 ]]; then
+      _msg "PERM: GPU"
+      _cmd+=("--dev-bind /dev/dri /dev/dri")
+    fi
+
+    # Host info
+    [ ! -f "/etc/host.conf"     ] || _cmd+=('--bind "/etc/host.conf"     "/etc/host.conf"')
+    [ ! -f "/etc/hosts"         ] || _cmd+=('--bind "/etc/hosts"         "/etc/hosts"')
+    [ ! -f "/etc/passwd"        ] || _cmd+=('--bind "/etc/passwd"        "/etc/passwd"')
+    [ ! -f "/etc/group"         ] || _cmd+=('--bind "/etc/group"         "/etc/group"')
+    [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
+    [ ! -f "/etc/resolv.conf"   ] || _cmd+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')
+  else
+    _msg "Using proot"
+
+    # Main binary
+    _cmd+=("$ARTS_BIN/proot")
+
+    # Root binding
+    _cmd+=("-0")
+
+    # Path to subsystem
+    _cmd+=("-r \"$ARTS_MOUNT\"")
+
+    # User home
+    _cmd+=("-b \"$HOME\"")
+
+    # System bindings
+    _cmd+=("-b /dev")
+    _cmd+=("-b /proc")
+    _cmd+=("-b /tmp")
+    _cmd+=("-b /sys")
+
+    # Pulseaudio
+    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]]; then
+      _msg "PERM: Pulseaudio"
+      local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
+      export PULSE_SERVER="unix:$PULSE_SOCKET"
+      _cmd+=("-b $PULSE_SOCKET")
+    fi
+
+    # Wayland
+    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]]; then
+      _msg "PERM: Wayland"
+      local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+      _cmd+=("-b $WAYLAND_SOCKET_PATH")
+      export WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+      export XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+    fi
+
+    # X11
+    if [[ "$ARTS_PERM_X11" -eq 1 ]]; then
+      _msg "PERM: X11"
+      export DISPLAY="$DISPLAY"
+      export XAUTHORITY="$XAUTHORITY"
+      _cmd+=("-b $XAUTHORITY")
+    fi
+
+    # dbus (user)
+    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]]; then
+      _msg "PERM: SESSION BUS"
+      export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
+      _cmd+=("-b ${DBUS_SESSION_BUS_ADDRESS#*=}")
+    fi
+
+    # dbus (system)
+    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]]; then
+      _msg "PERM: SYSTEM BUS"
+      _cmd+=("-b /run/dbus/system_bus_socket")
+    fi
+
+    # GPU
+    if [[ "$ARTS_PERM_GPU" -eq 1 ]]; then
+      _msg "PERM: GPU"
+      _cmd+=("-b /dev/dri")
+    fi
+
+    # Host info
+    [ ! -f "/etc/host.conf"     ] || _cmd+=('-b "/etc/host.conf"')
+    [ ! -f "/etc/hosts"         ] || _cmd+=('-b "/etc/hosts"')
+    [ ! -f "/etc/passwd"        ] || _cmd+=('-b "/etc/passwd"')
+    [ ! -f "/etc/group"         ] || _cmd+=('-b "/etc/group"')
+    [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('-b "/etc/nsswitch.conf"')
+    [ ! -f "/etc/resolv.conf"   ] || _cmd+=('-b "/etc/resolv.conf"')
+  fi
+
+  # Shell
+  _cmd+=("/bin/bash -c '$cmd'")
+
+  eval "${_cmd[*]}"
 }
 
 # Subdirectory compression
@@ -322,6 +470,12 @@ function _compress()
 
   # Resize
   _rebuild "$size_new"K "$dir_compressed"
+
+  # Remove mount dirs
+  rm -rf "${ARTS_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
+
+  # Create required mount points if not exists
+  mkdir -p "$ARTS_MOUNT"/{tmp,proc,sys,dev,run,home}
 }
 
 function _config_fetch()
@@ -366,7 +520,7 @@ function main()
   "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
-  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "mke2fs"
+  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "mke2fs" "bwrap"
 
   # Mount filesystem
   _mount

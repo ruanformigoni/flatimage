@@ -33,16 +33,16 @@ function _create_image()
   local dir="$1"
   local out="$(basename "$2")"
   local slack="50" # 50M
-  local size="$(du -sh -BM "$dir" 2>/dev/null | awk '{printf "%d\n", $1}')"
+  local size="$(du -s "$dir" | awk '{printf "%d\n", $1/1000}')"
   size="$((size+slack))M"
 
-  _msg "dir: $dir"
-  _msg "outfile: $out"
-  _msg "max size: $size"
+  _msg "dir            : $dir"
+  _msg "file out       : $out"
+  _msg "size dir+slack : $size"
 
   # Create filesystem
   truncate -s "$size" "$out"
-  mke2fs -d "$dir" -b1024 -t ext2 "$out"
+  bin/mke2fs -d "$dir" -b1024 -t ext2 "$out"
 }
 
 # Concatenates binary files and filesystem to create arts image
@@ -102,6 +102,9 @@ function _create_subsystem_debootstrap()
 
   [[ "$dist" =~ bionic|focal|jammy ]] || _die "Invalid distribution $1"
 
+  # Update exec permissions
+  chmod -R +x ./bin/.
+
   # Build
   debootstrap "$dist" "/tmp/$dist" http://archive.ubuntu.com/ubuntu/
 
@@ -125,6 +128,16 @@ function _create_subsystem_debootstrap()
   umount  "/tmp/$dist/sys/"
   umount -R "/tmp/$dist/dev/"
 
+  # Remove mount dirs that may have leftover files
+  rm -rf /tmp/"$dist"/{tmp,proc,sys,dev,run}
+
+  # Create required mount point folders
+  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run,home}
+
+  # Create required files for later binding
+  rm -f /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
+  touch /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
+
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"
 
@@ -136,6 +149,9 @@ function _create_subsystem_debootstrap()
 
   # Embed runner
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
+
+  # Embed permissions
+  cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
 
   # Set dist
   sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="UBUNTU"/' "/tmp/$dist/arts/boot"
@@ -165,6 +181,9 @@ function _create_subsystem_alpine()
 
   local dist="alpine"
 
+  # Update exec permissions
+  chmod -R +x ./bin/.
+
   # Build
   wget http://dl-cdn.alpinelinux.org/alpine/v3.12/main/x86_64/apk-tools-static-2.10.8-r1.apk
   tar zxf apk-tools-static-*.apk
@@ -181,6 +200,19 @@ function _create_subsystem_alpine()
     :#http://dl-cdn.alpinelinux.org/alpine/edge/testing
 	END
 
+  # Include additional paths in PATH for proot
+  export PATH="$PATH:/sbin:/bin"
+
+  # Remove mount dirs that may have leftover files
+  rm -rf /tmp/"$dist"/{tmp,proc,sys,dev,run}
+
+  # Create required mount point folders
+  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run,home}
+
+  # Create required files for later binding
+  rm -f /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
+  touch /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
+
   # Update packages
   chmod +x ./bin/proot
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
@@ -195,6 +227,9 @@ function _create_subsystem_alpine()
 
   # Embed runner
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
+
+  # Embed permissions
+  cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
 
   # Set dist
   sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ALPINE"/' "/tmp/$dist/arts/boot"
@@ -222,10 +257,16 @@ function _create_subsystem_arch()
   mkdir -p dist
   mkdir -p bin
 
+  # Update exec permissions
+  chmod -R +x ./bin/.
+
   # Fetch bootstrap
   git clone https://github.com/tokland/arch-bootstrap.git
 
   # Build
+  sed -i 's|DEFAULT_REPO_URL=".*"|DEFAULT_REPO_URL="http://linorg.usp.br/archlinux"|' ./arch-bootstrap/arch-bootstrap.sh
+  sed -Ei 's|^\s+curl|curl --retry 5|' ./arch-bootstrap/arch-bootstrap.sh
+  sed 's/^/-- /' ./arch-bootstrap/arch-bootstrap.sh
   ./arch-bootstrap/arch-bootstrap.sh arch
 
   # Update mirrorlist
@@ -250,9 +291,8 @@ function _create_subsystem_arch()
   rm -rf ./arch/var/cache/pacman/pkg/*
 
   # Install yay
-  wget -q --show-progress --progress=dot:mega \
-    -O yay.tar.gz https://github.com/Jguer/yay/releases/download/v11.3.2/yay_11.3.2_x86_64.tar.gz
-  tar -xf yay.tar.gz --strip-components=1 --wildcards "*yay"
+  wget -O yay.tar.gz https://github.com/Jguer/yay/releases/download/v11.3.2/yay_11.3.2_x86_64.tar.gz
+  tar -xf yay.tar.gz --strip-components=1 "yay_11.3.2_x86_64/yay"
   rm yay.tar.gz
   mv yay arch/usr/bin
 
@@ -268,11 +308,24 @@ function _create_subsystem_arch()
   # Embed runner
   cp "$ARTS_SCRIPT_DIR/_boot.sh" "./arch/arts/boot"
 
+  # Embed permissions
+  cp "$ARTS_SCRIPT_DIR/_perms.sh" "./arch/arts/perms"
+
   # Embed AUR helper
   cp "$ARTS_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
 
   # Set dist
   sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ARCH"/' ./arch/arts/boot
+
+  # Remove mount dirs that may have leftover files
+  rm -rf arch/{tmp,proc,sys,dev,run}
+
+  # Create required mount points if not exists
+  mkdir -p arch/{tmp,proc,sys,dev,run,home}
+
+  # Create required files for later binding
+  rm -f arch/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
+  touch arch/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
 
   # Set permissions
   chown -R "$(id -u)":users "./arch"

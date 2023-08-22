@@ -66,6 +66,25 @@ fetch-proot:
     reports:
       dotenv: build.env
 
+fetch-bwrap:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget
+    - echo JOB_ID_FETCH_BWRAP=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p ./bin
+      wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/559a725/bwrap"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 fetch-dwarfs:
   image: "ubuntu:jammy"
   stage: fetch
@@ -133,6 +152,8 @@ package-focal:
       artifacts: true
     - job: fetch-e2fsprogs
       artifacts: true
+    - job: fetch-bwrap
+      artifacts: true
     - job: fetch-dwarfs
       artifacts: true
     - job: fetch-extfstools
@@ -161,6 +182,8 @@ package-arch:
     - job: build-elf
       artifacts: true
     - job: fetch-e2fsprogs
+      artifacts: true
+    - job: fetch-bwrap
       artifacts: true
     - job: fetch-dwarfs
       artifacts: true
@@ -191,6 +214,8 @@ package-alpine:
       artifacts: true
     - job: fetch-e2fsprogs
       artifacts: true
+    - job: fetch-bwrap
+      artifacts: true
     - job: fetch-dwarfs
       artifacts: true
     - job: fetch-extfstools
@@ -210,21 +235,21 @@ deploy:
     - apk --no-cache add curl
   script:
     - |
-      export RELEASE_DESCRIPTION="$(date +"%Y-%m-%d")"
+      echo "RELEASE_DATE=$(date +'%Y-%m-%d')" >> build.env
       # Delete current release
       curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
   # Set new release
   release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: 'Continuous'
-    description: 'Release $CI_COMMIT_SHORT_SHA : ${RELEASE_DESCRIPTION}'
+    description: 'Release $CI_COMMIT_SHORT_SHA : ${RELEASE_DATE}'
     assets:
       links:
         - name: 'focal.tar.xz'
-          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
+          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
         - name: 'arch.tar.xz'
-          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
+          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
         - name: 'alpine.tar.xz'
-          url: 'https://gitlab.com/formigoni/art/-/jobs/${JOB_ID_BUILD_BS_ALPINE}/artifacts/raw/dist/${ALPINE_TARBALL}'
+          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_ALPINE}/artifacts/raw/dist/${ALPINE_TARBALL}'
   needs:
     - job: package-arch
     - job: package-focal

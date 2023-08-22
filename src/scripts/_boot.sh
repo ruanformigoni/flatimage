@@ -44,6 +44,7 @@ export ARTS_SECTOR=$((ARTS_OFFSET/512))
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
 export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
 export ARTS_RCFILE="$ARTS_TEMP/.bashrc"
+export ARTS_FILE_PERMS="$ARTS_MOUNT"/arts/perms
 
 # Compression
 export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-4}"
@@ -150,20 +151,44 @@ function _copy_tools()
   _unmount
 }
 
+# Set permissions of sandbox
+function _perms_set()
+{
+  # Reset perms
+  echo "" > "$ARTS_FILE_PERMS"
+
+  # Set perms
+  local ifs="$IFS" 
+  IFS="," 
+  for i in $1; do
+    case "$i" in
+      pulseaudio)  echo 'ARTS_PERM_PULSEAUDIO="${ARTS_PERM_PULSEAUDIO:-1}"'   >> "$ARTS_FILE_PERMS" ;;
+      wayland)     echo 'ARTS_PERM_WAYLAND="${ARTS_PERM_WAYLAND:-1}"'         >> "$ARTS_FILE_PERMS" ;;
+      x11)         echo 'ARTS_PERM_X11="${ARTS_PERM_X11:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
+      session_bus) echo 'ARTS_PERM_SESSION_BUS="${ARTS_PERM_SESSION_BUS:-1}"' >> "$ARTS_FILE_PERMS" ;;
+      system_bus)  echo 'ARTS_PERM_SYSTEM_BUS="${ARTS_PERM_SYSTEM_BUS:-1}"'   >> "$ARTS_FILE_PERMS" ;;
+      gpu)         echo 'ARTS_PERM_GPU="${ARTS_PERM_GPU:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
+    esac
+  done
+  IFS="$ifs" 
+}
+
 function _help()
 {
   sed -E 's/^\s+://' <<-EOF
   :Application Root Subsystem (Arts), $ARTS_DIST
   :Avaliable options:
   :- arts-compress: Compress the filesystem to a read-only format.
-  :- arts-exec: Execute an arbitrary command.
   :- arts-root: Execute an arbitrary command as root.
-  :- arts-cmd: Set the default command to execute.
+  :- arts-exec: Execute an arbitrary command.
+  :- arts-cmd: Set the default command to execute when no argument is passed.
   :- arts-resize: Resize the filesystem.
   :- arts-mount: Mount the filesystem in a specified directory
   :    - E.g.: ./focal.arts arts-mount ./mountpoint
   :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
+  :- arts-perms: Set the permission for the container, available options are: pulseaudio, wayland, x11, session_bus, system_bus, gpu
+  :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
   :- arts-help: Print this message.
 	EOF
 }
@@ -261,7 +286,7 @@ function _exec()
   declare -a _cmd
 
   # Fetch permissions
-  source "$ARTS_MOUNT/arts/perms"
+  source "$ARTS_FILE_PERMS"
 
   # Run in container
   if [[ "$ARTS_TOOL" = "bwrap" ]]; then
@@ -559,6 +584,7 @@ function main()
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
+      "perms") _perms_set "$2";;
       "help") _help;;
       *) _help; _die "Unknown arts command" ;;
     esac

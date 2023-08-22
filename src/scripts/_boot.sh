@@ -244,9 +244,11 @@ function _exec()
     "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
-  # Export variables to chroot
+  # Export variables to container
   export TERM="xterm"
-  export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+  if [[ -z "$XDG_RUNTIME_DIR" ]] && [[ -e "/run/user/$(id -u)" ]]; then
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+  fi
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
   tee "$ARTS_RCFILE" &>/dev/null <<- 'EOF'
@@ -284,7 +286,8 @@ function _exec()
     _cmd+=("--bind /sys /sys")
 
     # Pulseaudio
-    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]] &&
+       [[ -n "$XDG_RUNTIME_DIR" ]]; then
       _msg "PERM: Pulseaudio"
       local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
       _cmd+=("--setenv PULSE_SERVER unix:$PULSE_SOCKET")
@@ -292,7 +295,9 @@ function _exec()
     fi
 
     # Wayland
-    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]] &&
+       [[ -n "$XDG_RUNTIME_DIR" ]] &&
+       [[ -n "$WAYLAND_DISPLAY" ]]; then
       _msg "PERM: Wayland"
       local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
       _cmd+=("--bind $WAYLAND_SOCKET_PATH $WAYLAND_SOCKET_PATH")
@@ -301,7 +306,9 @@ function _exec()
     fi
 
     # X11
-    if [[ "$ARTS_PERM_X11" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_X11" -eq 1 ]] &&
+       [[ -n "$DISPLAY" ]] &&
+       [[ -n "$XAUTHORITY" ]]; then
       _msg "PERM: X11"
       _cmd+=("--setenv DISPLAY $DISPLAY")
       _cmd+=("--setenv XAUTHORITY $XAUTHORITY")
@@ -309,21 +316,23 @@ function _exec()
     fi
 
     # dbus (user)
-    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]] &&
+       [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
       _msg "PERM: SESSION BUS"
       _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
       _cmd+=("--bind ${DBUS_SESSION_BUS_ADDRESS#*=} ${DBUS_SESSION_BUS_ADDRESS#*=}")
     fi
 
     # dbus (system)
-    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]] &&
+       [[ -e "/run/dbus/system_bus_socket" ]]; then
       _msg "PERM: SYSTEM BUS"
-      _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
       _cmd+=("--bind /run/dbus/system_bus_socket /run/dbus/system_bus_socket")
     fi
 
     # GPU
-    if [[ "$ARTS_PERM_GPU" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_GPU" -eq 1 ]] &&
+       [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("--dev-bind /dev/dri /dev/dri")
     fi
@@ -357,7 +366,8 @@ function _exec()
     _cmd+=("-b /sys")
 
     # Pulseaudio
-    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]] &&
+       [[ -n "$XDG_RUNTIME_DIR" ]]; then
       _msg "PERM: Pulseaudio"
       local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
       export PULSE_SERVER="unix:$PULSE_SOCKET"
@@ -365,7 +375,9 @@ function _exec()
     fi
 
     # Wayland
-    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]] &&
+       [[ -n "$XDG_RUNTIME_DIR" ]] &&
+       [[ -n "$WAYLAND_DISPLAY" ]]; then
       _msg "PERM: Wayland"
       local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
       _cmd+=("-b $WAYLAND_SOCKET_PATH")
@@ -374,7 +386,9 @@ function _exec()
     fi
 
     # X11
-    if [[ "$ARTS_PERM_X11" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_X11" -eq 1 ]] &&
+       [[ -n "$DISPLAY" ]] &&
+       [[ -n "$XAUTHORITY" ]]; then
       _msg "PERM: X11"
       export DISPLAY="$DISPLAY"
       export XAUTHORITY="$XAUTHORITY"
@@ -382,20 +396,23 @@ function _exec()
     fi
 
     # dbus (user)
-    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]] &&
+       [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
       _msg "PERM: SESSION BUS"
       export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
       _cmd+=("-b ${DBUS_SESSION_BUS_ADDRESS#*=}")
     fi
 
     # dbus (system)
-    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]] &&
+       [[ -e "/run/dbus/system_bus_socket" ]]; then
       _msg "PERM: SYSTEM BUS"
       _cmd+=("-b /run/dbus/system_bus_socket")
     fi
 
     # GPU
-    if [[ "$ARTS_PERM_GPU" -eq 1 ]]; then
+    if [[ "$ARTS_PERM_GPU" -eq 1 ]] &&
+       [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("-b /dev/dri")
     fi

@@ -1,0 +1,10 @@
+# Ignore everything
+*
+build/
+test/
+
+# Except the Dockerfile and the necessary directories/files
+!sources/
+!src/
+!docker/
+!bin/

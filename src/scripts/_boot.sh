@@ -169,6 +169,7 @@ function _perms_set()
       session_bus) echo 'ARTS_PERM_SESSION_BUS="${ARTS_PERM_SESSION_BUS:-1}"' >> "$ARTS_FILE_PERMS" ;;
       system_bus)  echo 'ARTS_PERM_SYSTEM_BUS="${ARTS_PERM_SYSTEM_BUS:-1}"'   >> "$ARTS_FILE_PERMS" ;;
       gpu)         echo 'ARTS_PERM_GPU="${ARTS_PERM_GPU:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
+      *) _die "Trying to set unknown permission $i"
     esac
   done
   IFS="$ifs" 

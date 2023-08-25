@@ -17,7 +17,7 @@ PID="$$"
 export ARTS_DIST="TRUNK"
 
 # Rootless tool
-export ARTS_BACKEND="${ARTS_BACKEND:-bwrap}"
+export ARTS_BACKEND
 
 # Perms
 export ARTS_ROOT="${ARTS_ROOT:+1}"
@@ -612,6 +612,17 @@ function main()
   # # Set & show on debug mode
   [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
   _msg "ARTS_HOME        : $HOME"
+
+  # If ARTS_BACKEND is not defined check the config
+  # or set it to bwrap
+  if [[ -z "$ARTS_BACKEND" ]]; then
+    local arts_tool="$(_config_fetch "backend")"
+    if [[ -n "$arts_tool" ]]; then
+      ARTS_BACKEND="$arts_tool"
+    else
+      ARTS_BACKEND="bwrap"
+    fi
+  fi
 
   if [[ "${1:-}" =~ arts-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in

@@ -5,10 +5,7 @@
 - [Arts - Application Root Subsystem](#arts---application-root-subsystem)
 - [Table of contents](#table-of-contents)
   - [What is Arts?](#what-is-arts?)
-  - [Background](#background)
   - [Comparison](#comparison)
-  - [Further Considerations](#further-considerations)
-  - [Motivations](#motivations)
 - [Get Arts](#get-arts)
 - [Usage](#usage)
   - [Options](#options)
@@ -16,11 +13,12 @@
 - [Use cases](#use-cases)
   - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
   - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
-  - [Use AUR packages on non-arch systems](#use-aur-packages-on-non-arch-systems)
   - [Use alpine (apk) packages](#use-alpine-apk-packages)
   - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
   - [Use a npm package without installing npm/nodejs](#use-a-npm-package-without-installing-npmnodejs)
   - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
+  - [Further Considerations](#further-considerations)
+  - [Motivations](#motivations)
 - [Related Projects](#related-projects)
 
 ## What is Arts?
@@ -124,132 +122,101 @@ as shown in the following examples.
 ## Use apt packages in non-debian systems
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 10G
- # 3. Install the desired application in the ubuntu subsystem
-./focal.arts arts-root apt install -y firefox
- # 4. Test the application
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./focal.arts arts-resize 4G
+ # 2. Install the desired application in the ubuntu subsystem
+./focal.arts arts-root 'apt install -y firefox'
+ # 3. Test the application
 ./focal.arts arts-exec firefox
- # 5. Set the default startup command
+ # 4. Set the default startup command
 ./focal.arts arts-cmd firefox
- # 6. (optional) Compress the package filesystem
+ # 5. (optional) Compress the package filesystem
 ./focal.arts arts-compress
- # 7. (optional) Rename the binary to the main application name
+ # 6. (optional) Rename the binary to the main application name
 mv focal.arts firefox.arts
- # 8. Run the application (you can also click on it in your file manager)
+ # 7. Run the application (you can also click on it in your file manager)
 ./firefox.arts
 ```
 
 ## Use pacman packages on non-arch systems
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 10G
- # 3. Install the desired application in the ubuntu subsystem
-./arch.arts arts-root pacman -S firefox --noconfirm
- # 4. Test the application
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./arch.arts arts-resize 4G
+ # 2. Install the desired application in the ubuntu subsystem
+./arch.arts arts-root 'pacman -S firefox --noconfirm'
+ # 3. Test the application
 ./arch.arts arts-exec firefox
- # 5. Set the default startup command
+ # 4. Set the default startup command
 ./arch.arts arts-cmd firefox
- # 6. (optional) Compress the package filesystem
+ # 5. (optional) Compress the package filesystem
 ./arch.arts arts-compress
- # 7. (optional) Rename the binary to the main application name
+ # 6. (optional) Rename the binary to the main application name
 mv arch.arts firefox.arts
- # 8. Run the application (you can also click on it in your file manager)
+ # 7. Run the application (you can also click on it in your file manager)
 ./firefox.arts
-```
-
-## Use AUR packages on non-arch systems
-
-```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 10G
- # 3. Use the included aur script (root password is arch)
-./arch.arts arts-root aur librewolf-bin
- # 4. Test the application
-./arch.arts arts-exec librewolf
- # 5. Set the default startup command
-./arch.arts arts-cmd librewolf
- # 6. (optional) Compress the package filesystem
-./arch.arts arts-compress
- # 7. (optional) Rename the binary to the main application name
-mv arch.arts librewolf.arts
- # 8. Run the application (you can also click on it in your file manager)
-./librewolf.arts
 ```
 
 ## Use alpine (apk) packages
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./alpine.arts arts-resize 2G
- # 3. Install firefox with apk
-./alpine.arts arts-root apk add firefox font-noto
- # 4. Test the application
+ # 2. Install firefox with apk
+./alpine.arts arts-root 'apk add firefox font-noto'
+ # 3. Test the application
 ./alpine.arts arts-exec firefox
- # 5. Set the default startup command
+ # 4. Set the default startup command
 ./alpine.arts arts-cmd firefox
- # 6. (optional) Compress the package filesystem
+ # 5. (optional) Compress the package filesystem
 ./alpine.arts arts-compress
- # 7. (optional) Rename the binary to the main application name
+ # 6. (optional) Rename the binary to the main application name
 mv alpine.arts firefox.arts
- # 8. Run the application (you can also click on it in your file manager)
+ # 7. Run the application (you can also click on it in your file manager)
 ./firefox.arts
 ```
 
 ## Use a pip package without installing pip/python
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 10G
- # 3. Install python-pip
-./focal.arts arts-root apt install -y python3-pip
- # 4. Install the pip application inside the image
-./focal.arts arts-root pip3 install yt-dlp
- # 5. Test the application
-./focal.arts arts-exec yt-dlp -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
- # 6. Set the default startup command
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./focal.arts arts-resize 4G
+ # 2. Install python-pip
+./focal.arts arts-root 'apt install -y python3-pip'
+ # 3. Install the pip application inside the image
+./focal.arts arts-root 'pip3 install yt-dlp'
+ # 4. Test the application
+./focal.arts arts-exec 'yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g'
+ # 5. Set the default startup command
 ./focal.arts arts-cmd yt-dlp
- # 7. (optional) Compress the package filesystem
+ # 6. (optional) Compress the package filesystem
 ./focal.arts arts-compress
- # 8. (optional) Rename the binary to the main application name
+ # 7. (optional) Rename the binary to the main application name
 mv focal.arts yt-dlp.arts
- # 9. Use the application (download youtube video)
+ # 8. Use the application (download youtube video)
 ./yt-dlp.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
 ```
 
 ## Use a npm package without installing npm/nodejs
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 10G
- # 3. Install npm/nodejs into the image
-./focal.arts arts-root apt install -y curl
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./focal.arts arts-resize 4G
+ # 2. Install npm/nodejs into the image
+./focal.arts arts-root 'apt install -y curl'
 ./focal.arts arts-root 'curl -fsSL https://deb.nodesource.com/setup_19.x | bash -'
-./focal.arts arts-root apt-get install -y nodejs mpv
- # 4. Install the npm application inside the image
-./focal.arts arts-root npm install -g webtorrent-cli
- # 5. Test the application
-./focal.arts arts-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
- # 6. Set the default startup command
+./focal.arts arts-root 'apt-get install -y nodejs mpv'
+ # 3. Install the npm application inside the image
+./focal.arts arts-root 'npm install -g webtorrent-cli'
+ # 4. Test the application
+./focal.arts arts-exec 'webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv'
+ # 5. Set the default startup command
 ./focal.arts arts-cmd webtorrent
- # 7. (optional) Compress the package filesystem
+ # 6. (optional) Compress the package filesystem
 ./focal.arts arts-compress
- # 8. (optional) Rename the binary to the main application name
+ # 7. (optional) Rename the binary to the main application name
 mv focal.arts webtorrent.arts
- # 9. Use the application (stream legal torrent video)
+ # 8. Use the application (stream legal torrent video)
 ./webtorrent.arts magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
 ```
 
@@ -259,20 +226,18 @@ image has no access to the host filesystem/applications.
 ## Compile an application without installing dependencies on the host
 
 ```sh
- # 1. Set the filesystem as RW
- export ARTS_RW=1
- # 2. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 10G
- # 3. Fetch the application
+ # 1. Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./focal.arts arts-resize 4G
+ # 2. Fetch the application
 git clone https://github.com/htop-dev/htop.git
- # 4. Install the required build dependencies
-./focal.arts arts-root apt install -y libncursesw5-dev autotools-dev autoconf automake build-essential
- # 5. (optional) Compress the package filesystem
+ # 3. Install the required build dependencies
+./focal.arts arts-root 'apt install -y libncursesw5-dev autotools-dev autoconf automake build-essential'
+ # 4. (optional) Compress the package filesystem
 ./focal.arts arts-compress
- # 6. Compile the application
+ # 5. Compile the application
 cd htop
 ../focal.arts arts-exec './autogen.sh && ./configure && make'
- # 7. Run the compiled application
+ # 6. Run the compiled application
 ./htop
 ```
 

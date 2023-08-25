@@ -175,6 +175,7 @@ function _perms_set()
   # Set perms
   local ifs="$IFS" 
   IFS="," 
+  #shellcheck disable=2016
   for i in $1; do
     case "$i" in
       pulseaudio)  echo 'ARTS_PERM_PULSEAUDIO="${ARTS_PERM_PULSEAUDIO:-1}"'   >> "$ARTS_FILE_PERMS" ;;
@@ -304,6 +305,7 @@ function _exec()
   declare -a _cmd
 
   # Fetch permissions
+  # shellcheck disable=1090
   source "$ARTS_FILE_PERMS"
 
   # Run in container

@@ -38,6 +38,7 @@ export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
 export ARTS_BASE="${ARTS_BASE:?ARTS_BASE is unset or null}"
 export ARTS_BIN="${ARTS_BASE}/bin"
 export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
+export ARTS_BIN_MOUNT="$ARTS_MOUNT/arts/static"
 export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_SECTOR=$((ARTS_OFFSET/512))
@@ -294,7 +295,7 @@ function _exec()
     _msg "Using bubblewrap"
 
     # Main binary
-    _cmd+=("$ARTS_BIN/bwrap")
+    _cmd+=("$ARTS_BIN_MOUNT/bwrap")
 
     # Root binding
     _cmd+=("${ARTS_ROOT:+--uid 0 --gid 0}")
@@ -376,7 +377,7 @@ function _exec()
     _msg "Using proot"
 
     # Main binary
-    _cmd+=("$ARTS_BIN/proot")
+    _cmd+=("$ARTS_BIN_MOUNT/proot")
 
     # Root binding
     _cmd+=("-0")
@@ -565,7 +566,7 @@ function main()
   "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
-  _copy_tools "proot" "fuse2fs" "e2fsck" "resize2fs" "mke2fs" "bwrap"
+  _copy_tools "resize2fs" "mke2fs"
 
   # Mount filesystem
   _mount

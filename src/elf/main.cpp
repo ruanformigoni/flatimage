@@ -129,19 +129,19 @@ int main(int argc, char** argv)
     //
     // Get base dir
     //
-    char* cstr_dir_base = getenv("ARTS_BASE");
-    if ( cstr_dir_base == NULL ) { "ARTS_BASE dir variable is empty"_err(); }
+    char* cstr_dir_base = getenv("ARTS_DIR_GLOBAL");
+    if ( cstr_dir_base == NULL ) { "ARTS_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
     // Get bin dir
     //
-    char* cstr_dir_bin = getenv("ARTS_BIN");
-    if ( cstr_dir_bin == NULL ) { "ARTS_BIN dir variable is empty"_err(); }
+    char* cstr_dir_bin = getenv("ARTS_DIR_GLOBAL_BIN");
+    if ( cstr_dir_bin == NULL ) { "ARTS_DIR_GLOBAL_BIN dir variable is empty"_err(); }
 
     //
     // Get temp dir
     //
-    char* cstr_dir_temp = getenv("ARTS_TEMP");
+    char* cstr_dir_temp = getenv("ARTS_DIR_TEMP");
     if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
     std::string str_dir_temp{cstr_dir_temp};
     std::string str_dir_mount{"{}/{}"_fmt(cstr_dir_temp,"mount")};
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     //
     // Set environment
     //
-    setenv("ARTS_MOUNT", str_dir_mount.c_str(), 1);
+    setenv("ARTS_DIR_MOUNT", str_dir_mount.c_str(), 1);
     setenv("ARTS_OFFSET", str_offset_fs, 1);
 
     //
@@ -255,10 +255,10 @@ int main(int argc, char** argv)
     // Set env variables to execve
     //
     setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
-    setenv("ARTS_BASE", str_dir_base.c_str(), 1);
-    setenv("ARTS_BIN", str_dir_bin.c_str(), 1);
-    setenv("ARTS_FILE", path_absolute.c_str(), 1);
-    setenv("ARTS_TEMP", str_dir_temp.c_str(), 1);
+    setenv("ARTS_DIR_GLOBAL", str_dir_base.c_str(), 1);
+    setenv("ARTS_DIR_GLOBAL_BIN", str_dir_bin.c_str(), 1);
+    setenv("ARTS_FILE_BINARY", path_absolute.c_str(), 1);
+    setenv("ARTS_DIR_TEMP", str_dir_temp.c_str(), 1);
 
     //
     // Launch Runner

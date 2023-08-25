@@ -17,7 +17,7 @@ PID="$$"
 export ARTS_DIST="TRUNK"
 
 # Rootless tool
-export ARTS_TOOL="${ARTS_TOOL:-bwrap}"
+export ARTS_BACKEND="${ARTS_BACKEND:-bwrap}"
 
 # Perms
 export ARTS_ROOT="${ARTS_ROOT:+1}"
@@ -34,19 +34,21 @@ export ARTS_DEBUG="${ARTS_DEBUG:+1}"
 export ARTS_NDEBUG="1"
 export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
 
-# Paths
-export ARTS_BASE="${ARTS_BASE:?ARTS_BASE is unset or null}"
-export ARTS_BIN="${ARTS_BASE}/bin"
-export ARTS_MOUNT="${ARTS_MOUNT:?ARTS_MOUNT is unset or null}"
-export ARTS_BIN_MOUNT="$ARTS_MOUNT/arts/static"
-export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
+# Filesystem offset
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_SECTOR=$((ARTS_OFFSET/512))
-export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
+
+# Paths
+export ARTS_DIR_GLOBAL="${ARTS_DIR_GLOBAL:?ARTS_DIR_GLOBAL is unset or null}"
+export ARTS_DIR_GLOBAL_BIN="${ARTS_DIR_GLOBAL}/bin"
+export ARTS_DIR_MOUNT="${ARTS_DIR_MOUNT:?ARTS_DIR_MOUNT is unset or null}"
+export ARTS_DIR_STATIC="$ARTS_DIR_MOUNT/arts/static"
+export ARTS_FILE_CONFIG="$ARTS_DIR_MOUNT/arts/config"
+export ARTS_DIR_TEMP="${ARTS_DIR_TEMP:?ARTS_DIR_TEMP is unset or null}"
 export ARTS_FILE_BINARY="${ARTS_FILE_BINARY:?ARTS_FILE_BINARY is unset or null}"
-export ARTS_FILE_BINARY_LOCATION="$(dirname "$ARTS_FILE_BINARY")"
-export ARTS_RCFILE="$ARTS_TEMP/.bashrc"
-export ARTS_FILE_PERMS="$ARTS_MOUNT"/arts/perms
+export ARTS_DIR_BINARY="$(dirname "$ARTS_FILE_BINARY")"
+export ARTS_FILE_BASHRC="$ARTS_DIR_TEMP/.bashrc"
+export ARTS_FILE_PERMS="$ARTS_DIR_MOUNT"/arts/perms
 
 # Compression
 export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-4}"
@@ -86,7 +88,7 @@ function _mount()
 {
   local mode="${ARTS_RW:-ro,}"
   local mode="${mode#1}"
-  "$ARTS_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE_BINARY" "$ARTS_MOUNT" &> "$ARTS_STREAM"
+  "$ARTS_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE_BINARY" "$ARTS_DIR_MOUNT" &> "$ARTS_STREAM"
 }
 
 # Unmount the main filesystem
@@ -95,7 +97,7 @@ function _unmount()
   # Get parent pid
   local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE_BINARY")"
 
-  fusermount -zu "$ARTS_MOUNT"
+  fusermount -zu "$ARTS_DIR_MOUNT"
 
   _wait "$ppid"
 }
@@ -107,7 +109,7 @@ function _re_mount()
   # Umount from initial mountpoint
   _unmount
   # Mount in new mountpoint
-  export ARTS_MOUNT="$1"; _mount
+  export ARTS_DIR_MOUNT="$1"; _mount
 }
 
 # Quits the program
@@ -119,12 +121,12 @@ function _die()
   local sha="$(_config_fetch "sha")"
   if [ -n "$sha" ]; then
     shopt -s nullglob
-    for i in "$ARTS_BASE"/root/"$sha"/mounts/*; do
+    for i in "$ARTS_DIR_GLOBAL"/root/"$sha"/mounts/*; do
       # Check if is mounted
       if mount | grep "$i" &>/dev/null; then
         # Get parent pid
         local ppid="$(pgrep -f "dwarfs2.*$i")"
-        fusermount -zu "$ARTS_BASE"/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+        fusermount -zu "$ARTS_DIR_GLOBAL"/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
         _wait "$ppid"
       fi
     done
@@ -144,9 +146,9 @@ function _copy_tools()
   for i; do
     local tool="$i"
 
-    if [ ! -f "$ARTS_BIN"/"$tool" ]; then
-      cp "$ARTS_MOUNT/arts/static/$tool" "$ARTS_BIN"
-      chmod +x "$ARTS_BIN"/"$tool"
+    if [ ! -f "$ARTS_DIR_GLOBAL_BIN"/"$tool" ]; then
+      cp "$ARTS_DIR_MOUNT/arts/static/$tool" "$ARTS_DIR_GLOBAL_BIN"
+      chmod +x "$ARTS_DIR_GLOBAL_BIN"/"$tool"
     fi
   done
 
@@ -217,9 +219,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
-  "$ARTS_BIN"/resize2fs "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" "$1"
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_DIR_GLOBAL_BIN"/resize2fs "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" "$1"
+  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
 
   # Mount
   _mount
@@ -236,23 +238,23 @@ function _rebuild()
   rm "$ARTS_FILE_BINARY"
 
   # Copy startup binary
-  cp "$ARTS_BIN/main" "$ARTS_FILE_BINARY"
+  cp "$ARTS_DIR_GLOBAL_BIN/main" "$ARTS_FILE_BINARY"
 
   # Append tools
-  cat "$ARTS_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE_BINARY"
+  cat "$ARTS_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE_BINARY"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE_BINARY" | awk '{print $1}')"
 
   # Create filesystem
-  truncate -s "$1" "$ARTS_TEMP/image.arts"
-  "$ARTS_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
+  truncate -s "$1" "$ARTS_DIR_TEMP/image.arts"
+  "$ARTS_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_DIR_TEMP/image.arts"
 
   # Append filesystem to binary
-  cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE_BINARY"
+  cat "$ARTS_DIR_TEMP/image.arts" >> "$ARTS_FILE_BINARY"
 
   # Remove filesystem
-  rm "$ARTS_TEMP/image.arts"
+  rm "$ARTS_DIR_TEMP/image.arts"
 
   # Re-mount
   _mount
@@ -274,15 +276,15 @@ function _exec()
   _msg "sha: $sha"
 
   # Mount dwarfs files if exist
-  [ -f "$ARTS_BIN/dwarfs" ]  || cp "$ARTS_MOUNT/arts/static/dwarfs" "$ARTS_BIN"/dwarfs
-  chmod +x "$ARTS_BIN/dwarfs"
+  [ -f "$ARTS_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$ARTS_DIR_MOUNT/arts/static/dwarfs" "$ARTS_DIR_GLOBAL_BIN"/dwarfs
+  chmod +x "$ARTS_DIR_GLOBAL_BIN/dwarfs"
 
   # shellcheck disable=2044
-  for i in $(find "$ARTS_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
+  for i in $(find "$ARTS_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
-    local fs="$ARTS_MOUNT/$i"
-    local mp="$ARTS_BASE/root/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
-    "$ARTS_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
+    local fs="$ARTS_DIR_MOUNT/$i"
+    local mp="$ARTS_DIR_GLOBAL/root/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
+    "$ARTS_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
   # Export variables to container
@@ -292,12 +294,12 @@ function _exec()
   fi
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
-  tee "$ARTS_RCFILE" &>/dev/null <<- 'EOF'
+  tee "$ARTS_FILE_BASHRC" &>/dev/null <<- 'EOF'
     export PS1="(arts@$(echo "$ARTS_DIST" | tr '[:upper:]' '[:lower:]')) → "
 	EOF
 
   # Remove override to avoid problems with apt
-  [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_MOUNT/var/lib/dpkg/statoverride"
+  [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_DIR_MOUNT/var/lib/dpkg/statoverride"
 
   declare -a _cmd
 
@@ -305,17 +307,17 @@ function _exec()
   source "$ARTS_FILE_PERMS"
 
   # Run in container
-  if [[ "$ARTS_TOOL" = "bwrap" ]]; then
+  if [[ "$ARTS_BACKEND" = "bwrap" ]]; then
     _msg "Using bubblewrap"
 
     # Main binary
-    _cmd+=("$ARTS_BIN_MOUNT/bwrap")
+    _cmd+=("$ARTS_DIR_STATIC/bwrap")
 
     # Root binding
     _cmd+=("${ARTS_ROOT:+--uid 0 --gid 0}")
 
     # Path to subsystem
-    _cmd+=("--bind \"$ARTS_MOUNT\" /")
+    _cmd+=("--bind \"$ARTS_DIR_MOUNT\" /")
 
     # User home
     _cmd+=("--bind \"$HOME\" \"$HOME\"")
@@ -387,17 +389,17 @@ function _exec()
     [ ! -f "/etc/group"         ] || _cmd+=('--bind "/etc/group"         "/etc/group"')
     [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
     [ ! -f "/etc/resolv.conf"   ] || _cmd+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')
-  else
+  elif [[ "$ARTS_BACKEND" = "proot" ]]; then
     _msg "Using proot"
 
     # Main binary
-    _cmd+=("$ARTS_BIN_MOUNT/proot")
+    _cmd+=("$ARTS_DIR_STATIC/proot")
 
     # Root binding
     _cmd+=("-0")
 
     # Path to subsystem
-    _cmd+=("-r \"$ARTS_MOUNT\"")
+    _cmd+=("-r \"$ARTS_DIR_MOUNT\"")
 
     # User home
     _cmd+=("-b \"$HOME\"")
@@ -467,6 +469,8 @@ function _exec()
     [ ! -f "/etc/group"         ] || _cmd+=('-b "/etc/group"')
     [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('-b "/etc/nsswitch.conf"')
     [ ! -f "/etc/resolv.conf"   ] || _cmd+=('-b "/etc/resolv.conf"')
+  else
+    _die "Invalid backend $ARTS_BACKEND"
   fi
 
   # Shell
@@ -482,14 +486,14 @@ function _compress()
   [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
 
   # Copy compressor to binary dir
-  [ -f "$ARTS_BIN/mkdwarfs" ]  || cp "$ARTS_MOUNT/arts/static/mkdwarfs" "$ARTS_BIN"/mkdwarfs
-  chmod +x "$ARTS_BIN/mkdwarfs"
+  [ -f "$ARTS_DIR_GLOBAL_BIN/mkdwarfs" ]  || cp "$ARTS_DIR_MOUNT/arts/static/mkdwarfs" "$ARTS_DIR_GLOBAL_BIN"/mkdwarfs
+  chmod +x "$ARTS_DIR_GLOBAL_BIN/mkdwarfs"
 
   # Remove apt lists and cache
-  rm -rf "$ARTS_MOUNT"/var/{lib/apt/lists,cache}
+  rm -rf "$ARTS_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$ARTS_TEMP/dir_compressed"; mkdir "$dir_compressed"
+  local dir_compressed="$ARTS_DIR_TEMP/dir_compressed"; mkdir "$dir_compressed"
 
   # Get SHA and save to re-mount (used as unique identifier)
   local sha="$(sha256sum "$ARTS_FILE_BINARY" | awk '{print $1}')"
@@ -498,19 +502,19 @@ function _compress()
 
   # Compress selected directories
   for i in ${ARTS_COMPRESSION_DIRS}; do
-    local target="$ARTS_MOUNT/$i"
+    local target="$ARTS_DIR_MOUNT/$i"
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
-    "$ARTS_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
+    "$ARTS_DIR_GLOBAL_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
-    ln -sf "$ARTS_BASE/root/$sha/mounts/$i" "${dir_compressed}/${i}"
+    ln -sf "$ARTS_DIR_GLOBAL/root/$sha/mounts/$i" "${dir_compressed}/${i}"
   done
 
 
   # Remove remaining files from dev
-  rm -rf "${ARTS_MOUNT:?"Empty ARTS_MOUNT"}"/dev
+  rm -rf "${ARTS_DIR_MOUNT:?"Empty ARTS_DIR_MOUNT"}"/dev
 
   # Move files to temporary directory
-  for i in "$ARTS_MOUNT"/{arts,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
+  for i in "$ARTS_DIR_MOUNT"/{arts,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
     { mv "$i" "$dir_compressed" || true; } &>"$ARTS_STREAM"
   done
 
@@ -532,26 +536,26 @@ function _compress()
   _rebuild "$size_new"K "$dir_compressed"
 
   # Remove mount dirs
-  rm -rf "${ARTS_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
+  rm -rf "${ARTS_DIR_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
 
   # Create required mount points if not exists
-  mkdir -p "$ARTS_MOUNT"/{tmp,proc,sys,dev,run,home}
+  mkdir -p "$ARTS_DIR_MOUNT"/{tmp,proc,sys,dev,run,home}
 }
 
 function _config_list()
 {
   while read -r i; do
     [ -z "$i" ] || echo "$i"
-  done < "$ARTS_CONFIG"
+  done < "$ARTS_FILE_CONFIG"
 }
 
 function _config_fetch()
 {
   local opt="$1"
 
-  [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
+  [ -f "$ARTS_FILE_CONFIG" ] || { echo ""; exit; }
 
-  grep -io "$opt = .*" "$ARTS_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
+  grep -io "$opt = .*" "$ARTS_FILE_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
 }
 
 function _config_set()
@@ -559,32 +563,33 @@ function _config_set()
   local opt="$1"; shift
   local entry="$opt = $*"
 
-  if grep "$opt" "$ARTS_CONFIG" &>"$ARTS_STREAM"; then
-    sed -i "s|$opt =.*|$entry|" "$ARTS_CONFIG"
+  if grep "$opt" "$ARTS_FILE_CONFIG" &>"$ARTS_STREAM"; then
+    sed -i "s|$opt =.*|$entry|" "$ARTS_FILE_CONFIG"
   else
-    echo "$entry" >> "$ARTS_CONFIG"
+    echo "$entry" >> "$ARTS_FILE_CONFIG"
   fi
 }
 
 function main()
 {
-  _msg "ARTS_RO          : $ARTS_RO"
-  _msg "ARTS_RW          : $ARTS_RW"
-  _msg "ARTS_STREAM      : $ARTS_STREAM"
-  _msg "ARTS_ROOT        : $ARTS_ROOT"
-  _msg "ARTS_NORM        : $ARTS_NORM"
-  _msg "ARTS_DEBUG       : $ARTS_DEBUG"
-  _msg "ARTS_NDEBUG      : $ARTS_NDEBUG"
-  _msg "ARTS_BASE        : $ARTS_BASE"
-  _msg "ARTS_BIN         : $ARTS_BIN"
-  _msg "ARTS_OFFSET      : $ARTS_OFFSET"
-  _msg "ARTS_MOUNT       : $ARTS_MOUNT"
-  _msg "ARTS_TEMP        : $ARTS_TEMP"
-  _msg "ARTS_FILE_BINARY : $ARTS_FILE_BINARY"
-  _msg '$*               : '"$*"
+  _msg "ARTS_OFFSET         : $ARTS_OFFSET"
+  _msg "ARTS_RO             : $ARTS_RO"
+  _msg "ARTS_RW             : $ARTS_RW"
+  _msg "ARTS_STREAM         : $ARTS_STREAM"
+  _msg "ARTS_ROOT           : $ARTS_ROOT"
+  _msg "ARTS_NORM           : $ARTS_NORM"
+  _msg "ARTS_DEBUG          : $ARTS_DEBUG"
+  _msg "ARTS_NDEBUG         : $ARTS_NDEBUG"
+  _msg "ARTS_DIR_GLOBAL     : $ARTS_DIR_GLOBAL"
+  _msg "ARTS_DIR_GLOBAL_BIN : $ARTS_DIR_GLOBAL_BIN"
+  _msg "ARTS_DIR_MOUNT      : $ARTS_DIR_MOUNT"
+  _msg "ARTS_DIR_TEMP       : $ARTS_DIR_TEMP"
+  _msg "ARTS_DIR_BINARY     : $ARTS_DIR_BINARY"
+  _msg "ARTS_FILE_BINARY    : $ARTS_FILE_BINARY"
+  _msg '$*                  : '"$*"
 
   # Check filesystem
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
   _copy_tools "resize2fs" "mke2fs"
@@ -598,7 +603,7 @@ function main()
   fi
 
   # Check if config exists, else try to touch if mounted as RW
-  [ -f "$ARTS_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_CONFIG"; }
+  [ -f "$ARTS_FILE_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_FILE_CONFIG"; }
 
   # Check if custom home directory is set
   local home="$(_config_fetch "home")"
@@ -626,7 +631,7 @@ function main()
     esac
   else
     local default_cmd="$(_config_fetch "cmd")"
-    _exec  "${default_cmd:-/bin/bash --rcfile "$ARTS_RCFILE"}" "$*"
+    _exec  "${default_cmd:-/bin/bash --rcfile "$ARTS_FILE_BASHRC"}" "$*"
   fi
 
 }

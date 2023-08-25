@@ -104,7 +104,7 @@ Avaliable options:
 
 ### Configurable
 
-* `ARTS_TOOL`: Back-end to use, default is `bwrap`, `proot` is also supported.
+* `ARTS_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
 compression, default is 50000 (50MB).
@@ -114,19 +114,22 @@ compression, default is 50000 (50MB).
 ### Read-Only
 
 * `ARTS_FILE_BINARY`: The path to the executed binary file.
-* `ARTS_FILE_BINARY_LOCATION`: The path to the directory of the executed binary file.
-* `ARTS_TEMP`: Location of the temporary runtime directory.
-* `ARTS_MOUNT`: Location of the runtime arts mountpoint.
+* `ARTS_DIR_BINARY`: The path to the directory of the executed binary file.
+* `ARTS_DIR_TEMP`: Location of the temporary runtime directory.
+* `ARTS_DIR_MOUNT`: Location of the runtime arts mountpoint.
+* `ARTS_MAIN_OFFSET`: Shows filesystem offset and exits.
 
 
 The default path of `ARTS` temporary files is `/tmp/arts`.
 
 ## Configure
 
+### HOME directory
+
 It is possible to change the default home path with `arts-config-set home`,
 e.g.:
 
-```sh
+```bash
 # Default, uses the host's home directory
 ./arch.arts arts-config-set home '$HOME'
 # Use the directory where the arts binary is located / arch.home, if called from
@@ -135,6 +138,19 @@ e.g.:
 # You can use subshells to compute the path, in this case it computes the
 # directory where the arts binary is in, same as "$ARTS_FILE_LOCATION"
 ./arch.arts arts-config-set home '"$(dirname "$ARTS_FILE")"/arch.home'
+```
+
+### Backend
+
+Besides the environment variable `ARTS_BACKEND`, it is possible to use the
+`arts-config-set backend` to set the default tool. The environment variable
+always takes precedence if defined.
+
+```bash
+# Uses bwrap as the backend (default)
+./arch.arts arts-config-set backend "bwrap"
+# Uses proot as the backend
+./arch.arts arts-config-set backend "proot"
 ```
 
 # Use cases
@@ -172,6 +188,8 @@ mv focal.arts firefox.arts
 ./arch.arts arts-resize 4G
  # Install the desired application in the ubuntu subsystem
 ./arch.arts arts-root 'pacman -S firefox --noconfirm'
+ # Set the desired permissions (you can also list them with arts-perms-list)
+./arch.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
  # Test the application
 ./arch.arts arts-exec firefox
  # Set the default startup command
@@ -191,6 +209,8 @@ mv arch.arts firefox.arts
 ./alpine.arts arts-resize 2G
  # Install firefox with apk
 ./alpine.arts arts-root 'apk add firefox font-noto'
+ # Set the desired permissions (you can also list them with arts-perms-list)
+./alpine.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
  # Test the application
 ./alpine.arts arts-exec firefox
  # Set the default startup command

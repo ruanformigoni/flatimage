@@ -43,7 +43,8 @@ export ARTS_CONFIG="$ARTS_MOUNT/arts/arts.cfg"
 export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
 export ARTS_SECTOR=$((ARTS_OFFSET/512))
 export ARTS_TEMP="${ARTS_TEMP:?ARTS_TEMP is unset or null}"
-export ARTS_FILE="${ARTS_FILE:?ARTS_FILE is unset or null}"
+export ARTS_FILE_BINARY="${ARTS_FILE_BINARY:?ARTS_FILE_BINARY is unset or null}"
+export ARTS_FILE_BINARY_LOCATION="$(dirname "$ARTS_FILE_BINARY")"
 export ARTS_RCFILE="$ARTS_TEMP/.bashrc"
 export ARTS_FILE_PERMS="$ARTS_MOUNT"/arts/perms
 
@@ -85,14 +86,14 @@ function _mount()
 {
   local mode="${ARTS_RW:-ro,}"
   local mode="${mode#1}"
-  "$ARTS_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE" "$ARTS_MOUNT" &> "$ARTS_STREAM"
+  "$ARTS_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE_BINARY" "$ARTS_MOUNT" &> "$ARTS_STREAM"
 }
 
 # Unmount the main filesystem
 function _unmount()
 {
   # Get parent pid
-  local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE")"
+  local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE_BINARY")"
 
   fusermount -zu "$ARTS_MOUNT"
 
@@ -216,9 +217,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
-  "$ARTS_BIN"/resize2fs "$ARTS_FILE"\?offset="$ARTS_OFFSET" "$1"
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
+  "$ARTS_BIN"/resize2fs "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" "$1"
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
 
   # Mount
   _mount
@@ -232,23 +233,23 @@ function _rebuild()
   _unmount
 
   # Erase current file
-  rm "$ARTS_FILE"
+  rm "$ARTS_FILE_BINARY"
 
   # Copy startup binary
-  cp "$ARTS_BIN/main" "$ARTS_FILE"
+  cp "$ARTS_BIN/main" "$ARTS_FILE_BINARY"
 
   # Append tools
-  cat "$ARTS_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE"
+  cat "$ARTS_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE_BINARY"
 
   # Update offset
-  ARTS_OFFSET="$(du -sb "$ARTS_FILE" | awk '{print $1}')"
+  ARTS_OFFSET="$(du -sb "$ARTS_FILE_BINARY" | awk '{print $1}')"
 
   # Create filesystem
   truncate -s "$1" "$ARTS_TEMP/image.arts"
   "$ARTS_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_TEMP/image.arts"
 
   # Append filesystem to binary
-  cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE"
+  cat "$ARTS_TEMP/image.arts" >> "$ARTS_FILE_BINARY"
 
   # Remove filesystem
   rm "$ARTS_TEMP/image.arts"
@@ -491,7 +492,7 @@ function _compress()
   local dir_compressed="$ARTS_TEMP/dir_compressed"; mkdir "$dir_compressed"
 
   # Get SHA and save to re-mount (used as unique identifier)
-  local sha="$(sha256sum "$ARTS_FILE" | awk '{print $1}')"
+  local sha="$(sha256sum "$ARTS_FILE_BINARY" | awk '{print $1}')"
   _config_set "sha" "$sha"
   _msg "sha: $sha"
 
@@ -537,13 +538,20 @@ function _compress()
   mkdir -p "$ARTS_MOUNT"/{tmp,proc,sys,dev,run,home}
 }
 
+function _config_list()
+{
+  while read -r i; do
+    [ -z "$i" ] || echo "$i"
+  done < "$ARTS_CONFIG"
+}
+
 function _config_fetch()
 {
   local opt="$1"
 
   [ -f "$ARTS_CONFIG" ] || { echo ""; exit; }
 
-  grep -io "$opt = .*" "$ARTS_CONFIG" | awk '{print $3}'
+  grep -io "$opt = .*" "$ARTS_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
 }
 
 function _config_set()
@@ -572,11 +580,11 @@ function main()
   _msg "ARTS_OFFSET      : $ARTS_OFFSET"
   _msg "ARTS_MOUNT       : $ARTS_MOUNT"
   _msg "ARTS_TEMP        : $ARTS_TEMP"
-  _msg "ARTS_FILE        : $ARTS_FILE"
+  _msg "ARTS_FILE_BINARY : $ARTS_FILE_BINARY"
   _msg '$*               : '"$*"
 
   # Check filesystem
-  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+  "$ARTS_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
 
   # Copy tools
   _copy_tools "resize2fs" "mke2fs"
@@ -592,6 +600,14 @@ function main()
   # Check if config exists, else try to touch if mounted as RW
   [ -f "$ARTS_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_CONFIG"; }
 
+  # Check if custom home directory is set
+  local home="$(_config_fetch "home")"
+  # # Expand
+  home="$(eval echo "$home")"
+  # # Set & show on debug mode
+  [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
+  _msg "ARTS_HOME        : $HOME"
+
   if [[ "${1:-}" =~ arts-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in
       "compress") _compress ;;
@@ -601,6 +617,8 @@ function main()
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
+      "config-list") _config_list ;;
+      "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
       "help") _help;;

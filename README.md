@@ -102,6 +102,8 @@ Avaliable options:
 
 ## Environment Variables
 
+### Configurable
+
 * `ARTS_TOOL`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
@@ -109,8 +111,31 @@ compression, default is 50000 (50MB).
 * `ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
 * `ARTS_DEBUG`: If defined to 1, print debug messages.
 
+### Read-Only
+
+* `ARTS_FILE_BINARY`: The path to the executed binary file.
+* `ARTS_FILE_BINARY_LOCATION`: The path to the directory of the executed binary file.
+* `ARTS_TEMP`: Location of the temporary runtime directory.
+* `ARTS_MOUNT`: Location of the runtime arts mountpoint.
+
+
 The default path of `ARTS` temporary files is `/tmp/arts`.
 
+## Configure
+
+It is possible to change the default home path with `arts-config-set home`,
+e.g.:
+
+```sh
+# Default, uses the host's home directory
+./arch.arts arts-config-set home '$HOME'
+# Use the directory where the arts binary is located / arch.home, if called from
+# $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
+./arch.arts arts-config-set home '"$ARTS_FILE_LOCATION"/arch.home'
+# You can use subshells to compute the path, in this case it computes the
+# directory where the arts binary is in, same as "$ARTS_FILE_LOCATION"
+./arch.arts arts-config-set home '"$(dirname "$ARTS_FILE")"/arch.home'
+```
 
 # Use cases
 

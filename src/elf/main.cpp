@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 
   // Get arguments from 1..n-1
   std::string str_args;
-  std::for_each(argv+1, argv+argc, [&](char* p) { str_args.append(fmt::format("\"{}\" ", p)); });
+  std::for_each(argv+1, argv+argc, [&](char* p) { str_args.append(fmt::format("'{}' ", p)); });
   // }}}
 
   // Launch program {{{

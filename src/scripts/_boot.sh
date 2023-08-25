@@ -152,6 +152,17 @@ function _copy_tools()
   _unmount
 }
 
+# List permissions of sandbox
+function _perms_list()
+{
+  ! grep -i "ARTS_PERM_PULSEAUDIO" "$ARTS_FILE_PERMS"  &>/dev/null || echo "pulseaudio"
+  ! grep -i "ARTS_PERM_WAYLAND" "$ARTS_FILE_PERMS"     &>/dev/null || echo "wayland"
+  ! grep -i "ARTS_PERM_X11" "$ARTS_FILE_PERMS"         &>/dev/null || echo "x11"
+  ! grep -i "ARTS_PERM_SESSION_BUS" "$ARTS_FILE_PERMS" &>/dev/null || echo "session_bus"
+  ! grep -i "ARTS_PERM_SYSTEM_BUS" "$ARTS_FILE_PERMS"  &>/dev/null || echo "system_bus"
+  ! grep -i "ARTS_PERM_GPU" "$ARTS_FILE_PERMS"         &>/dev/null || echo "gpu"
+}
+
 # Set permissions of sandbox
 function _perms_set()
 {
@@ -189,9 +200,10 @@ function _help()
   :    - E.g.: ./focal.arts arts-mount ./mountpoint
   :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
-  :- arts-perms: Set the permission for the container, available options are:
+  :- arts-perms-set: Set the permission for the container, available options are:
   :    pulseaudio, wayland, x11, session_bus, system_bus, gpu
   :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
+  :- arts-perms-list: List the current permissions for the container
   :- arts-help: Print this message.
 	EOF
 }
@@ -589,7 +601,8 @@ function main()
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
-      "perms") _perms_set "$2";;
+      "perms-list") _perms_list ;;
+      "perms-set") _perms_set "$2";;
       "help") _help;;
       *) _help; _die "Unknown arts command" ;;
     esac

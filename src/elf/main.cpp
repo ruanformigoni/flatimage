@@ -206,10 +206,10 @@ int main(int argc, char** argv)
     //
     // Create temp dir
     //
-    std::string str_dir_mounts = str_dir_base + "/mounts/";
-    if ( ! fs::exists(str_dir_mounts) && ! fs::create_directories(str_dir_mounts) )
+    std::string str_dir_instance = str_dir_base + "/instance/";
+    if ( ! fs::exists(str_dir_instance) && ! fs::create_directories(str_dir_instance) )
     {
-      "Failed to create directory {}"_err(str_dir_mounts);
+      "Failed to create directory {}"_err(str_dir_instance);
     }
 
     // Get some metadata for uniqueness
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
     gethostname(hostname, HOST_NAME_MAX);
     getlogin_r(username, LOGIN_NAME_MAX);
     // // Stitch all to make the temporary directory name
-    std::string str_dir_temp = str_dir_base + "/mounts/{}_{}_{}_{}"_fmt(TIMESTAMP
+    std::string str_dir_temp = str_dir_base + "/instance/{}_{}_{}_{}"_fmt(TIMESTAMP
       , std::to_string(size_self)
       , hostname
       , username);

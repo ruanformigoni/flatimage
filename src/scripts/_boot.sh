@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/tmp/arts/bin/bash
 
 ######################################################################
 # @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
@@ -47,7 +47,8 @@ export ARTS_FILE_CONFIG="$ARTS_DIR_MOUNT/arts/config"
 export ARTS_DIR_TEMP="${ARTS_DIR_TEMP:?ARTS_DIR_TEMP is unset or null}"
 export ARTS_FILE_BINARY="${ARTS_FILE_BINARY:?ARTS_FILE_BINARY is unset or null}"
 export ARTS_DIR_BINARY="$(dirname "$ARTS_FILE_BINARY")"
-export ARTS_FILE_BASHRC="$ARTS_DIR_TEMP/.bashrc"
+export ARTS_FILE_BASH="$ARTS_DIR_GLOBAL_BIN/bash"
+export BASHRC_FILE="$ARTS_DIR_TEMP/.bashrc"
 export ARTS_FILE_PERMS="$ARTS_DIR_MOUNT"/arts/perms
 
 # Compression
@@ -242,7 +243,7 @@ function _rebuild()
   cp "$ARTS_DIR_TEMP/main" "$ARTS_FILE_BINARY"
 
   # Append tools
-  cat "$ARTS_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE_BINARY"
+  cat "$ARTS_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$ARTS_FILE_BINARY"
 
   # Update offset
   ARTS_OFFSET="$(du -sb "$ARTS_FILE_BINARY" | awk '{print $1}')"
@@ -295,7 +296,7 @@ function _exec()
   fi
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
-  tee "$ARTS_FILE_BASHRC" &>/dev/null <<- 'EOF'
+  tee "$BASHRC_FILE" &>/dev/null <<- 'EOF'
     export PS1="(arts@$(echo "$ARTS_DIST" | tr '[:upper:]' '[:lower:]')) → "
 	EOF
 
@@ -476,7 +477,7 @@ function _exec()
   fi
 
   # Shell
-  _cmd+=("/bin/bash -c '$cmd'")
+  _cmd+=("$ARTS_FILE_BASH -c '$cmd'")
 
   eval "${_cmd[*]}"
 }
@@ -644,7 +645,7 @@ function main()
     esac
   else
     local default_cmd="$(_config_fetch "cmd")"
-    _exec  "${default_cmd:-/bin/bash --rcfile "$ARTS_FILE_BASHRC"}" "$*"
+    _exec  "${default_cmd:-"$ARTS_FILE_BASH"}" "$*"
   fi
 
 }

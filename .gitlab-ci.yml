@@ -90,6 +90,25 @@ fetch-dwarfs:
     reports:
       dotenv: build.env
 
+fetch-bash:
+  image: "ubuntu:jammy"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget xz-utils tar
+    - echo JOB_ID_BUILD_BASH=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p bin
+      wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/5355251/bash-linux-x86_64"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 
 build-elf:
   image: docker:latest
@@ -137,6 +156,8 @@ package-focal:
       artifacts: true
     - job: fetch-dwarfs
       artifacts: true
+    - job: fetch-bash
+      artifacts: true
     - job: fetch-proot
       artifacts: true
   artifacts:
@@ -166,6 +187,8 @@ package-arch:
       artifacts: true
     - job: fetch-dwarfs
       artifacts: true
+    - job: fetch-bash
+      artifacts: true
     - job: fetch-proot
       artifacts: true
   artifacts:
@@ -194,6 +217,8 @@ package-alpine:
     - job: fetch-bwrap
       artifacts: true
     - job: fetch-dwarfs
+      artifacts: true
+    - job: fetch-bash
       artifacts: true
     - job: fetch-proot
       artifacts: true

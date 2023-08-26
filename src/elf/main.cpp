@@ -267,6 +267,7 @@ int main(int argc, char** argv)
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "main", 0);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "bash", offset_end);
 
     //
     // Option to show offset and exit

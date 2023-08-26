@@ -121,12 +121,12 @@ function _die()
   local sha="$(_config_fetch "sha")"
   if [ -n "$sha" ]; then
     shopt -s nullglob
-    for i in "$ARTS_DIR_GLOBAL"/root/"$sha"/mounts/*; do
+    for i in "$ARTS_DIR_GLOBAL"/dwarfs/"$sha"/*; do
       # Check if is mounted
       if mount | grep "$i" &>/dev/null; then
         # Get parent pid
         local ppid="$(pgrep -f "dwarfs2.*$i")"
-        fusermount -zu "$ARTS_DIR_GLOBAL"/root/"$sha"/mounts/"$(basename "$i")" &> "$ARTS_STREAM" || true
+        fusermount -zu "$ARTS_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")" &> "$ARTS_STREAM" || true
         _wait "$ppid"
       fi
     done
@@ -284,7 +284,7 @@ function _exec()
   for i in $(find "$ARTS_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
     local fs="$ARTS_DIR_MOUNT/$i"
-    local mp="$ARTS_DIR_GLOBAL/root/$sha/mounts/${i%.dwarfs}"; mkdir -p "$mp"
+    local mp="$ARTS_DIR_GLOBAL/dwarfs/$sha/${i%.dwarfs}"; mkdir -p "$mp"
     "$ARTS_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
   done
 
@@ -508,7 +508,7 @@ function _compress()
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
     "$ARTS_DIR_GLOBAL_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
     rm -rf "$target"
-    ln -sf "$ARTS_DIR_GLOBAL/root/$sha/mounts/$i" "${dir_compressed}/${i}"
+    ln -sf "$ARTS_DIR_GLOBAL/dwarfs/$sha/$i" "${dir_compressed}/${i}"
   done
 
 

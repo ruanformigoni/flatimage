@@ -45,6 +45,12 @@ if(NOT range-v3_FOUND)
   find_package(range-v3 REQUIRED)
 endif()
 
+# Definitions
+string(TIMESTAMP TIMESTAMP "%Y%m%d%H%M%S")
+add_definitions("-DTIMESTAMP=${TIMESTAMP}")
+message(STATUS "TIMESTAMP: ${TIMESTAMP}")
+
+# Main executable
 add_executable(main main.cpp boot.h)
 target_link_libraries(main PRIVATE fmt::fmt)
 target_link_libraries(main PRIVATE range-v3::range-v3)

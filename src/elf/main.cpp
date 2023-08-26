@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <elf.h>
 #define FMT_HEADER_ONLY
 #include <fmt/ranges.h>
@@ -30,6 +31,11 @@
 #define ElfW(type) Elf64_ ## type
 #else
 #define ElfW(type) Elf32_ ## type
+#endif
+
+// Compile-time timestamp
+#ifndef TIMESTAMP
+#define TIMESTAMP "unknown"
 #endif
 
 // Unix environment variables
@@ -65,7 +71,8 @@ void write_from_offset(std::string const& f_in_str, std::string const& f_out_str
   std::ifstream f_in{f_in_str, f_in.binary | f_in.in};
   std::ofstream f_ou{f_out_str, f_ou.binary | f_ou.out};
 
-  if ( ! f_in.good() or ! f_ou.good() ) { "Failed to open startup files\n"_err(); }
+  if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_in_str); }
+  if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_out_str); }
 
   f_in.seekg(offset.second);
   auto end = f_in.tellg();
@@ -133,12 +140,6 @@ int main(int argc, char** argv)
     if ( cstr_dir_base == NULL ) { "ARTS_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
-    // Get bin dir
-    //
-    char* cstr_dir_bin = getenv("ARTS_DIR_GLOBAL_BIN");
-    if ( cstr_dir_bin == NULL ) { "ARTS_DIR_GLOBAL_BIN dir variable is empty"_err(); }
-
-    //
     // Get temp dir
     //
     char* cstr_dir_temp = getenv("ARTS_DIR_TEMP");
@@ -150,8 +151,8 @@ int main(int argc, char** argv)
     //
     // Write boot script
     //
-    std::ofstream script_boot("{}/boot"_fmt(cstr_dir_bin), std::ios::binary);
-    fs::permissions("{}/boot"_fmt(cstr_dir_bin), fs::perms::all);
+    std::ofstream script_boot("{}/boot"_fmt(cstr_dir_temp), std::ios::binary);
+    fs::permissions("{}/boot"_fmt(cstr_dir_temp), fs::perms::all);
     // -1 to exclude the trailing null byte
     script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
     script_boot.close();
@@ -165,7 +166,7 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    std::string cmd = "{}/boot {}"_fmt(cstr_dir_bin, str_args);
+    std::string cmd = "{}/boot {}"_fmt(cstr_dir_temp, str_args);
     system(cmd.c_str());
   } // }}}
   
@@ -210,7 +211,28 @@ int main(int argc, char** argv)
     {
       "Failed to create directory {}"_err(str_dir_mounts);
     }
-    std::string str_dir_temp = create_temp_dir(str_dir_base + "/mounts/");
+
+    // Get some metadata for uniqueness
+    // // Creation timestamp
+    struct stat st;
+    if (stat(path_absolute.c_str(), &st) == -1)
+    {
+      perror("stat");
+      "Failed to retrieve size of self '{}'"_err(path_absolute.c_str());
+    }
+    // // Size of self
+    off_t size_self = st.st_size;
+    // // Host & user names
+    char hostname[HOST_NAME_MAX];
+    char username[LOGIN_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    getlogin_r(username, LOGIN_NAME_MAX);
+    // // Stitch all to make the temporary directory name
+    std::string str_dir_temp = str_dir_base + "/mounts/{}_{}_{}_{}"_fmt(TIMESTAMP
+      , std::to_string(size_self)
+      , hostname
+      , username);
+    fs::create_directories(str_dir_temp);
 
     //
     // Starting offsets
@@ -242,7 +264,7 @@ int main(int argc, char** argv)
     //
     // Write binaries
     //
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "main", 0);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "main", 0);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
 
@@ -263,7 +285,7 @@ int main(int argc, char** argv)
     //
     // Launch Runner
     //
-    execve("{}/main"_fmt(str_dir_bin).c_str(), argv, environ);
+    execve("{}/main"_fmt(str_dir_temp).c_str(), argv, environ);
   }
   // }}}
 

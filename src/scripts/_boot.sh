@@ -239,7 +239,7 @@ function _rebuild()
   rm "$ARTS_FILE_BINARY"
 
   # Copy startup binary
-  cp "$ARTS_DIR_GLOBAL_BIN/main" "$ARTS_FILE_BINARY"
+  cp "$ARTS_DIR_TEMP/main" "$ARTS_FILE_BINARY"
 
   # Append tools
   cat "$ARTS_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck}  >> "$ARTS_FILE_BINARY"

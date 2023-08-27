@@ -153,9 +153,6 @@ function _create_subsystem_debootstrap()
   # Embed permissions
   cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
 
-  # Set dist
-  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="UBUNTU"/' "/tmp/$dist/arts/boot"
-
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
   chmod 777 -R "/tmp/$dist"
@@ -230,9 +227,6 @@ function _create_subsystem_alpine()
 
   # Embed permissions
   cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
-
-  # Set dist
-  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ALPINE"/' "/tmp/$dist/arts/boot"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -313,9 +307,6 @@ function _create_subsystem_arch()
 
   # Embed AUR helper
   cp "$ARTS_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
-
-  # Set dist
-  sed -i 's/ARTS_DIST="TRUNK"/ARTS_DIST="ARCH"/' ./arch/arts/boot
 
   # Remove mount dirs that may have leftover files
   rm -rf arch/{tmp,proc,sys,dev,run}

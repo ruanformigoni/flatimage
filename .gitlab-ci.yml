@@ -125,12 +125,18 @@ build-elf:
 
   script:
     - mkdir -p bin
-    - docker build . -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
-    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf
+    - docker build . --build-arg ARTS_DIST=ARCH -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-arch
+    - docker build . --build-arg ARTS_DIST=ALPINE -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-alpine
+    - docker build . --build-arg ARTS_DIST=UBUNTU -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-ubuntu
 
   artifacts:
     paths:
-      - ./bin/elf
+      - ./bin/elf-arch
+      - ./bin/elf-alpine
+      - ./bin/elf-ubuntu
     reports:
       dotenv: build.env
 
@@ -143,6 +149,8 @@ package-focal:
   script:
     # Set dist
     - dist="focal"
+    # Select elf
+    - cp ./bin/elf-ubuntu ./bin/elf
     # Build
     - ./src/scripts/_build.sh debootstrap "$dist"
     # Set env vars
@@ -174,6 +182,8 @@ package-arch:
     - pacman -S python-pip patchelf git gawk wget curl zstd xz rsync binutils --noconfirm
     - echo JOB_ID_BUILD_BS_ARCH=$CI_JOB_ID > build.env
   script:
+    # Select elf
+    - cp ./bin/elf-arch ./bin/elf
     # Build
     - ./src/scripts/_build.sh archbootstrap
     # Set env vars
@@ -205,6 +215,8 @@ package-alpine:
     - pacman -S python-pip patchelf git gawk wget curl zstd xz rsync binutils --noconfirm
     - echo JOB_ID_BUILD_BS_ALPINE=$CI_JOB_ID > build.env
   script:
+    # Select elf
+    - cp ./bin/elf-alpine ./bin/elf
     # Build
     - ./src/scripts/_build.sh alpinebootstrap
     # Set env vars

@@ -26,6 +26,11 @@ if(NOT XXD_COMMAND)
   message(FATAL_ERROR "xxd command not found")
 endif()
 
+find_program(GIT_COMMAND git)
+if(NOT GIT_COMMAND)
+  message(FATAL_ERROR "git command not found")
+endif()
+
 # Define the command to generate script.h from script.sh
 add_custom_command(
   OUTPUT boot.h
@@ -46,9 +51,19 @@ if(NOT range-v3_FOUND)
 endif()
 
 # Definitions
+## Timestamp
 string(TIMESTAMP TIMESTAMP "%Y%m%d%H%M%S")
 add_definitions("-DTIMESTAMP=${TIMESTAMP}")
 message(STATUS "TIMESTAMP: ${TIMESTAMP}")
+## Commit
+execute_process(
+  COMMAND ${GIT_COMMAND} rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DCOMMIT=\"${GIT_COMMIT_HASH}\"")
+message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
 
 # Main executable
 add_executable(main main.cpp boot.h)

@@ -159,11 +159,14 @@ int main(int argc, char** argv)
     //
     // Write boot script
     //
-    std::ofstream script_boot("{}/boot"_fmt(cstr_dir_temp), std::ios::binary);
-    fs::permissions("{}/boot"_fmt(cstr_dir_temp), fs::perms::all);
-    // -1 to exclude the trailing null byte
-    script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
-    script_boot.close();
+    if ( std::string str_boot_file = "{}/boot"_fmt(cstr_dir_temp); ! fs::exists(str_boot_file) )
+    {
+      std::ofstream script_boot(str_boot_file, std::ios::binary);
+      fs::permissions(str_boot_file, fs::perms::all);
+      // -1 to exclude the trailing null byte
+      script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
+      script_boot.close();
+    } // if
 
     //
     // Set environment

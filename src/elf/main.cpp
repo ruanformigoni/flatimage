@@ -145,13 +145,16 @@ int main(int argc, char** argv)
     if ( cstr_dir_base == NULL ) { "ARTS_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
-    // Get temp dir
+    // Create temp dir
     //
+    //// Fetch tempdir location
     char* cstr_dir_temp = getenv("ARTS_DIR_TEMP");
     if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
-    std::string str_dir_temp{cstr_dir_temp};
-    std::string str_dir_mount{"{}/{}/{}"_fmt(cstr_dir_temp, "mount", create_temp_dir(""))};
-    fs::create_directories(str_dir_mount);
+    //// Create prefix as $ARTS_DIR_TEMP/mount
+    std::string str_dir_mount_prefix{"{}/{}/"_fmt(cstr_dir_temp, "mount")};
+    fs::create_directories(str_dir_mount_prefix);
+    //// Create temp dir to mount filesystems as $ARTS_DIR_TEMP/mount/XXXXXX
+    std::string str_dir_mount = create_temp_dir(str_dir_mount_prefix);
 
     //
     // Write boot script

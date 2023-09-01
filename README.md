@@ -10,22 +10,33 @@
 - [Usage](#usage)
   - [Options](#options)
   - [Environment Variables](#environment-variables)
+    - [Configurable](#configurable)
+    - [Read-Only](#read-only)
+  - [Configure](#configure)
+    - [HOME directory](#home-directory)
+    - [Backend](#backend)
+- [Uses bwrap as the backend (default)](#uses-bwrap-as-the-backend-default)
+- [Uses proot as the backend](#uses-proot-as-the-backend)
 - [Use cases](#use-cases)
-  - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
   - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
+  - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
   - [Use alpine (apk) packages](#use-alpine-apk-packages)
   - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
-  - [Use a npm package without installing npm/nodejs](#use-a-npm-package-without-installing-npmnodejs)
+  - [Use an npm package without installing npm/nodejs](#use-an-npm-package-without-installing-npmnodejs)
+    - [Outside the container](#outside-the-container)
+    - [Inside the container](#inside-the-container)
   - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
-  - [Further Considerations](#further-considerations)
-  - [Motivations](#motivations)
+    - [Outside the container](#outside-the-container)
+    - [Inside the container](#inside-the-container)
+- [Further Considerations](#further-considerations)
+- [Motivations](#motivations)
 - [Related Projects](#related-projects)
 
 ## What is Arts?
 
-Application Root Subsystem (Arts), is the bastard child of
-[Flatpak](https://github.com/flatpak/flatpak) and
-[AppImage](https://github.com/AppImage/AppImageKit).
+Application Root Subsystem (Arts), is a hybrid of
+[Flatpak](https://github.com/flatpak/flatpak) sandboxing with
+[AppImage](https://github.com/AppImage/AppImageKit) portability.
 
 Arts use case is twofold:
 
@@ -80,6 +91,11 @@ You can get the latest release [here](https://gitlab.com/formigoni/arts/-/releas
 
 # Usage
 
+You can enter the container simply by executing the downloaded image, e.g.,
+`./arch.arts`, which should give you a prompt like this `(arts@arch) →`.
+Remember to resize the image as shown in the examples before installing programs
+on it, else there won't be enough space for it.
+
 ## Options
 
 ```
@@ -94,9 +110,10 @@ Avaliable options:
     - E.g.: ./focal.arts arts-mount ./mountpoint
 - arts-xdg: Same as the 'arts-mount' command, however it opens the
     mount directory with xdg-open
-- arts-perms: Set the permission for the container, available options are:
+- arts-perms-set: Set the permission for the container, available options are:
     pulseaudio, wayland, x11, session_bus, system_bus, gpu
     - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
+- arts-perms-list: List the current permissions for the container
 - arts-help: Print this message.
 ```
 
@@ -160,36 +177,15 @@ the [releases](https://gitlab.com/formigoni/art/-/releases) page, i.e., `focal
 (ubuntu)`, `alpine` or `arch`. The archive is compressed, extract it and use it
 as shown in the following examples.
 
-## Use apt packages in non-debian systems
-
-```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 4G
- # Install the desired application in the ubuntu subsystem
-./focal.arts arts-root 'apt install -y firefox'
- # Set the desired permissions (you can also list them with arts-perms-list)
- ./focal.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
- # Test the application
-./focal.arts arts-exec firefox
- # Set the default startup command
-./focal.arts arts-cmd firefox
- # (optional) Compress the package filesystem
-./focal.arts arts-compress
- # (optional) Rename the binary to the main application name
-mv focal.arts firefox.arts
- # Run the application (you can also click on it in your file manager)
-./firefox.arts
-```
-
 ## Use pacman packages on non-arch systems
 
 ```sh
  # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./arch.arts arts-resize 4G
- # Install the desired application in the ubuntu subsystem
-./arch.arts arts-root 'pacman -S firefox --noconfirm'
  # Set the desired permissions (you can also list them with arts-perms-list)
 ./arch.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Install the desired application in the ubuntu subsystem
+./arch.arts arts-root fakechroot pacman -S firefox --noconfirm
  # Test the application
 ./arch.arts arts-exec firefox
  # Set the default startup command
@@ -197,9 +193,30 @@ mv focal.arts firefox.arts
  # (optional) Compress the package filesystem
 ./arch.arts arts-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts firefox.arts
+mv arch.arts firefox
  # Run the application (you can also click on it in your file manager)
-./firefox.arts
+./firefox
+```
+
+## Use apt packages in non-debian systems
+
+```sh
+ # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./focal.arts arts-resize 4G
+ # Set the desired permissions (you can also list them with arts-perms-list)
+ ./focal.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Install the desired application in the ubuntu subsystem
+./focal.arts arts-root apt install -y firefox
+ # Test the application
+./focal.arts arts-exec firefox
+ # Set the default startup command
+./focal.arts arts-cmd firefox
+ # (optional) Compress the package filesystem
+./focal.arts arts-compress
+ # (optional) Rename the binary to the main application name
+mv focal.arts firefox
+ # Run the application (you can also click on it in your file manager)
+./firefox
 ```
 
 ## Use alpine (apk) packages
@@ -207,10 +224,10 @@ mv arch.arts firefox.arts
 ```sh
  # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./alpine.arts arts-resize 2G
- # Install firefox with apk
-./alpine.arts arts-root 'apk add firefox font-noto'
  # Set the desired permissions (you can also list them with arts-perms-list)
 ./alpine.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Install firefox with apk
+./alpine.arts arts-root apk add firefox font-noto
  # Test the application
 ./alpine.arts arts-exec firefox
  # Set the default startup command
@@ -218,24 +235,47 @@ mv arch.arts firefox.arts
  # (optional) Compress the package filesystem
 ./alpine.arts arts-compress
  # (optional) Rename the binary to the main application name
-mv alpine.arts firefox.arts
+mv alpine.arts firefox
  # Run the application (you can also click on it in your file manager)
-./firefox.arts
+./firefox
 ```
 
 ## Use a pip package without installing pip/python
 
-### Example with focal
+__Archlinux__
+
+```sh
+ # Set the maximum filesystem size (use du -sh ./arch.arts to see actual size)
+./arch.arts arts-resize 4G
+ # Install python-pipx
+ ./arch.arts arts-root fakechroot pacman -S python-pipx ffmpeg
+ # Install the pip application inside the image
+ export PIPX_HOME=/opt/pipx
+ export PIPX_BIN_DIR=/usr/local/bin
+ ./arch.arts arts-root fakechroot pipx install yt-dlp
+ # Test the application
+./arch.arts arts-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
+ # Set the default startup command
+./arch.arts arts-cmd yt-dlp
+ # (optional) Compress the package filesystem
+./arch.arts arts-compress
+ # (optional) Rename the binary to the main application name
+mv arch.arts yt-dlp
+ # Use the application (download youtube video)
+./yt-dlp -f 'bestvideo+bestaudio' 'https://www.youtube.com/watch?v=srnyVw-OR0g'
+```
+
+__Ubuntu__
 
 ```sh
  # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./focal.arts arts-resize 4G
  # Install python-pip
-./focal.arts arts-root 'apt install -y python3-pip ffmpeg'
+./focal.arts arts-root apt install -y python3-pip ffmpeg
  # Install the pip application inside the image
-./focal.arts arts-root 'pip3 install yt-dlp'
+./focal.arts arts-root pip3 install yt-dlp
  # Test the application
-./focal.arts arts-exec 'yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g'
+./focal.arts arts-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
  # Set the default startup command
 ./focal.arts arts-cmd yt-dlp
  # (optional) Compress the package filesystem
@@ -246,43 +286,52 @@ mv focal.arts yt-dlp.arts
 ./yt-dlp.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
 ```
 
-### Example with arch
+## Use an npm package without installing npm/nodejs
+
+### Outside the container
+
+__Archlinux__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./arch.arts to see actual size)
+ # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./arch.arts arts-resize 4G
- # Install python-pip
- ./arch.arts arts-root 'pacman -S python-pipx ffmpeg'
- # Install the pip application inside the image
-./arch.arts arts-root 'PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install yt-dlp'
+ # Set the desired permissions (so vlc can play from inside the container)
+./arch.arts arts-perms-set x11,pulseaudio
+ # Install npm/nodejs into the image
+ ./arch.arts arts-root fakechroot pacman -S nodejs npm vlc
+ # Configure prefix to the root of the image
+ ./arch.arts arts-exec npm config set prefix -g '/usr/local/'
+ # Install the npm application inside the image
+ ./arch.arts arts-root fakechroot npm install -g webtorrent-cli
  # Test the application
-./arch.arts arts-exec 'yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g'
+./arch.arts arts-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
  # Set the default startup command
-./arch.arts arts-cmd yt-dlp
+./arch.arts arts-cmd webtorrent
  # (optional) Compress the package filesystem
 ./arch.arts arts-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts yt-dlp.arts
- # Use the application (download youtube video)
-./yt-dlp.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
+mv arch.arts webtorrent
+ # Use the application (stream legal torrent video)
+./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
 ```
 
-## Use an npm package without installing npm/nodejs
-
-Currently only works on the `proot` backend
+__Ubuntu__
 
 ```sh
  # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
 ./focal.arts arts-resize 4G
+ # Set the desired permissions (so vlc can play from inside the container)
+./focal.arts arts-perms-set x11,pulseaudio
  # Install npm/nodejs into the image
-./focal.arts arts-root 'apt install -y curl'
-./focal.arts arts-root 'curl -fsSL https://deb.nodesource.com/setup_19.x | bash -'
-./focal.arts arts-root 'apt-get install -y nodejs mpv'
+./focal.arts arts-root apt install -y curl
+./focal.arts arts-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
+./focal.arts arts-root apt-get install -y nodejs mpv
+ # Configure prefix to the root of the image
+./focal.arts arts-root npm config set prefix -g /usr/local
  # Install the npm application inside the image
-./focal.arts arts-root 'npm config set prefix /usr/local'
-./focal.arts arts-root 'npm install -g webtorrent-cli'
+./focal.arts arts-root npm install -g webtorrent-cli
  # Test the application
-./focal.arts arts-exec 'webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv'
+./focal.arts arts-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
  # Set the default startup command
 ./focal.arts arts-cmd webtorrent
  # (optional) Compress the package filesystem
@@ -293,28 +342,83 @@ mv focal.arts webtorrent.arts
 ./webtorrent.arts magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
 ```
 
-Note that step 2 also installed mpv inside the image, it is required since the
-image has no access to the host filesystem/applications.
+Note that vlc/mpv was installed inside the image, it is required since the image
+has no access to the host filesystem/applications.
 
-## Compile an application without installing dependencies on the host
+### Inside the container
 
 ```sh
  # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 4G
+./arch.arts arts-resize 4G
+ # Set the desired permissions (so vlc can play from inside the container)
+./arch.arts arts-perms-set x11,pulseaudio
+ # Enter the container as root
+ARTS_ROOT=1 ./arch.arts
+ # Install npm/nodejs into the image
+(arts@arch) → fakechroot pacman -S nodejs npm vlc
+ # Configure prefix to the root of the image
+(arts@arch) → npm config set prefix -g '/usr/local/'
+ # Install the npm application inside the image
+(arts@arch) → fakechroot npm install -g webtorrent-cli
+ # Press CTRL+D or type exit to quit the container
+ # Enter the container as an unprivileged user
+./arch.arts
+ # Test the application
+(arts@arch) → webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
+ # Press CTRL+D or type exit to quit the container
+ # Set the default startup command
+./arch.arts arts-cmd webtorrent
+ # (optional) Compress the package filesystem
+./arch.arts arts-compress
+ # (optional) Rename the binary to the main application name
+mv arch.arts webtorrent
+ # Use the application (stream legal torrent video)
+./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
+```
+
+## Compile an application without installing dependencies on the host
+
+### Outside the container
+
+```sh
+ # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./arch.arts arts-resize 4G
  # Fetch the application
 git clone https://github.com/htop-dev/htop.git
  # Install the required build dependencies
-./focal.arts arts-root 'apt install -y libncursesw5-dev autotools-dev autoconf automake build-essential'
+./arch.arts arts-root fakechroot pacman -S ncurses automake autoconf gcc make
  # Compile the application
 cd htop
-../focal.arts arts-exec './autogen.sh && ./configure && make'
+../arch.arts arts-exec './autogen.sh'
+../arch.arts arts-exec './configure'
+../arch.arts arts-exec 'make'
  # Run the compiled application
 ./htop
 ```
 
-In this case `focal.arts` is now a portable building environment for htop.
+### Inside the container
 
-## Further Considerations
+```bash
+ # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
+./arch.arts arts-resize 4G
+ # Fetch the application
+git clone https://github.com/htop-dev/htop.git
+ # Enter the container as root
+ARTS_ROOT=1 ./arch.arts
+ # Install the required build dependencies
+ (arts@arch) → fakechroot pacman -S ncurses automake autoconf gcc make
+ # Compile
+ (arts@arch) → cd htop
+ (arts@arch) → ./autogen.sh
+ (arts@arch) → ./configure
+ (arts@arch) → make
+ # Run
+ (arts@arch) → ./htop
+```
+
+In this case `arch.arts` is now a portable building environment for htop.
+
+# Further Considerations
 
 Arts offers on build simplicity, packaging applications should be as simple as
 installing them natively on the host system. This is an effort for the end-user
@@ -323,7 +427,7 @@ handle how to package the application, dependencies and create a runner script).
 It also simplifies the quality of life of the package developer, simplifying
 the packaging process of applications.
 
-## Motivations
+# Motivations
 
 1. The idea of this application sprung with the challenge to package software
    and dynamic libraries, such as `wine`, when there are hard-coded paths. The

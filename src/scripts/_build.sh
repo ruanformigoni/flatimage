@@ -280,7 +280,7 @@ function _create_subsystem_arch()
   # pkgs_va+=("intel-media-driver mesa-utils vulkan-tools nvidia-prime libva-utils")
   # pkgs_va+=("lib32-mesa-utils")
   chroot arch /bin/bash -c "pacman -S ${pkgs_va[*]} --noconfirm"
-  chroot arch /bin/bash -c "pacman -S git fakeroot binutils --noconfirm"
+  chroot arch /bin/bash -c "pacman -S git fakeroot fakechroot binutils --noconfirm"
   chroot arch /bin/bash -c "pacman -Scc --noconfirm"
   rm -rf ./arch/var/cache/pacman/pkg/*
 

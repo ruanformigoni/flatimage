@@ -500,7 +500,9 @@ function _compress()
   rm -rf "$ARTS_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$ARTS_DIR_TEMP/dir_compressed"; mkdir "$dir_compressed"
+  local dir_compressed="$ARTS_DIR_TEMP/dir_compressed"
+  rm -rf "$dir_compressed"
+  mkdir "$dir_compressed"
 
   # Get SHA and save to re-mount (used as unique identifier)
   local sha="$(sha256sum "$ARTS_FILE_BINARY" | awk '{print $1}')"

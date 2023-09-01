@@ -4,7 +4,12 @@ stages:
   - fetch
   - build
   - package
+  - upload
   - release
+
+variables:
+  PACKAGE_REGISTRY_URL: "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages/generic/arts/continuous"
+  PROJECT_URL: "https://gitlab.com/api/v4/projects/43000137"
 
 fetch-e2fsprogs:
   image: "ubuntu:focal"
@@ -157,17 +162,11 @@ package-focal:
     - echo "FOCAL_TARBALL=${dist}.tar.xz" >> build.env
   needs:
     - job: build-elf
-      artifacts: true
     - job: fetch-e2fsprogs
-      artifacts: true
     - job: fetch-bwrap
-      artifacts: true
     - job: fetch-dwarfs
-      artifacts: true
     - job: fetch-bash
-      artifacts: true
     - job: fetch-proot
-      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -190,17 +189,11 @@ package-arch:
     - echo "ARCH_TARBALL=arch.tar.xz" >> build.env
   needs:
     - job: build-elf
-      artifacts: true
     - job: fetch-e2fsprogs
-      artifacts: true
     - job: fetch-bwrap
-      artifacts: true
     - job: fetch-dwarfs
-      artifacts: true
     - job: fetch-bash
-      artifacts: true
     - job: fetch-proot
-      artifacts: true
   artifacts:
     paths:
       - ./dist
@@ -223,33 +216,41 @@ package-alpine:
     - echo "ALPINE_TARBALL=alpine.tar.xz" >> build.env
   needs:
     - job: build-elf
-      artifacts: true
     - job: fetch-e2fsprogs
-      artifacts: true
     - job: fetch-bwrap
-      artifacts: true
     - job: fetch-dwarfs
-      artifacts: true
     - job: fetch-bash
-      artifacts: true
     - job: fetch-proot
-      artifacts: true
   artifacts:
     paths:
       - ./dist
     reports:
       dotenv: build.env
 
+upload:
+  stage: upload
+  image: alpine
+  before_script: |
+    apk add curl
+  script: |
+    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${ALPINE_TARBALL}" "${PACKAGE_REGISTRY_URL}/${ALPINE_TARBALL}"
+    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${FOCAL_TARBALL}" "${PACKAGE_REGISTRY_URL}/${FOCAL_TARBALL}"
+    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${ARCH_TARBALL}" "${PACKAGE_REGISTRY_URL}/${ARCH_TARBALL}"
+  needs:
+    - job: package-arch
+    - job: package-focal
+    - job: package-alpine
+
 deploy:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  variables:
+    RELEASE_DATE: $(date "+%Y-%m-%d")
   before_script:
     - apk --no-cache add curl
-  script:
-    - |
-      echo "RELEASE_DATE=$(date +'%Y-%m-%d')" >> build.env
-      # Delete current release
-      curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "https://gitlab.com/api/v4/projects/43000137/releases/Continuous" || true
+  script: |
+    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --request DELETE "$PROJECT_URL/releases/Continuous"
+    echo "Deploy continuous"
   # Set new release
   release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
     tag_name: 'Continuous'
@@ -257,13 +258,10 @@ deploy:
     assets:
       links:
         - name: 'focal.tar.xz'
-          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_FOCAL}/artifacts/raw/dist/${FOCAL_TARBALL}'
+          url: '${PACKAGE_REGISTRY_URL}/focal.tar.xz'
         - name: 'arch.tar.xz'
-          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_ARCH}/artifacts/raw/dist/${ARCH_TARBALL}'
+          url: '${PACKAGE_REGISTRY_URL}/arch.tar.xz'
         - name: 'alpine.tar.xz'
-          url: 'https://gitlab.com/formigoni/arts/-/jobs/${JOB_ID_BUILD_BS_ALPINE}/artifacts/raw/dist/${ALPINE_TARBALL}'
+          url: '${PACKAGE_REGISTRY_URL}/alpine.tar.xz'
   needs:
-    - job: package-arch
-    - job: package-focal
-    - job: package-alpine
-      artifacts: true
+    - job: upload

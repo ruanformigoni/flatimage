@@ -270,8 +270,12 @@ function _exec()
   [ -n "$*" ] || ARTS_DEBUG=1 _msg "Empty arguments for exec"
 
   # Fetch CMD
-  local cmd="$*"
-  _msg "cmd: $cmd"
+  declare -a cmd
+  for i; do
+    [ -z "$i" ] || cmd+=("\"$i\"")
+  done
+
+  _msg "cmd: ${cmd[*]}"
 
   # Fetch SHA
   local sha="$(_config_fetch "sha")"
@@ -477,7 +481,7 @@ function _exec()
   fi
 
   # Shell
-  _cmd+=("$ARTS_FILE_BASH -c '$cmd'")
+  _cmd+=("$ARTS_FILE_BASH -c '${cmd[*]}'")
 
   eval "${_cmd[*]}"
 }
@@ -645,7 +649,7 @@ function main()
     esac
   else
     local default_cmd="$(_config_fetch "cmd")"
-    _exec  "${default_cmd:-"$ARTS_FILE_BASH"}" "$*"
+    _exec  "${default_cmd:-"$ARTS_FILE_BASH"}" "$@"
   fi
 
 }

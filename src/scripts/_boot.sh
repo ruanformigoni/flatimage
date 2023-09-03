@@ -531,7 +531,7 @@ function _compress()
   chmod -R +rw "$dir_compressed"
 
   # Resize to fit files size + slack
-  local size_files="$(du -s -BK "$dir_compressed" | awk '{ gsub("K","",$1); print $1}')"
+  local size_files="$( echo $(( $(du -sb "$dir_compressed" | awk '{print $1}') / 1024 )) | awk '{ gsub("K","",$1); print $1}')"
   local size_offset="$((ARTS_OFFSET/1024))" # Bytes to K
   local size_slack="$ARTS_COMPRESSION_SLACK";
   size_new="$((size_files+size_offset+size_slack))"

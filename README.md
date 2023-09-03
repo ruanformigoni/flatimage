@@ -111,7 +111,7 @@ Avaliable options:
 - arts-xdg: Same as the 'arts-mount' command, however it opens the
     mount directory with xdg-open
 - arts-perms-set: Set the permission for the container, available options are:
-    pulseaudio, wayland, x11, session_bus, system_bus, gpu
+    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input
     - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
 - arts-perms-list: List the current permissions for the container
 - arts-help: Print this message.

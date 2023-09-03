@@ -185,6 +185,7 @@ function _perms_set()
       session_bus) echo 'ARTS_PERM_SESSION_BUS="${ARTS_PERM_SESSION_BUS:-1}"' >> "$ARTS_FILE_PERMS" ;;
       system_bus)  echo 'ARTS_PERM_SYSTEM_BUS="${ARTS_PERM_SYSTEM_BUS:-1}"'   >> "$ARTS_FILE_PERMS" ;;
       gpu)         echo 'ARTS_PERM_GPU="${ARTS_PERM_GPU:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
+      input)       echo 'ARTS_PERM_INPUT="${ARTS_PERM_INPUT:-1}"'             >> "$ARTS_FILE_PERMS" ;;
       *) _die "Trying to set unknown permission $i"
     esac
   done
@@ -206,7 +207,7 @@ function _help()
   :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
   :- arts-perms-set: Set the permission for the container, available options are:
-  :    pulseaudio, wayland, x11, session_bus, system_bus, gpu
+  :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input
   :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
   :- arts-perms-list: List the current permissions for the container
   :- arts-help: Print this message.
@@ -387,6 +388,13 @@ function _exec()
        [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("--dev-bind /dev/dri /dev/dri")
+    fi
+
+    # Input
+    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+       [[ -e "/dev/input" ]]; then
+      _msg "PERM: Input"
+      _cmd+=("--dev-bind /dev/input /dev/input")
     fi
 
     # Host info

@@ -606,11 +606,6 @@ function main()
   # Mount filesystem
   _mount
 
-  # Check for pacman dirs
-  if [ "$ARTS_DIST" = "ARCH" ] && [ ! -d /var/lib/pacman ]; then
-    ARTS_DEBUG=1 _msg "Missing pacman dir, create it with 'sudo mkdir -p /var/lib/pacman' if you want to use pacman"
-  fi
-
   # Check if config exists, else try to touch if mounted as RW
   [ -f "$ARTS_FILE_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_FILE_CONFIG"; }
 

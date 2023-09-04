@@ -186,6 +186,7 @@ function _perms_set()
       system_bus)  echo 'ARTS_PERM_SYSTEM_BUS="${ARTS_PERM_SYSTEM_BUS:-1}"'   >> "$ARTS_FILE_PERMS" ;;
       gpu)         echo 'ARTS_PERM_GPU="${ARTS_PERM_GPU:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
       input)       echo 'ARTS_PERM_INPUT="${ARTS_PERM_INPUT:-1}"'             >> "$ARTS_FILE_PERMS" ;;
+      usb)         echo 'ARTS_PERM_USB="${ARTS_PERM_USB:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
       *) _die "Trying to set unknown permission $i"
     esac
   done
@@ -207,7 +208,7 @@ function _help()
   :- arts-xdg: Same as the 'arts-mount' command, however it opens the
   :    mount directory with xdg-open
   :- arts-perms-set: Set the permission for the container, available options are:
-  :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input
+  :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
   :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
   :- arts-perms-list: List the current permissions for the container
   :- arts-help: Print this message.
@@ -396,6 +397,23 @@ function _exec()
       _msg "PERM: Input"
       _cmd+=("--dev-bind /dev/input /dev/input")
     fi
+    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+       [[ -e "/dev/uinput" ]]; then
+      _msg "PERM: Input"
+      _cmd+=("--dev-bind /dev/uinput /dev/uinput")
+    fi
+
+    # USB
+    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+       [[ -e "/dev/bus/usb" ]]; then
+      _msg "PERM: USB"
+      _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
+    fi
+    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+       [[ -e "/dev/usb" ]]; then
+      _msg "PERM: USB"
+      _cmd+=("--dev-bind /dev/usb /dev/usb")
+    fi
 
     # Host info
     [ ! -f "/etc/host.conf"     ] || _cmd+=('--bind "/etc/host.conf"     "/etc/host.conf"')
@@ -475,6 +493,30 @@ function _exec()
        [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("-b /dev/dri")
+    fi
+
+    # Input
+    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+       [[ -e "/dev/input" ]]; then
+      _msg "PERM: Input"
+      _cmd+=("--dev-bind /dev/input /dev/input")
+    fi
+    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+       [[ -e "/dev/uinput" ]]; then
+      _msg "PERM: Input"
+      _cmd+=("--dev-bind /dev/uinput /dev/uinput")
+    fi
+
+    # USB
+    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+       [[ -e "/dev/bus/usb" ]]; then
+      _msg "PERM: USB"
+      _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
+    fi
+    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+       [[ -e "/dev/usb" ]]; then
+      _msg "PERM: USB"
+      _cmd+=("--dev-bind /dev/usb /dev/usb")
     fi
 
     # Host info

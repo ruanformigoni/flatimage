@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-project(Arts DESCRIPTION "Application Chroot Subsystem" LANGUAGES CXX)
+project(Fim DESCRIPTION "Application Chroot Subsystem" LANGUAGES CXX)
 
 # Conan
 set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})

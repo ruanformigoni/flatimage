@@ -8,7 +8,7 @@ stages:
   - release
 
 variables:
-  PACKAGE_REGISTRY_URL: "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages/generic/arts/continuous"
+  PACKAGE_REGISTRY_URL: "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages/generic/fim/continuous"
   PROJECT_URL: "https://gitlab.com/api/v4/projects/43000137"
 
 fetch-e2fsprogs:
@@ -123,19 +123,19 @@ build-elf:
     - docker:dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
-    IMAGE_NAME: alpine:arts
+    IMAGE_NAME: alpine:fim
 
   before_script:
     - echo GE_JOB_ID=$CI_JOB_ID >> build.env
 
   script:
     - mkdir -p bin
-    - docker build . --build-arg ARTS_DIST=ARCH -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
-    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-arch
-    - docker build . --build-arg ARTS_DIST=ALPINE -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
-    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-alpine
-    - docker build . --build-arg ARTS_DIST=UBUNTU -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
-    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /arts/dist/main /workdir/bin/elf-ubuntu
+    - docker build . --build-arg FIM_DIST=ARCH -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /fim/dist/main /workdir/bin/elf-arch
+    - docker build . --build-arg FIM_DIST=ALPINE -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /fim/dist/main /workdir/bin/elf-alpine
+    - docker build . --build-arg FIM_DIST=UBUNTU -t $CI_REGISTRY/$IMAGE_NAME -f docker/Dockerfile.elf
+    - docker run --rm -v $(pwd):/workdir $CI_REGISTRY/$IMAGE_NAME cp /fim/dist/main /workdir/bin/elf-ubuntu
 
   artifacts:
     paths:

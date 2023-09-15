@@ -1,11 +1,11 @@
-#!/tmp/arts/bin/bash
+#!/tmp/fim/bin/bash
 
 ######################################################################
 # @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
 # @file        : _boot
 # @created     : Monday Jan 23, 2023 21:18:26 -03
 #
-# @description : Boot arts in chroot
+# @description : Boot fim in chroot
 ######################################################################
 
 #shellcheck disable=2155
@@ -14,58 +14,58 @@ set -e
 
 PID="$$"
 
-export ARTS_DIST="TRUNK"
+export FIM_DIST="TRUNK"
 
 # Rootless tool
-export ARTS_BACKEND
+export FIM_BACKEND
 
 # Perms
-export ARTS_ROOT="${ARTS_ROOT:+1}"
-export ARTS_NORM="1"
-export ARTS_NORM="${ARTS_NORM#"${ARTS_ROOT}"}"
+export FIM_ROOT="${FIM_ROOT:+1}"
+export FIM_NORM="1"
+export FIM_NORM="${FIM_NORM#"${FIM_ROOT}"}"
 
 # Mode
-export ARTS_RO="${ARTS_RO:+1}"
-export ARTS_RW="1"
-export ARTS_RW="${ARTS_RW#"${ARTS_RO}"}"
+export FIM_RO="${FIM_RO:+1}"
+export FIM_RW="1"
+export FIM_RW="${FIM_RW#"${FIM_RO}"}"
 
 # Debug
-export ARTS_DEBUG="${ARTS_DEBUG:+1}"
-export ARTS_NDEBUG="1"
-export ARTS_NDEBUG="${ARTS_NDEBUG#"${ARTS_DEBUG}"}"
+export FIM_DEBUG="${FIM_DEBUG:+1}"
+export FIM_NDEBUG="1"
+export FIM_NDEBUG="${FIM_NDEBUG#"${FIM_DEBUG}"}"
 
 # Filesystem offset
-export ARTS_OFFSET="${ARTS_OFFSET:?ARTS_OFFSET is unset or null}"
-export ARTS_SECTOR=$((ARTS_OFFSET/512))
+export FIM_OFFSET="${FIM_OFFSET:?FIM_OFFSET is unset or null}"
+export FIM_SECTOR=$((FIM_OFFSET/512))
 
 # Paths
-export ARTS_DIR_GLOBAL="${ARTS_DIR_GLOBAL:?ARTS_DIR_GLOBAL is unset or null}"
-export ARTS_DIR_GLOBAL_BIN="${ARTS_DIR_GLOBAL}/bin"
-export ARTS_DIR_MOUNT="${ARTS_DIR_MOUNT:?ARTS_DIR_MOUNT is unset or null}"
-export ARTS_DIR_STATIC="$ARTS_DIR_MOUNT/arts/static"
-export ARTS_FILE_CONFIG="$ARTS_DIR_MOUNT/arts/config"
-export ARTS_DIR_TEMP="${ARTS_DIR_TEMP:?ARTS_DIR_TEMP is unset or null}"
-export ARTS_FILE_BINARY="${ARTS_FILE_BINARY:?ARTS_FILE_BINARY is unset or null}"
-export ARTS_DIR_BINARY="$(dirname "$ARTS_FILE_BINARY")"
-export ARTS_FILE_BASH="$ARTS_DIR_GLOBAL_BIN/bash"
-export BASHRC_FILE="$ARTS_DIR_TEMP/.bashrc"
-export ARTS_FILE_PERMS="$ARTS_DIR_MOUNT"/arts/perms
+export FIM_DIR_GLOBAL="${FIM_DIR_GLOBAL:?FIM_DIR_GLOBAL is unset or null}"
+export FIM_DIR_GLOBAL_BIN="${FIM_DIR_GLOBAL}/bin"
+export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
+export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
+export FIM_FILE_CONFIG="$FIM_DIR_MOUNT/fim/config"
+export FIM_DIR_TEMP="${FIM_DIR_TEMP:?FIM_DIR_TEMP is unset or null}"
+export FIM_FILE_BINARY="${FIM_FILE_BINARY:?FIM_FILE_BINARY is unset or null}"
+export FIM_DIR_BINARY="$(dirname "$FIM_FILE_BINARY")"
+export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
+export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
+export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 
 # Compression
-export ARTS_COMPRESSION_LEVEL="${ARTS_COMPRESSION_LEVEL:-4}"
-export ARTS_COMPRESSION_SLACK="${ARTS_COMPRESSION_SLACK:-50000}" # 50MB
-export ARTS_COMPRESSION_DIRS="${ARTS_COMPRESSION_DIRS:-/usr /opt}"
+export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
+export FIM_COMPRESSION_SLACK="${FIM_COMPRESSION_SLACK:-50000}" # 50MB
+export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 
 # Output stream
-export ARTS_STREAM="${ARTS_DEBUG:+/dev/stdout}"
-export ARTS_STREAM="${ARTS_STREAM:-/dev/null}"
+export FIM_STREAM="${FIM_DEBUG:+/dev/stdout}"
+export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
 # Emits a message in &2
 # $(1..n-1) arguments to echo
 # $n message
 function _msg()
 {
-  [ -z "$ARTS_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[\033[32m*\033[m] ${*: -1}" >&2;
+  [ -z "$FIM_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[\033[32m*\033[m] ${*: -1}" >&2;
 }
 
 # Wait for a pid to finish execution, similar to 'wait'
@@ -87,18 +87,18 @@ function _wait()
 # Mount the main filesystem
 function _mount()
 {
-  local mode="${ARTS_RW:-ro,}"
+  local mode="${FIM_RW:-ro,}"
   local mode="${mode#1}"
-  "$ARTS_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$ARTS_OFFSET" "$ARTS_FILE_BINARY" "$ARTS_DIR_MOUNT" &> "$ARTS_STREAM"
+  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
 }
 
 # Unmount the main filesystem
 function _unmount()
 {
   # Get parent pid
-  local ppid="$(pgrep -f "fuse2fs.*offset=$ARTS_OFFSET.*$ARTS_FILE_BINARY")"
+  local ppid="$(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY")"
 
-  fusermount -zu "$ARTS_DIR_MOUNT"
+  fusermount -zu "$FIM_DIR_MOUNT"
 
   _wait "$ppid"
 }
@@ -110,30 +110,30 @@ function _re_mount()
   # Umount from initial mountpoint
   _unmount
   # Mount in new mountpoint
-  export ARTS_DIR_MOUNT="$1"; _mount
+  export FIM_DIR_MOUNT="$1"; _mount
 }
 
 # Quits the program
 # $* = Termination message
 function _die()
 {
-  [ -z "$*" ] || ARTS_DEBUG=1 _msg "$*"
+  [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
   # Unmount dwarfs
   local sha="$(_config_fetch "sha")"
   if [ -n "$sha" ]; then
     shopt -s nullglob
-    for i in "$ARTS_DIR_GLOBAL"/dwarfs/"$sha"/*; do
+    for i in "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/*; do
       # Check if is mounted
       if mount | grep "$i" &>/dev/null; then
         # Get parent pid
         local ppid="$(pgrep -f "dwarfs2.*$i")"
-        fusermount -zu "$ARTS_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")" &> "$ARTS_STREAM" || true
+        fusermount -zu "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")" &> "$FIM_STREAM" || true
         _wait "$ppid"
       fi
     done
   fi
   # Unmount image
-  _unmount &> "$ARTS_STREAM"
+  _unmount &> "$FIM_STREAM"
   # Exit
   kill -s SIGTERM "$PID"
 }
@@ -142,14 +142,14 @@ trap _die SIGINT EXIT
 
 function _copy_tools()
 {
-  ARTS_RO=1 ARTS_RW="" _mount
+  FIM_RO=1 FIM_RW="" _mount
 
   for i; do
     local tool="$i"
 
-    if [ ! -f "$ARTS_DIR_GLOBAL_BIN"/"$tool" ]; then
-      cp "$ARTS_DIR_MOUNT/arts/static/$tool" "$ARTS_DIR_GLOBAL_BIN"
-      chmod +x "$ARTS_DIR_GLOBAL_BIN"/"$tool"
+    if [ ! -f "$FIM_DIR_GLOBAL_BIN"/"$tool" ]; then
+      cp "$FIM_DIR_MOUNT/fim/static/$tool" "$FIM_DIR_GLOBAL_BIN"
+      chmod +x "$FIM_DIR_GLOBAL_BIN"/"$tool"
     fi
   done
 
@@ -159,19 +159,19 @@ function _copy_tools()
 # List permissions of sandbox
 function _perms_list()
 {
-  ! grep -i "ARTS_PERM_PULSEAUDIO" "$ARTS_FILE_PERMS"  &>/dev/null || echo "pulseaudio"
-  ! grep -i "ARTS_PERM_WAYLAND" "$ARTS_FILE_PERMS"     &>/dev/null || echo "wayland"
-  ! grep -i "ARTS_PERM_X11" "$ARTS_FILE_PERMS"         &>/dev/null || echo "x11"
-  ! grep -i "ARTS_PERM_SESSION_BUS" "$ARTS_FILE_PERMS" &>/dev/null || echo "session_bus"
-  ! grep -i "ARTS_PERM_SYSTEM_BUS" "$ARTS_FILE_PERMS"  &>/dev/null || echo "system_bus"
-  ! grep -i "ARTS_PERM_GPU" "$ARTS_FILE_PERMS"         &>/dev/null || echo "gpu"
+  ! grep -i "FIM_PERM_PULSEAUDIO" "$FIM_FILE_PERMS"  &>/dev/null || echo "pulseaudio"
+  ! grep -i "FIM_PERM_WAYLAND" "$FIM_FILE_PERMS"     &>/dev/null || echo "wayland"
+  ! grep -i "FIM_PERM_X11" "$FIM_FILE_PERMS"         &>/dev/null || echo "x11"
+  ! grep -i "FIM_PERM_SESSION_BUS" "$FIM_FILE_PERMS" &>/dev/null || echo "session_bus"
+  ! grep -i "FIM_PERM_SYSTEM_BUS" "$FIM_FILE_PERMS"  &>/dev/null || echo "system_bus"
+  ! grep -i "FIM_PERM_GPU" "$FIM_FILE_PERMS"         &>/dev/null || echo "gpu"
 }
 
 # Set permissions of sandbox
 function _perms_set()
 {
   # Reset perms
-  echo "" > "$ARTS_FILE_PERMS"
+  echo "" > "$FIM_FILE_PERMS"
 
   # Set perms
   local ifs="$IFS" 
@@ -179,14 +179,14 @@ function _perms_set()
   #shellcheck disable=2016
   for i in $1; do
     case "$i" in
-      pulseaudio)  echo 'ARTS_PERM_PULSEAUDIO="${ARTS_PERM_PULSEAUDIO:-1}"'   >> "$ARTS_FILE_PERMS" ;;
-      wayland)     echo 'ARTS_PERM_WAYLAND="${ARTS_PERM_WAYLAND:-1}"'         >> "$ARTS_FILE_PERMS" ;;
-      x11)         echo 'ARTS_PERM_X11="${ARTS_PERM_X11:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
-      session_bus) echo 'ARTS_PERM_SESSION_BUS="${ARTS_PERM_SESSION_BUS:-1}"' >> "$ARTS_FILE_PERMS" ;;
-      system_bus)  echo 'ARTS_PERM_SYSTEM_BUS="${ARTS_PERM_SYSTEM_BUS:-1}"'   >> "$ARTS_FILE_PERMS" ;;
-      gpu)         echo 'ARTS_PERM_GPU="${ARTS_PERM_GPU:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
-      input)       echo 'ARTS_PERM_INPUT="${ARTS_PERM_INPUT:-1}"'             >> "$ARTS_FILE_PERMS" ;;
-      usb)         echo 'ARTS_PERM_USB="${ARTS_PERM_USB:-1}"'                 >> "$ARTS_FILE_PERMS" ;;
+      pulseaudio)  echo 'FIM_PERM_PULSEAUDIO="${FIM_PERM_PULSEAUDIO:-1}"'   >> "$FIM_FILE_PERMS" ;;
+      wayland)     echo 'FIM_PERM_WAYLAND="${FIM_PERM_WAYLAND:-1}"'         >> "$FIM_FILE_PERMS" ;;
+      x11)         echo 'FIM_PERM_X11="${FIM_PERM_X11:-1}"'                 >> "$FIM_FILE_PERMS" ;;
+      session_bus) echo 'FIM_PERM_SESSION_BUS="${FIM_PERM_SESSION_BUS:-1}"' >> "$FIM_FILE_PERMS" ;;
+      system_bus)  echo 'FIM_PERM_SYSTEM_BUS="${FIM_PERM_SYSTEM_BUS:-1}"'   >> "$FIM_FILE_PERMS" ;;
+      gpu)         echo 'FIM_PERM_GPU="${FIM_PERM_GPU:-1}"'                 >> "$FIM_FILE_PERMS" ;;
+      input)       echo 'FIM_PERM_INPUT="${FIM_PERM_INPUT:-1}"'             >> "$FIM_FILE_PERMS" ;;
+      usb)         echo 'FIM_PERM_USB="${FIM_PERM_USB:-1}"'                 >> "$FIM_FILE_PERMS" ;;
       *) _die "Trying to set unknown permission $i"
     esac
   done
@@ -196,22 +196,22 @@ function _perms_set()
 function _help()
 {
   sed -E 's/^\s+://' <<-EOF
-  :Application Root Subsystem (Arts), $ARTS_DIST
+  :# FlatImage, $FIM_DIST
   :Avaliable options:
-  :- arts-compress: Compress the filesystem to a read-only format.
-  :- arts-root: Execute an arbitrary command as root.
-  :- arts-exec: Execute an arbitrary command.
-  :- arts-cmd: Set the default command to execute when no argument is passed.
-  :- arts-resize: Resize the filesystem.
-  :- arts-mount: Mount the filesystem in a specified directory
-  :    - E.g.: ./focal.arts arts-mount ./mountpoint
-  :- arts-xdg: Same as the 'arts-mount' command, however it opens the
+  :- fim-compress: Compress the filesystem to a read-only format.
+  :- fim-root: Execute an arbitrary command as root.
+  :- fim-exec: Execute an arbitrary command.
+  :- fim-cmd: Set the default command to execute when no argument is passed.
+  :- fim-resize: Resize the filesystem.
+  :- fim-mount: Mount the filesystem in a specified directory
+  :    - E.g.: ./focal.fim fim-mount ./mountpoint
+  :- fim-xdg: Same as the 'fim-mount' command, however it opens the
   :    mount directory with xdg-open
-  :- arts-perms-set: Set the permission for the container, available options are:
+  :- fim-perms-set: Set the permission for the container, available options are:
   :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-  :    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
-  :- arts-perms-list: List the current permissions for the container
-  :- arts-help: Print this message.
+  :    - E.g.: ./focal.fim fim-perms pulseaudio,wayland,x11
+  :- fim-perms-list: List the current permissions for the container
+  :- fim-help: Print this message.
 	EOF
 }
 
@@ -223,9 +223,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
-  "$ARTS_DIR_GLOBAL_BIN"/resize2fs "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" "$1"
-  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" "$1"
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
 
   # Mount
   _mount
@@ -239,26 +239,26 @@ function _rebuild()
   _unmount
 
   # Erase current file
-  rm "$ARTS_FILE_BINARY"
+  rm "$FIM_FILE_BINARY"
 
   # Copy startup binary
-  cp "$ARTS_DIR_TEMP/main" "$ARTS_FILE_BINARY"
+  cp "$FIM_DIR_TEMP/main" "$FIM_FILE_BINARY"
 
   # Append tools
-  cat "$ARTS_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$ARTS_FILE_BINARY"
+  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_FILE_BINARY"
 
   # Update offset
-  ARTS_OFFSET="$(du -sb "$ARTS_FILE_BINARY" | awk '{print $1}')"
+  FIM_OFFSET="$(du -sb "$FIM_FILE_BINARY" | awk '{print $1}')"
 
   # Create filesystem
-  truncate -s "$1" "$ARTS_DIR_TEMP/image.arts"
-  "$ARTS_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$ARTS_DIR_TEMP/image.arts"
+  truncate -s "$1" "$FIM_DIR_TEMP/image.fim"
+  "$FIM_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$FIM_DIR_TEMP/image.fim"
 
   # Append filesystem to binary
-  cat "$ARTS_DIR_TEMP/image.arts" >> "$ARTS_FILE_BINARY"
+  cat "$FIM_DIR_TEMP/image.fim" >> "$FIM_FILE_BINARY"
 
   # Remove filesystem
-  rm "$ARTS_DIR_TEMP/image.arts"
+  rm "$FIM_DIR_TEMP/image.fim"
 
   # Re-mount
   _mount
@@ -269,7 +269,7 @@ function _rebuild()
 function _exec()
 {
   # Check for empty string
-  [ -n "$*" ] || ARTS_DEBUG=1 _msg "Empty arguments for exec"
+  [ -n "$*" ] || FIM_DEBUG=1 _msg "Empty arguments for exec"
 
   # Fetch CMD
   declare -a cmd
@@ -284,15 +284,15 @@ function _exec()
   _msg "sha: $sha"
 
   # Mount dwarfs files if exist
-  [ -f "$ARTS_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$ARTS_DIR_MOUNT/arts/static/dwarfs" "$ARTS_DIR_GLOBAL_BIN"/dwarfs
-  chmod +x "$ARTS_DIR_GLOBAL_BIN/dwarfs"
+  [ -f "$FIM_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/dwarfs" "$FIM_DIR_GLOBAL_BIN"/dwarfs
+  chmod +x "$FIM_DIR_GLOBAL_BIN/dwarfs"
 
   # shellcheck disable=2044
-  for i in $(find "$ARTS_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
+  for i in $(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
-    local fs="$ARTS_DIR_MOUNT/$i"
-    local mp="$ARTS_DIR_GLOBAL/dwarfs/$sha/${i%.dwarfs}"; mkdir -p "$mp"
-    "$ARTS_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$ARTS_STREAM"
+    local fs="$FIM_DIR_MOUNT/$i"
+    local mp="$FIM_DIR_GLOBAL/dwarfs/$sha/${i%.dwarfs}"; mkdir -p "$mp"
+    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done
 
   # Export variables to container
@@ -303,30 +303,30 @@ function _exec()
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
   tee "$BASHRC_FILE" &>/dev/null <<- 'EOF'
-    export PS1="(arts@$(echo "$ARTS_DIST" | tr '[:upper:]' '[:lower:]')) → "
+    export PS1="(flatimage@$(echo "$FIM_DIST" | tr '[:upper:]' '[:lower:]')) → "
 	EOF
 
   # Remove override to avoid problems with apt
-  [ -n "$ARTS_RO" ] || rm ${ARTS_DEBUG:+-v} -f "$ARTS_DIR_MOUNT/var/lib/dpkg/statoverride"
+  [ -n "$FIM_RO" ] || rm ${FIM_DEBUG:+-v} -f "$FIM_DIR_MOUNT/var/lib/dpkg/statoverride"
 
   declare -a _cmd
 
   # Fetch permissions
   # shellcheck disable=1090
-  source "$ARTS_FILE_PERMS"
+  source "$FIM_FILE_PERMS"
 
   # Run in container
-  if [[ "$ARTS_BACKEND" = "bwrap" ]]; then
+  if [[ "$FIM_BACKEND" = "bwrap" ]]; then
     _msg "Using bubblewrap"
 
     # Main binary
-    _cmd+=("$ARTS_DIR_STATIC/bwrap")
+    _cmd+=("$FIM_DIR_STATIC/bwrap")
 
     # Root binding
-    _cmd+=("${ARTS_ROOT:+--uid 0 --gid 0}")
+    _cmd+=("${FIM_ROOT:+--uid 0 --gid 0}")
 
     # Path to subsystem
-    _cmd+=("--bind \"$ARTS_DIR_MOUNT\" /")
+    _cmd+=("--bind \"$FIM_DIR_MOUNT\" /")
 
     # User home
     _cmd+=("--bind \"$HOME\" \"$HOME\"")
@@ -338,7 +338,7 @@ function _exec()
     _cmd+=("--bind /sys /sys")
 
     # Pulseaudio
-    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]] &&
+    if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
        [[ -n "$XDG_RUNTIME_DIR" ]]; then
       _msg "PERM: Pulseaudio"
       local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
@@ -347,7 +347,7 @@ function _exec()
     fi
 
     # Wayland
-    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]] &&
+    if [[ "$FIM_PERM_WAYLAND" -eq 1 ]] &&
        [[ -n "$XDG_RUNTIME_DIR" ]] &&
        [[ -n "$WAYLAND_DISPLAY" ]]; then
       _msg "PERM: Wayland"
@@ -358,7 +358,7 @@ function _exec()
     fi
 
     # X11
-    if [[ "$ARTS_PERM_X11" -eq 1 ]] &&
+    if [[ "$FIM_PERM_X11" -eq 1 ]] &&
        [[ -n "$DISPLAY" ]] &&
        [[ -n "$XAUTHORITY" ]]; then
       _msg "PERM: X11"
@@ -368,7 +368,7 @@ function _exec()
     fi
 
     # dbus (user)
-    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]] &&
+    if [[ "$FIM_PERM_SESSION_BUS" -eq 1 ]] &&
        [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
       _msg "PERM: SESSION BUS"
       local dbus_session_bus_path="${DBUS_SESSION_BUS_ADDRESS#*=}"
@@ -378,38 +378,38 @@ function _exec()
     fi
 
     # dbus (system)
-    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]] &&
+    if [[ "$FIM_PERM_SYSTEM_BUS" -eq 1 ]] &&
        [[ -e "/run/dbus/system_bus_socket" ]]; then
       _msg "PERM: SYSTEM BUS"
       _cmd+=("--bind /run/dbus/system_bus_socket /run/dbus/system_bus_socket")
     fi
 
     # GPU
-    if [[ "$ARTS_PERM_GPU" -eq 1 ]] &&
+    if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
        [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("--dev-bind /dev/dri /dev/dri")
     fi
 
     # Input
-    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
        [[ -e "/dev/input" ]]; then
       _msg "PERM: Input"
       _cmd+=("--dev-bind /dev/input /dev/input")
     fi
-    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
        [[ -e "/dev/uinput" ]]; then
       _msg "PERM: Input"
       _cmd+=("--dev-bind /dev/uinput /dev/uinput")
     fi
 
     # USB
-    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
        [[ -e "/dev/bus/usb" ]]; then
       _msg "PERM: USB"
       _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
     fi
-    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
        [[ -e "/dev/usb" ]]; then
       _msg "PERM: USB"
       _cmd+=("--dev-bind /dev/usb /dev/usb")
@@ -422,17 +422,17 @@ function _exec()
     [ ! -f "/etc/group"         ] || _cmd+=('--bind "/etc/group"         "/etc/group"')
     [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
     [ ! -f "/etc/resolv.conf"   ] || _cmd+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')
-  elif [[ "$ARTS_BACKEND" = "proot" ]]; then
+  elif [[ "$FIM_BACKEND" = "proot" ]]; then
     _msg "Using proot"
 
     # Main binary
-    _cmd+=("$ARTS_DIR_STATIC/proot")
+    _cmd+=("$FIM_DIR_STATIC/proot")
 
     # Root binding
     _cmd+=("-0")
 
     # Path to subsystem
-    _cmd+=("-r \"$ARTS_DIR_MOUNT\"")
+    _cmd+=("-r \"$FIM_DIR_MOUNT\"")
 
     # User home
     _cmd+=("-b \"$HOME\"")
@@ -444,7 +444,7 @@ function _exec()
     _cmd+=("-b /sys")
 
     # Pulseaudio
-    if [[ "$ARTS_PERM_PULSEAUDIO" -eq 1 ]] &&
+    if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
        [[ -n "$XDG_RUNTIME_DIR" ]]; then
       _msg "PERM: Pulseaudio"
       local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
@@ -453,7 +453,7 @@ function _exec()
     fi
 
     # Wayland
-    if [[ "$ARTS_PERM_WAYLAND" -eq 1 ]] &&
+    if [[ "$FIM_PERM_WAYLAND" -eq 1 ]] &&
        [[ -n "$XDG_RUNTIME_DIR" ]] &&
        [[ -n "$WAYLAND_DISPLAY" ]]; then
       _msg "PERM: Wayland"
@@ -464,7 +464,7 @@ function _exec()
     fi
 
     # X11
-    if [[ "$ARTS_PERM_X11" -eq 1 ]] &&
+    if [[ "$FIM_PERM_X11" -eq 1 ]] &&
        [[ -n "$DISPLAY" ]] &&
        [[ -n "$XAUTHORITY" ]]; then
       _msg "PERM: X11"
@@ -474,7 +474,7 @@ function _exec()
     fi
 
     # dbus (user)
-    if [[ "$ARTS_PERM_SESSION_BUS" -eq 1 ]] &&
+    if [[ "$FIM_PERM_SESSION_BUS" -eq 1 ]] &&
        [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
       _msg "PERM: SESSION BUS"
       export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
@@ -482,38 +482,38 @@ function _exec()
     fi
 
     # dbus (system)
-    if [[ "$ARTS_PERM_SYSTEM_BUS" -eq 1 ]] &&
+    if [[ "$FIM_PERM_SYSTEM_BUS" -eq 1 ]] &&
        [[ -e "/run/dbus/system_bus_socket" ]]; then
       _msg "PERM: SYSTEM BUS"
       _cmd+=("-b /run/dbus/system_bus_socket")
     fi
 
     # GPU
-    if [[ "$ARTS_PERM_GPU" -eq 1 ]] &&
+    if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
        [[ -e "/dev/dri" ]]; then
       _msg "PERM: GPU"
       _cmd+=("-b /dev/dri")
     fi
 
     # Input
-    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
        [[ -e "/dev/input" ]]; then
       _msg "PERM: Input"
       _cmd+=("--dev-bind /dev/input /dev/input")
     fi
-    if [[ "$ARTS_PERM_INPUT" -eq 1 ]] &&
+    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
        [[ -e "/dev/uinput" ]]; then
       _msg "PERM: Input"
       _cmd+=("--dev-bind /dev/uinput /dev/uinput")
     fi
 
     # USB
-    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
        [[ -e "/dev/bus/usb" ]]; then
       _msg "PERM: USB"
       _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
     fi
-    if [[ "$ARTS_PERM_USB" -eq 1 ]] &&
+    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
        [[ -e "/dev/usb" ]]; then
       _msg "PERM: USB"
       _cmd+=("--dev-bind /dev/usb /dev/usb")
@@ -527,11 +527,11 @@ function _exec()
     [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('-b "/etc/nsswitch.conf"')
     [ ! -f "/etc/resolv.conf"   ] || _cmd+=('-b "/etc/resolv.conf"')
   else
-    _die "Invalid backend $ARTS_BACKEND"
+    _die "Invalid backend $FIM_BACKEND"
   fi
 
   # Shell
-  _cmd+=("$ARTS_FILE_BASH -c '${cmd[*]}'")
+  _cmd+=("$FIM_FILE_BASH -c '${cmd[*]}'")
 
   eval "${_cmd[*]}"
 }
@@ -539,42 +539,42 @@ function _exec()
 # Subdirectory compression
 function _compress()
 {
-  [ -n "$ARTS_RW" ] || _die "Set ARTS_RW to 1 before compression"
+  [ -n "$FIM_RW" ] || _die "Set FIM_RW to 1 before compression"
   [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
 
   # Copy compressor to binary dir
-  [ -f "$ARTS_DIR_GLOBAL_BIN/mkdwarfs" ]  || cp "$ARTS_DIR_MOUNT/arts/static/mkdwarfs" "$ARTS_DIR_GLOBAL_BIN"/mkdwarfs
-  chmod +x "$ARTS_DIR_GLOBAL_BIN/mkdwarfs"
+  [ -f "$FIM_DIR_GLOBAL_BIN/mkdwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/mkdwarfs" "$FIM_DIR_GLOBAL_BIN"/mkdwarfs
+  chmod +x "$FIM_DIR_GLOBAL_BIN/mkdwarfs"
 
   # Remove apt lists and cache
-  rm -rf "$ARTS_DIR_MOUNT"/var/{lib/apt/lists,cache}
+  rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$ARTS_DIR_TEMP/dir_compressed"
+  local dir_compressed="$FIM_DIR_TEMP/dir_compressed"
   rm -rf "$dir_compressed"
   mkdir "$dir_compressed"
 
   # Get SHA and save to re-mount (used as unique identifier)
-  local sha="$(sha256sum "$ARTS_FILE_BINARY" | awk '{print $1}')"
+  local sha="$(sha256sum "$FIM_FILE_BINARY" | awk '{print $1}')"
   _config_set "sha" "$sha"
   _msg "sha: $sha"
 
   # Compress selected directories
-  for i in ${ARTS_COMPRESSION_DIRS}; do
-    local target="$ARTS_DIR_MOUNT/$i"
+  for i in ${FIM_COMPRESSION_DIRS}; do
+    local target="$FIM_DIR_MOUNT/$i"
     [ -d "$target" ] ||  _die "Folder $target not found for compression"
-    "$ARTS_DIR_GLOBAL_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$ARTS_COMPRESSION_LEVEL" -f
+    "$FIM_DIR_GLOBAL_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$FIM_COMPRESSION_LEVEL" -f
     rm -rf "$target"
-    ln -sf "$ARTS_DIR_GLOBAL/dwarfs/$sha/$i" "${dir_compressed}/${i}"
+    ln -sf "$FIM_DIR_GLOBAL/dwarfs/$sha/$i" "${dir_compressed}/${i}"
   done
 
 
   # Remove remaining files from dev
-  rm -rf "${ARTS_DIR_MOUNT:?"Empty ARTS_DIR_MOUNT"}"/dev
+  rm -rf "${FIM_DIR_MOUNT:?"Empty FIM_DIR_MOUNT"}"/dev
 
   # Move files to temporary directory
-  for i in "$ARTS_DIR_MOUNT"/{arts,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
-    { mv "$i" "$dir_compressed" || true; } &>"$ARTS_STREAM"
+  for i in "$FIM_DIR_MOUNT"/{fim,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
+    { mv "$i" "$dir_compressed" || true; } &>"$FIM_STREAM"
   done
 
   # Update permissions
@@ -582,8 +582,8 @@ function _compress()
 
   # Resize to fit files size + slack
   local size_files="$( echo $(( $(du -sb "$dir_compressed" | awk '{print $1}') / 1024 )) | awk '{ gsub("K","",$1); print $1}')"
-  local size_offset="$((ARTS_OFFSET/1024))" # Bytes to K
-  local size_slack="$ARTS_COMPRESSION_SLACK";
+  local size_offset="$((FIM_OFFSET/1024))" # Bytes to K
+  local size_slack="$FIM_COMPRESSION_SLACK";
   size_new="$((size_files+size_offset+size_slack))"
 
   _msg "Size files  : $size_files"
@@ -595,26 +595,26 @@ function _compress()
   _rebuild "$size_new"K "$dir_compressed"
 
   # Remove mount dirs
-  rm -rf "${ARTS_DIR_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
+  rm -rf "${FIM_DIR_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
 
   # Create required mount points if not exists
-  mkdir -p "$ARTS_DIR_MOUNT"/{tmp,proc,sys,dev,run,home}
+  mkdir -p "$FIM_DIR_MOUNT"/{tmp,proc,sys,dev,run,home}
 }
 
 function _config_list()
 {
   while read -r i; do
     [ -z "$i" ] || echo "$i"
-  done < "$ARTS_FILE_CONFIG"
+  done < "$FIM_FILE_CONFIG"
 }
 
 function _config_fetch()
 {
   local opt="$1"
 
-  [ -f "$ARTS_FILE_CONFIG" ] || { echo ""; exit; }
+  [ -f "$FIM_FILE_CONFIG" ] || { echo ""; exit; }
 
-  grep -io "$opt = .*" "$ARTS_FILE_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
+  grep -io "$opt = .*" "$FIM_FILE_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
 }
 
 function _config_set()
@@ -622,33 +622,33 @@ function _config_set()
   local opt="$1"; shift
   local entry="$opt = $*"
 
-  if grep "$opt" "$ARTS_FILE_CONFIG" &>"$ARTS_STREAM"; then
-    sed -i "s|$opt =.*|$entry|" "$ARTS_FILE_CONFIG"
+  if grep "$opt" "$FIM_FILE_CONFIG" &>"$FIM_STREAM"; then
+    sed -i "s|$opt =.*|$entry|" "$FIM_FILE_CONFIG"
   else
-    echo "$entry" >> "$ARTS_FILE_CONFIG"
+    echo "$entry" >> "$FIM_FILE_CONFIG"
   fi
 }
 
 function main()
 {
-  _msg "ARTS_OFFSET         : $ARTS_OFFSET"
-  _msg "ARTS_RO             : $ARTS_RO"
-  _msg "ARTS_RW             : $ARTS_RW"
-  _msg "ARTS_STREAM         : $ARTS_STREAM"
-  _msg "ARTS_ROOT           : $ARTS_ROOT"
-  _msg "ARTS_NORM           : $ARTS_NORM"
-  _msg "ARTS_DEBUG          : $ARTS_DEBUG"
-  _msg "ARTS_NDEBUG         : $ARTS_NDEBUG"
-  _msg "ARTS_DIR_GLOBAL     : $ARTS_DIR_GLOBAL"
-  _msg "ARTS_DIR_GLOBAL_BIN : $ARTS_DIR_GLOBAL_BIN"
-  _msg "ARTS_DIR_MOUNT      : $ARTS_DIR_MOUNT"
-  _msg "ARTS_DIR_TEMP       : $ARTS_DIR_TEMP"
-  _msg "ARTS_DIR_BINARY     : $ARTS_DIR_BINARY"
-  _msg "ARTS_FILE_BINARY    : $ARTS_FILE_BINARY"
+  _msg "FIM_OFFSET         : $FIM_OFFSET"
+  _msg "FIM_RO             : $FIM_RO"
+  _msg "FIM_RW             : $FIM_RW"
+  _msg "FIM_STREAM         : $FIM_STREAM"
+  _msg "FIM_ROOT           : $FIM_ROOT"
+  _msg "FIM_NORM           : $FIM_NORM"
+  _msg "FIM_DEBUG          : $FIM_DEBUG"
+  _msg "FIM_NDEBUG         : $FIM_NDEBUG"
+  _msg "FIM_DIR_GLOBAL     : $FIM_DIR_GLOBAL"
+  _msg "FIM_DIR_GLOBAL_BIN : $FIM_DIR_GLOBAL_BIN"
+  _msg "FIM_DIR_MOUNT      : $FIM_DIR_MOUNT"
+  _msg "FIM_DIR_TEMP       : $FIM_DIR_TEMP"
+  _msg "FIM_DIR_BINARY     : $FIM_DIR_BINARY"
+  _msg "FIM_FILE_BINARY    : $FIM_FILE_BINARY"
   _msg '$*                  : '"$*"
 
   # Check filesystem
-  "$ARTS_DIR_GLOBAL_BIN"/e2fsck -fy "$ARTS_FILE_BINARY"\?offset="$ARTS_OFFSET" &> "$ARTS_STREAM" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   _copy_tools "resize2fs" "mke2fs"
@@ -657,7 +657,7 @@ function main()
   _mount
 
   # Check if config exists, else try to touch if mounted as RW
-  [ -f "$ARTS_FILE_CONFIG" ] || { [ -n "$ARTS_RO" ] || touch "$ARTS_FILE_CONFIG"; }
+  [ -f "$FIM_FILE_CONFIG" ] || { [ -n "$FIM_RO" ] || touch "$FIM_FILE_CONFIG"; }
 
   # Check if custom home directory is set
   local home="$(_config_fetch "home")"
@@ -665,23 +665,23 @@ function main()
   home="$(eval echo "$home")"
   # # Set & show on debug mode
   [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
-  _msg "ARTS_HOME        : $HOME"
+  _msg "FIM_HOME        : $HOME"
 
-  # If ARTS_BACKEND is not defined check the config
+  # If FIM_BACKEND is not defined check the config
   # or set it to bwrap
-  if [[ -z "$ARTS_BACKEND" ]]; then
-    local arts_tool="$(_config_fetch "backend")"
-    if [[ -n "$arts_tool" ]]; then
-      ARTS_BACKEND="$arts_tool"
+  if [[ -z "$FIM_BACKEND" ]]; then
+    local fim_tool="$(_config_fetch "backend")"
+    if [[ -n "$fim_tool" ]]; then
+      FIM_BACKEND="$fim_tool"
     else
-      ARTS_BACKEND="bwrap"
+      FIM_BACKEND="bwrap"
     fi
   fi
 
-  if [[ "${1:-}" =~ arts-(.*) ]]; then
+  if [[ "${1:-}" =~ fim-(.*) ]]; then
     case "${BASH_REMATCH[1]}" in
       "compress") _compress ;;
-      "root") ARTS_ROOT=1; ARTS_NORM="" ;&
+      "root") FIM_ROOT=1; FIM_NORM="" ;&
       "exec") shift; _exec "$@" ;;
       "cmd") _config_set "cmd" "${@:2}" ;;
       "resize") _resize "$2" ;;
@@ -692,11 +692,11 @@ function main()
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
       "help") _help;;
-      *) _help; _die "Unknown arts command" ;;
+      *) _help; _die "Unknown fim command" ;;
     esac
   else
     local default_cmd="$(_config_fetch "cmd")"
-    _exec  "${default_cmd:-"$ARTS_FILE_BASH"}" "$@"
+    _exec  "${default_cmd:-"$FIM_FILE_BASH"}" "$@"
   fi
 
 }

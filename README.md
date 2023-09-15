@@ -1,55 +1,52 @@
-# Arts - Application Root Subsystem
-
 # Table of contents
 
-- [Arts - Application Root Subsystem](#arts---application-root-subsystem)
 - [Table of contents](#table-of-contents)
-  - [What is Arts?](#what-is-arts?)
-  - [Comparison](#comparison)
-- [Get Arts](#get-arts)
+- [What is FlatImage?](#what-is-flatimage?)
+- [Comparison](#comparison)
+- [Get FlatImage](#get-flatimage)
 - [Usage](#usage)
-  - [Options](#options)
-  - [Environment Variables](#environment-variables)
-    - [Configurable](#configurable)
-    - [Read-Only](#read-only)
-  - [Configure](#configure)
-    - [HOME directory](#home-directory)
-    - [Backend](#backend)
+- [Options](#options)
+- [FlatImage](#flatimage)
+- [Environment Variables](#environment-variables)
+  - [Configurable](#configurable)
+  - [Read-Only](#read-only)
+- [Configure](#configure)
+  - [HOME directory](#home-directory)
+  - [Backend](#backend)
 - [Uses bwrap as the backend (default)](#uses-bwrap-as-the-backend-default)
 - [Uses proot as the backend](#uses-proot-as-the-backend)
 - [Use cases](#use-cases)
-  - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
-  - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
-  - [Use alpine (apk) packages](#use-alpine-apk-packages)
-  - [Use a pip package without installing pip/python](#use-a-pip-package-without-installing-pippython)
-  - [Use an npm package without installing npm/nodejs](#use-an-npm-package-without-installing-npmnodejs)
-    - [Outside the container](#outside-the-container)
-    - [Inside the container](#inside-the-container)
-  - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
-    - [Outside the container](#outside-the-container)
-    - [Inside the container](#inside-the-container)
+    - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
+    - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
+    - [Use alpine (apk) packages](#use-alpine-apk-packages)
+    - [Use a pip package without installing pip](#use-a-pip-package-without-installing-pip)
+    - [Use an npm package without installing npm](#use-an-npm-package-without-installing-npm)
+      - [Outside the container](#outside-the-container)
+      - [Inside the container](#inside-the-container)
+    - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
+      - [Outside the container](#outside-the-container)
+      - [Inside the container](#inside-the-container)
 - [Further Considerations](#further-considerations)
 - [Motivations](#motivations)
 - [Related Projects](#related-projects)
 
-## What is Arts?
+## What is FlatImage?
 
-Application Root Subsystem (Arts), is a hybrid of
-[Flatpak](https://github.com/flatpak/flatpak) sandboxing with
-[AppImage](https://github.com/AppImage/AppImageKit) portability.
+FlatImage, is a hybrid of [Flatpak](https://github.com/flatpak/flatpak)
+sandboxing with [AppImage](https://github.com/AppImage/AppImageKit) portability.
 
-Arts use case is twofold:
+FlatImage use case is twofold:
 
 * A tool to package software that aims to work across several linux distros,
 it bundles all the software dependencies and the software itself, within an
-executable; unlike `AppImage`, Arts runs the application in a container, which
+executable; unlike `AppImage`, FlatImage runs the application in a container, which
 increases portability and compatibility at the cost of file size.
 
 * A portable container image that requires no superuser permissions to run.
 
 The diverse `GNU/Linux` ecosystem includes a vast array of distributions, each
 with its own advantages and use cases. This can lead to cross-distribution
-software compatibility challenges. Arts addresses these issues by:
+software compatibility challenges. FlatImage addresses these issues by:
 
 * Utilizing its own root directory, enabling dynamic libraries with hard-coded
     paths to be packaged alongside the software without
@@ -59,7 +56,7 @@ software compatibility challenges. Arts addresses these issues by:
 
 ## Comparison
 
-| Feature                                                                   | Arts          | Docker                     | AppImage |
+| Feature                                                                   | FlatImage     | Docker                     | AppImage |
 | :---                                                                      | :---:         | :---:                      | :---:    |
 | No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
 | No installation necessary (click and use)                                 | x             | Requires docker on the host| x
@@ -80,99 +77,99 @@ software compatibility challenges. Arts addresses these issues by:
 
 > 1. Requires superuser privileges
 > 1. Only if the user is part of the docker group
-> 1. Only as read-only, you can mount ARTS as read-write, before compression.
+> 1. Only as read-only, you can mount FIM as read-write, before compression.
 > 1. Works without libfuse/libfuse3, still requires fusermount to be available.
 > 1. Experimental implementations, available [here](https://github.com/probonopd/go-appimage) and [here](https://github.com/AppImage/type2-runtime)
 
 
-# Get Arts
+# Get FlatImage
 
-You can get the latest release [here](https://gitlab.com/formigoni/arts/-/releases).
+You can get the latest release [here](https://gitlab.com/formigoni/fim/-/releases).
 
 # Usage
 
 You can enter the container simply by executing the downloaded image, e.g.,
-`./arch.arts`, which should give you a prompt like this `(arts@arch) →`.
+`./arch.fim`, which should give you a prompt like this `(flatimage@arch) →`.
 Remember to resize the image as shown in the examples before installing programs
 on it, else there won't be enough space for it.
 
 ## Options
 
 ```
-Application Root Subsystem (Arts)
+# FlatImage
 Avaliable options:
-- arts-compress: Compress the filesystem to a read-only format.
-- arts-root: Execute an arbitrary command as root.
-- arts-exec: Execute an arbitrary command.
-- arts-cmd: Set the default command to execute when no argument is passed.
-- arts-resize: Resize the filesystem.
-- arts-mount: Mount the filesystem in a specified directory
-    - E.g.: ./focal.arts arts-mount ./mountpoint
-- arts-xdg: Same as the 'arts-mount' command, however it opens the
+- fim-compress: Compress the filesystem to a read-only format.
+- fim-root: Execute an arbitrary command as root.
+- fim-exec: Execute an arbitrary command.
+- fim-cmd: Set the default command to execute when no argument is passed.
+- fim-resize: Resize the filesystem.
+- fim-mount: Mount the filesystem in a specified directory
+    - E.g.: ./focal.fim fim-mount ./mountpoint
+- fim-xdg: Same as the 'fim-mount' command, however it opens the
     mount directory with xdg-open
-- arts-perms-set: Set the permission for the container, available options are:
+- fim-perms-set: Set the permission for the container, available options are:
     pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-    - E.g.: ./focal.arts arts-perms pulseaudio,wayland,x11
-- arts-perms-list: List the current permissions for the container
-- arts-help: Print this message.
+    - E.g.: ./focal.fim fim-perms pulseaudio,wayland,x11
+- fim-perms-list: List the current permissions for the container
+- fim-help: Print this message.
 ```
 
 ## Environment Variables
 
 ### Configurable
 
-* `ARTS_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
-* `ARTS_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
-* `ARTS_COMPRESSION_SLACK`: Extra space after filesystem is resized on
+* `FIM_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
+* `FIM_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
+* `FIM_COMPRESSION_SLACK`: Extra space after filesystem is resized on
 compression, default is 50000 (50MB).
-* `ARTS_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
-* `ARTS_DEBUG`: If defined to 1, print debug messages.
+* `FIM_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
+* `FIM_DEBUG`: If defined to 1, print debug messages.
 
 ### Read-Only
 
-* `ARTS_FILE_BINARY`: The path to the executed binary file.
-* `ARTS_DIR_BINARY`: The path to the directory of the executed binary file.
-* `ARTS_DIR_TEMP`: Location of the temporary runtime directory.
-* `ARTS_DIR_MOUNT`: Location of the runtime arts mountpoint.
-* `ARTS_MAIN_OFFSET`: Shows filesystem offset and exits.
+* `FIM_FILE_BINARY`: The path to the executed binary file.
+* `FIM_DIR_BINARY`: The path to the directory of the executed binary file.
+* `FIM_DIR_TEMP`: Location of the temporary runtime directory.
+* `FIM_DIR_MOUNT`: Location of the runtime fim mountpoint.
+* `FIM_MAIN_OFFSET`: Shows filesystem offset and exits.
 
 
-The default path of `ARTS` temporary files is `/tmp/arts`.
+The default path of `FIM` temporary files is `/tmp/fim`.
 
 ## Configure
 
 ### HOME directory
 
-It is possible to change the default home path with `arts-config-set home`,
+It is possible to change the default home path with `fim-config-set home`,
 e.g.:
 
 ```bash
 # Default, uses the host's home directory
-./arch.arts arts-config-set home '$HOME'
-# Use the directory where the arts binary is located / arch.home, if called from
+./arch.fim fim-config-set home '$HOME'
+# Use the directory where the fim binary is located / arch.home, if called from
 # $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
-./arch.arts arts-config-set home '"$ARTS_FILE_LOCATION"/arch.home'
+./arch.fim fim-config-set home '"$FIM_DIR_BINARY"/arch.home'
 # You can use subshells to compute the path, in this case it computes the
-# directory where the arts binary is in, same as "$ARTS_FILE_LOCATION"
-./arch.arts arts-config-set home '"$(dirname "$ARTS_FILE")"/arch.home'
+# directory where the fim binary is in, same as "$FIM_DIR_BINARY"
+./arch.fim fim-config-set home '"$(dirname "$FIM_FILE_BINARY")"/arch.home'
 ```
 
 ### Backend
 
-Besides the environment variable `ARTS_BACKEND`, it is possible to use the
-`arts-config-set backend` to set the default tool. The environment variable
+Besides the environment variable `FIM_BACKEND`, it is possible to use the
+`fim-config-set backend` to set the default tool. The environment variable
 always takes precedence if defined.
 
 ```bash
 # Uses bwrap as the backend (default)
-./arch.arts arts-config-set backend "bwrap"
+./arch.fim fim-config-set backend "bwrap"
 # Uses proot as the backend
-./arch.arts arts-config-set backend "proot"
+./arch.fim fim-config-set backend "proot"
 ```
 
 # Use cases
 
-To use arts there is no need to install anything, simply download an image in
+To use FlatImage there is no need to install anything, simply download an image in
 the [releases](https://gitlab.com/formigoni/art/-/releases) page, i.e., `focal
 (ubuntu)`, `alpine` or `arch`. The archive is compressed, extract it and use it
 as shown in the following examples.
@@ -180,20 +177,20 @@ as shown in the following examples.
 ## Use pacman packages on non-arch systems
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 4G
- # Set the desired permissions (you can also list them with arts-perms-list)
-./arch.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./arch.fim fim-resize 4G
+ # Set the desired permissions (you can also list them with fim-perms-list)
+./arch.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install the desired application in the ubuntu subsystem
-./arch.arts arts-root fakechroot pacman -S firefox --noconfirm
+./arch.fim fim-root fakechroot pacman -S firefox --noconfirm
  # Test the application
-./arch.arts arts-exec firefox
+./arch.fim fim-exec firefox
  # Set the default startup command
-./arch.arts arts-cmd firefox
+./arch.fim fim-cmd firefox
  # (optional) Compress the package filesystem
-./arch.arts arts-compress
+./arch.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts firefox
+mv arch.fim firefox
  # Run the application (you can also click on it in your file manager)
 ./firefox
 ```
@@ -201,20 +198,20 @@ mv arch.arts firefox
 ## Use apt packages in non-debian systems
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 4G
- # Set the desired permissions (you can also list them with arts-perms-list)
- ./focal.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./focal.fim fim-resize 4G
+ # Set the desired permissions (you can also list them with fim-perms-list)
+ ./focal.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install the desired application in the ubuntu subsystem
-./focal.arts arts-root apt install -y firefox
+./focal.fim fim-root apt install -y firefox
  # Test the application
-./focal.arts arts-exec firefox
+./focal.fim fim-exec firefox
  # Set the default startup command
-./focal.arts arts-cmd firefox
+./focal.fim fim-cmd firefox
  # (optional) Compress the package filesystem
-./focal.arts arts-compress
+./focal.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv focal.arts firefox
+mv focal.fim firefox
  # Run the application (you can also click on it in your file manager)
 ./firefox
 ```
@@ -222,45 +219,45 @@ mv focal.arts firefox
 ## Use alpine (apk) packages
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./alpine.arts arts-resize 2G
- # Set the desired permissions (you can also list them with arts-perms-list)
-./alpine.arts arts-perms-set wayland,pulseaudio,gpu,session_bus
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./alpine.fim fim-resize 2G
+ # Set the desired permissions (you can also list them with fim-perms-list)
+./alpine.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install firefox with apk
-./alpine.arts arts-root apk add firefox font-noto
+./alpine.fim fim-root apk add firefox font-noto
  # Test the application
-./alpine.arts arts-exec firefox
+./alpine.fim fim-exec firefox
  # Set the default startup command
-./alpine.arts arts-cmd firefox
+./alpine.fim fim-cmd firefox
  # (optional) Compress the package filesystem
-./alpine.arts arts-compress
+./alpine.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv alpine.arts firefox
+mv alpine.fim firefox
  # Run the application (you can also click on it in your file manager)
 ./firefox
 ```
 
-## Use a pip package without installing pip/python
+## Use a pip package without installing pip
 
 __Archlinux__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./arch.arts to see actual size)
-./arch.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.fim to see actual size)
+./arch.fim fim-resize 4G
  # Install python-pipx
- ./arch.arts arts-root fakechroot pacman -S python-pipx ffmpeg
+ ./arch.fim fim-root fakechroot pacman -S python-pipx ffmpeg
  # Install the pip application inside the image
  export PIPX_HOME=/opt/pipx
  export PIPX_BIN_DIR=/usr/local/bin
- ./arch.arts arts-root fakechroot pipx install yt-dlp
+ ./arch.fim fim-root fakechroot pipx install yt-dlp
  # Test the application
-./arch.arts arts-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
+./arch.fim fim-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
  # Set the default startup command
-./arch.arts arts-cmd yt-dlp
+./arch.fim fim-cmd yt-dlp
  # (optional) Compress the package filesystem
-./arch.arts arts-compress
+./arch.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts yt-dlp
+mv arch.fim yt-dlp
  # Use the application (download youtube video)
 ./yt-dlp -f 'bestvideo+bestaudio' 'https://www.youtube.com/watch?v=srnyVw-OR0g'
 ```
@@ -268,49 +265,49 @@ mv arch.arts yt-dlp
 __Ubuntu__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./focal.fim fim-resize 4G
  # Install python-pip
-./focal.arts arts-root apt install -y python3-pip ffmpeg
+./focal.fim fim-root apt install -y python3-pip ffmpeg
  # Install the pip application inside the image
-./focal.arts arts-root pip3 install yt-dlp
+./focal.fim fim-root pip3 install yt-dlp
  # Test the application
-./focal.arts arts-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
+./focal.fim fim-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
  # Set the default startup command
-./focal.arts arts-cmd yt-dlp
+./focal.fim fim-cmd yt-dlp
  # (optional) Compress the package filesystem
-./focal.arts arts-compress
+./focal.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv focal.arts yt-dlp.arts
+mv focal.fim yt-dlp.fim
  # Use the application (download youtube video)
-./yt-dlp.arts -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
+./yt-dlp.fim -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
 ```
 
-## Use an npm package without installing npm/nodejs
+## Use an npm package without installing npm
 
 ### Outside the container
 
 __Archlinux__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./arch.fim fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-./arch.arts arts-perms-set x11,pulseaudio
+./arch.fim fim-perms-set x11,pulseaudio
  # Install npm/nodejs into the image
- ./arch.arts arts-root fakechroot pacman -S nodejs npm vlc
+ ./arch.fim fim-root fakechroot pacman -S nodejs npm vlc
  # Configure prefix to the root of the image
- ./arch.arts arts-exec npm config set prefix -g '/usr/local/'
+ ./arch.fim fim-exec npm config set prefix -g '/usr/local/'
  # Install the npm application inside the image
- ./arch.arts arts-root fakechroot npm install -g webtorrent-cli
+ ./arch.fim fim-root fakechroot npm install -g webtorrent-cli
  # Test the application
-./arch.arts arts-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
+./arch.fim fim-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
  # Set the default startup command
-./arch.arts arts-cmd webtorrent
+./arch.fim fim-cmd webtorrent
  # (optional) Compress the package filesystem
-./arch.arts arts-compress
+./arch.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts webtorrent
+mv arch.fim webtorrent
  # Use the application (stream legal torrent video)
 ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
 ```
@@ -318,28 +315,28 @@ mv arch.arts webtorrent
 __Ubuntu__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./focal.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./focal.fim fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-./focal.arts arts-perms-set x11,pulseaudio
+./focal.fim fim-perms-set x11,pulseaudio
  # Install npm/nodejs into the image
-./focal.arts arts-root apt install -y curl
-./focal.arts arts-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
-./focal.arts arts-root apt-get install -y nodejs mpv
+./focal.fim fim-root apt install -y curl
+./focal.fim fim-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
+./focal.fim fim-root apt-get install -y nodejs mpv
  # Configure prefix to the root of the image
-./focal.arts arts-root npm config set prefix -g /usr/local
+./focal.fim fim-root npm config set prefix -g /usr/local
  # Install the npm application inside the image
-./focal.arts arts-root npm install -g webtorrent-cli
+./focal.fim fim-root npm install -g webtorrent-cli
  # Test the application
-./focal.arts arts-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
+./focal.fim fim-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
  # Set the default startup command
-./focal.arts arts-cmd webtorrent
+./focal.fim fim-cmd webtorrent
  # (optional) Compress the package filesystem
-./focal.arts arts-compress
+./focal.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv focal.arts webtorrent.arts
+mv focal.fim webtorrent.fim
  # Use the application (stream legal torrent video)
-./webtorrent.arts magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
+./webtorrent.fim magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
 ```
 
 Note that vlc/mpv was installed inside the image, it is required since the image
@@ -348,30 +345,30 @@ has no access to the host filesystem/applications.
 ### Inside the container
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./arch.fim fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-./arch.arts arts-perms-set x11,pulseaudio
+./arch.fim fim-perms-set x11,pulseaudio
  # Enter the container as root
-ARTS_ROOT=1 ./arch.arts
+FIM_ROOT=1 ./arch.fim
  # Install npm/nodejs into the image
-(arts@arch) → fakechroot pacman -S nodejs npm vlc
+(fim@arch) → fakechroot pacman -S nodejs npm vlc
  # Configure prefix to the root of the image
-(arts@arch) → npm config set prefix -g '/usr/local/'
+(fim@arch) → npm config set prefix -g '/usr/local/'
  # Install the npm application inside the image
-(arts@arch) → fakechroot npm install -g webtorrent-cli
+(fim@arch) → fakechroot npm install -g webtorrent-cli
  # Press CTRL+D or type exit to quit the container
  # Enter the container as an unprivileged user
-./arch.arts
+./arch.fim
  # Test the application
-(arts@arch) → webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
+(fim@arch) → webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
  # Press CTRL+D or type exit to quit the container
  # Set the default startup command
-./arch.arts arts-cmd webtorrent
+./arch.fim fim-cmd webtorrent
  # (optional) Compress the package filesystem
-./arch.arts arts-compress
+./arch.fim fim-compress
  # (optional) Rename the binary to the main application name
-mv arch.arts webtorrent
+mv arch.fim webtorrent
  # Use the application (stream legal torrent video)
 ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
 ```
@@ -381,17 +378,17 @@ mv arch.arts webtorrent
 ### Outside the container
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./arch.fim fim-resize 4G
  # Fetch the application
 git clone https://github.com/htop-dev/htop.git
  # Install the required build dependencies
-./arch.arts arts-root fakechroot pacman -S ncurses automake autoconf gcc make
+./arch.fim fim-root fakechroot pacman -S ncurses automake autoconf gcc make
  # Compile the application
 cd htop
-../arch.arts arts-exec './autogen.sh'
-../arch.arts arts-exec './configure'
-../arch.arts arts-exec 'make'
+../arch.fim fim-exec './autogen.sh'
+../arch.fim fim-exec './configure'
+../arch.fim fim-exec 'make'
  # Run the compiled application
 ./htop
 ```
@@ -399,28 +396,28 @@ cd htop
 ### Inside the container
 
 ```bash
- # Set the maximum filesystem size (use du -sh ./focal.arts to see actual size)
-./arch.arts arts-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
+./arch.fim fim-resize 4G
  # Fetch the application
 git clone https://github.com/htop-dev/htop.git
  # Enter the container as root
-ARTS_ROOT=1 ./arch.arts
+FIM_ROOT=1 ./arch.fim
  # Install the required build dependencies
- (arts@arch) → fakechroot pacman -S ncurses automake autoconf gcc make
+ (fim@arch) → fakechroot pacman -S ncurses automake autoconf gcc make
  # Compile
- (arts@arch) → cd htop
- (arts@arch) → ./autogen.sh
- (arts@arch) → ./configure
- (arts@arch) → make
+ (fim@arch) → cd htop
+ (fim@arch) → ./autogen.sh
+ (fim@arch) → ./configure
+ (fim@arch) → make
  # Run
- (arts@arch) → ./htop
+ (fim@arch) → ./htop
 ```
 
-In this case `arch.arts` is now a portable building environment for htop.
+In this case `arch.fim` is now a portable building environment for htop.
 
 # Further Considerations
 
-Arts offers on build simplicity, packaging applications should be as simple as
+FlatImage offers on build simplicity, packaging applications should be as simple as
 installing them natively on the host system. This is an effort for the end-user
 to not depend on the application developer to provide the portable binary (or to
 handle how to package the application, dependencies and create a runner script).
@@ -438,25 +435,26 @@ the packaging process of applications.
    [here](https://github.com/ruanformigoni/wine)), not only that, it requires to
    patch the `32-bit` pre-loader `ld-linux.so` as well, however, sometimes it
    still fails to execute properly. This is an over exceeding complexity for the
-   end-user, which should package applications with no effort; `Arts` changes
-   the root filesystem the application runs in, to a minimal gnu subsystem, and
-   with that, it solves the previous issues with dynamic libraries no
-   workarounds required. No host libraries are used, which decreases issues of
-   portable applications working on one machine and not in other.
+   end-user, which should package applications with no effort; `FlatImage`
+   changes the root filesystem the application runs in, to a minimal gnu
+   subsystem, and with that, it solves the previous issues with dynamic
+   libraries no workarounds required. No host libraries are used, which
+   decreases issues of portable applications working on one machine and not in
+   other.
 
 1. The fragmentation of the linux package management is considerable in modern
-   times, e.g., `apt`, `pip`, `npm`, and more. To mitigate this issue `Arts` can
-   perform the installation through the preferred package manager, and turn the
-   program into an executable file, that can run in any linux distribution.
-   E.g.: The user of `Arts` can create a binary of `youtube-dl`, from the `pip`
-   package manager, without having either pip or python installed on the host
-   operating system.
+   times, e.g., `apt`, `pip`, `npm`, and more. To mitigate this issue
+   `FlatImage` can perform the installation through the preferred package
+   manager, and turn the program into an executable file, that can run in any
+   linux distribution. E.g.: The user of `FlatImage` can create a binary of
+   `youtube-dl`, from the `pip` package manager, without having either pip or
+   python installed on the host operating system.
 
 1. Some applications are offered as pre-compiled compressed tar files
    (tarballs), which sometimes only work when installed on the root of the
    operating system. However, doing so could hinder the operating system
-   integrity, to avoid this issue `Arts` can install tarballs into itself and
-   turn them into a portable binary.
+   integrity, to avoid this issue `FlatImage` can install tarballs into itself
+   and turn them into a portable binary.
 
 
 # Related Projects

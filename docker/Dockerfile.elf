@@ -12,26 +12,26 @@ ENV PIP_CONSTRAINT=cython_constraint.txt
 # Install conan
 RUN pip3 install conan==1.59.0
 
-RUN git clone "https://gitlab.com/formigoni/arts.git"
-# RUN mkdir /arts
-# COPY . /arts/
+# RUN git clone "https://gitlab.com/formigoni/fim.git"
+RUN mkdir /fim
+COPY . /fim/
 
-WORKDIR /arts
+WORKDIR /fim
 
 # Set dist
-ARG ARTS_DIST
-RUN sed -i "s/ARTS_DIST=.*/ARTS_DIST=$ARTS_DIST/" ./src/scripts/_boot.sh
+ARG FIM_DIST
+RUN sed -i "s/FIM_DIST=.*/FIM_DIST=$FIM_DIST/" ./src/scripts/_boot.sh
 
 # Compile
-WORKDIR /arts/src/elf
+WORKDIR /fim/src/elf
 RUN mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11
 RUN cmake -H. -Bbuild
 RUN cmake --build build
 
 # Move to dist dir
-WORKDIR /arts
+WORKDIR /fim
 RUN mkdir -p dist
-RUN mv /arts/src/elf/build/main dist/main
+RUN mv /fim/src/elf/build/main dist/main
 
 # Build image
 # RUN cp dist/main bin/elf

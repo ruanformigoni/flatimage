@@ -13,12 +13,12 @@
 set -e
 
 # Max size (M) = actual occupied size + offset
-export ARTS_IMG_SIZE_OFFSET="${ARTS_IMG_SIZE_OFFSET:=50}"
+export FIM_IMG_SIZE_OFFSET="${FIM_IMG_SIZE_OFFSET:=50}"
 
-ARTS_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+FIM_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # shellcheck source=/dev/null
-source "${ARTS_SCRIPT_DIR}/_common.sh"
+source "${FIM_SCRIPT_DIR}/_common.sh"
 
 # Creates a filesystem image
 # $1 = folder to create image from
@@ -45,7 +45,7 @@ function _create_image()
   bin/mke2fs -d "$dir" -b1024 -t ext2 "$out"
 }
 
-# Concatenates binary files and filesystem to create arts image
+# Concatenates binary files and filesystem to create fim image
 # $1 = Path to system image
 # $2 = Output file name
 function _create_elf()
@@ -116,7 +116,7 @@ function _create_subsystem_debootstrap()
 
   # Update sources
   # shellcheck disable=2002
-  cat "$ARTS_SCRIPT_DIR/../../sources/${dist}.list" | tee "/tmp/$dist/etc/apt/sources.list"
+  cat "$FIM_SCRIPT_DIR/../../sources/${dist}.list" | tee "/tmp/$dist/etc/apt/sources.list"
 
   # Update packages
   chroot "/tmp/$dist" /bin/bash -c 'apt -y update && apt -y upgrade'
@@ -141,17 +141,17 @@ function _create_subsystem_debootstrap()
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"
 
-  # Create arts tools dir
-  mkdir -p "/tmp/$dist/arts/static"
+  # Create fim tools dir
+  mkdir -p "/tmp/$dist/fim/static"
 
   # Embed static binaries
-  cp -r ./bin/* "/tmp/$dist/arts/static"
+  cp -r ./bin/* "/tmp/$dist/fim/static"
 
   # Embed runner
-  cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
+  cp "$FIM_SCRIPT_DIR/_boot.sh" "/tmp/$dist/fim/boot"
 
   # Embed permissions
-  cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
+  cp "$FIM_SCRIPT_DIR/_perms.sh" "/tmp/$dist/fim/perms"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -161,9 +161,9 @@ function _create_subsystem_debootstrap()
   _create_image  "/tmp/$dist" "$dist.img"
 
   # Create elf
-  _create_elf "$dist.img" "$dist.arts"
+  _create_elf "$dist.img" "$dist.fim"
 
-  tar -cf "$dist.tar" "$dist.arts"
+  tar -cf "$dist.tar" "$dist.fim"
   xz -3zv "$dist.tar"
 
   mv "$dist.tar.xz" dist/
@@ -216,17 +216,17 @@ function _create_subsystem_alpine()
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'
 
-  # Create arts tools dir
-  mkdir -p "/tmp/$dist/arts/static"
+  # Create fim tools dir
+  mkdir -p "/tmp/$dist/fim/static"
 
   # Embed static binaries
-  cp -r ./bin/* "/tmp/$dist/arts/static"
+  cp -r ./bin/* "/tmp/$dist/fim/static"
 
   # Embed runner
-  cp "$ARTS_SCRIPT_DIR/_boot.sh" "/tmp/$dist/arts/boot"
+  cp "$FIM_SCRIPT_DIR/_boot.sh" "/tmp/$dist/fim/boot"
 
   # Embed permissions
-  cp "$ARTS_SCRIPT_DIR/_perms.sh" "/tmp/$dist/arts/perms"
+  cp "$FIM_SCRIPT_DIR/_perms.sh" "/tmp/$dist/fim/perms"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -236,9 +236,9 @@ function _create_subsystem_alpine()
   _create_image  "/tmp/$dist" "$dist.img"
 
   # Create elf
-  _create_elf "$dist.img" "$dist.arts"
+  _create_elf "$dist.img" "$dist.fim"
 
-  tar -cf "$dist.tar" "$dist.arts"
+  tar -cf "$dist.tar" "$dist.fim"
   xz -3zv "$dist.tar"
 
   mv "$dist.tar.xz" dist/
@@ -264,7 +264,7 @@ function _create_subsystem_arch()
   ./arch-bootstrap/arch-bootstrap.sh arch
 
   # Update mirrorlist
-  cp "$ARTS_SCRIPT_DIR/../../sources/arch.list" arch/etc/pacman.d/mirrorlist
+  cp "$FIM_SCRIPT_DIR/../../sources/arch.list" arch/etc/pacman.d/mirrorlist
 
   # Enable multilib
   gawk -i inplace '/#\[multilib\]/,/#Include = (.*)/ { sub("#", ""); } 1' ./arch/etc/pacman.conf
@@ -300,20 +300,20 @@ function _create_subsystem_arch()
   # Create share symlink
   ln -sf /usr/share ./arch/share
 
-  # Create arts tools dir
-  mkdir -p "./arch/arts/static"
+  # Create fim tools dir
+  mkdir -p "./arch/fim/static"
 
   # Embed static binaries
-  cp -r ./bin/* "./arch/arts/static"
+  cp -r ./bin/* "./arch/fim/static"
 
   # Embed runner
-  cp "$ARTS_SCRIPT_DIR/_boot.sh" "./arch/arts/boot"
+  cp "$FIM_SCRIPT_DIR/_boot.sh" "./arch/fim/boot"
 
   # Embed permissions
-  cp "$ARTS_SCRIPT_DIR/_perms.sh" "./arch/arts/perms"
+  cp "$FIM_SCRIPT_DIR/_perms.sh" "./arch/fim/perms"
 
   # Embed AUR helper
-  cp "$ARTS_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
+  cp "$FIM_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
 
   # Remove mount dirs that may have leftover files
   rm -rf arch/{tmp,proc,sys,dev,run}
@@ -333,9 +333,9 @@ function _create_subsystem_arch()
   _create_image  "./arch" "arch.img"
 
   # Create elf
-  _create_elf "arch.img" "arch.arts"
+  _create_elf "arch.img" "arch.fim"
 
-  tar -cf arch.tar arch.arts
+  tar -cf arch.tar arch.fim
   xz -3zv arch.tar
 
   mv "arch.tar.xz" dist/

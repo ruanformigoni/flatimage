@@ -3,7 +3,7 @@
 // @file        : main.cpp
 // @created     : Monday Jan 23, 2023 21:18:26 -03
 //
-// @description : Main elf for arts
+// @description : Main elf for fim
 //
 
 #include <sstream>
@@ -97,7 +97,7 @@ void write_from_offset(std::string const& f_in_str, std::string const& f_out_str
 // fn: read_elf_header {{{
 //  Read the current binary's data. The first part of the file is the
 //  executable, and the rest is the rw filesystem, therefore, we need to
-//  discover where the filesystem starts (offset) to mount it.
+//  discover where the filesystem stfim (offset) to mount it.
 
 u64 read_elf_header(const char* elfFile, u64 offset = 0) {
   // Either Elf64_Ehdr or Elf32_Ehdr depending on architecture.
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
   // }}}
 
   // Launch program {{{
-  if ( auto str_offset_fs = getenv("ARTS_MAIN_LAUNCH") )
+  if ( auto str_offset_fs = getenv("FIM_MAIN_LAUNCH") )
   {
     // This part of the code executes the runner, it mounts the image as a
     // readable/writeable filesystem, and then executes the application
@@ -141,19 +141,19 @@ int main(int argc, char** argv)
     //
     // Get base dir
     //
-    char* cstr_dir_base = getenv("ARTS_DIR_GLOBAL");
-    if ( cstr_dir_base == NULL ) { "ARTS_DIR_GLOBAL dir variable is empty"_err(); }
+    char* cstr_dir_base = getenv("FIM_DIR_GLOBAL");
+    if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
     // Create temp dir
     //
     //// Fetch tempdir location
-    char* cstr_dir_temp = getenv("ARTS_DIR_TEMP");
+    char* cstr_dir_temp = getenv("FIM_DIR_TEMP");
     if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
-    //// Create prefix as $ARTS_DIR_TEMP/mount
+    //// Create prefix as $FIM_DIR_TEMP/mount
     std::string str_dir_mount_prefix{"{}/{}/"_fmt(cstr_dir_temp, "mount")};
     fs::create_directories(str_dir_mount_prefix);
-    //// Create temp dir to mount filesystems as $ARTS_DIR_TEMP/mount/XXXXXX
+    //// Create temp dir to mount filesystems as $FIM_DIR_TEMP/mount/XXXXXX
     std::string str_dir_mount = create_temp_dir(str_dir_mount_prefix);
 
     //
@@ -171,8 +171,8 @@ int main(int argc, char** argv)
     //
     // Set environment
     //
-    setenv("ARTS_DIR_MOUNT", str_dir_mount.c_str(), 1);
-    setenv("ARTS_OFFSET", str_offset_fs, 1);
+    setenv("FIM_DIR_MOUNT", str_dir_mount.c_str(), 1);
+    setenv("FIM_OFFSET", str_offset_fs, 1);
 
     //
     // Execute application
@@ -198,7 +198,7 @@ int main(int argc, char** argv)
     //
     // Create base dir
     //
-    std::string str_dir_base = "/tmp/arts";
+    std::string str_dir_base = "/tmp/fim";
 
     if ( ! fs::exists(str_dir_base) && ! fs::create_directories(str_dir_base) )
     {
@@ -273,16 +273,16 @@ int main(int argc, char** argv)
     //
     // Option to show offset and exit
     //
-    if( getenv("ARTS_MAIN_OFFSET") ){ fmt::print("{}\n", offset_end); exit(0); }
+    if( getenv("FIM_MAIN_OFFSET") ){ fmt::print("{}\n", offset_end); exit(0); }
 
     //
     // Set env variables to execve
     //
-    setenv("ARTS_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
-    setenv("ARTS_DIR_GLOBAL", str_dir_base.c_str(), 1);
-    setenv("ARTS_DIR_GLOBAL_BIN", str_dir_bin.c_str(), 1);
-    setenv("ARTS_FILE_BINARY", path_absolute.c_str(), 1);
-    setenv("ARTS_DIR_TEMP", str_dir_temp.c_str(), 1);
+    setenv("FIM_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
+    setenv("FIM_DIR_GLOBAL", str_dir_base.c_str(), 1);
+    setenv("FIM_DIR_GLOBAL_BIN", str_dir_bin.c_str(), 1);
+    setenv("FIM_FILE_BINARY", path_absolute.c_str(), 1);
+    setenv("FIM_DIR_TEMP", str_dir_temp.c_str(), 1);
 
     //
     // Launch Runner

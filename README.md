@@ -82,7 +82,7 @@ software compatibility challenges. FlatImage addresses these issues by:
 
 # Get FlatImage
 
-You can get the latest release [here](https://gitlab.com/formigoni/fim/-/releases).
+You can get the latest release [here](https://gitlab.com/formigoni/flatimage/-/releases).
 
 # Usage
 

@@ -22,6 +22,7 @@ for i in "${arr[@]}"; do
   link="${link//\)/}"
   link="${link//,/}"
   link="${link//\//}"
+  link="${link//\?/}"
   link="$(echo "$link" | tr "[:upper:]" "[:lower:]")"
   echo "${lead}- [$text](#${link})"
 done >> ../README.md

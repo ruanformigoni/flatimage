@@ -1,20 +1,17 @@
 # Table of contents
 
 - [Table of contents](#table-of-contents)
-- [What is FlatImage?](#what-is-flatimage?)
+- [What is FlatImage?](#what-is-flatimage)
 - [Comparison](#comparison)
 - [Get FlatImage](#get-flatimage)
 - [Usage](#usage)
-- [Options](#options)
-- [FlatImage](#flatimage)
-- [Environment Variables](#environment-variables)
-  - [Configurable](#configurable)
-  - [Read-Only](#read-only)
-- [Configure](#configure)
-  - [HOME directory](#home-directory)
-  - [Backend](#backend)
-- [Uses bwrap as the backend (default)](#uses-bwrap-as-the-backend-default)
-- [Uses proot as the backend](#uses-proot-as-the-backend)
+    - [Options](#options)
+    - [Environment Variables](#environment-variables)
+      - [Configurable](#configurable)
+      - [Read-Only](#read-only)
+    - [Configure](#configure)
+      - [HOME directory](#home-directory)
+      - [Backend](#backend)
 - [Use cases](#use-cases)
     - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
     - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
@@ -26,6 +23,7 @@
     - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
       - [Outside the container](#outside-the-container)
       - [Inside the container](#inside-the-container)
+- [Samples](#samples)
 - [Further Considerations](#further-considerations)
 - [Motivations](#motivations)
 - [Related Projects](#related-projects)
@@ -414,6 +412,12 @@ FIM_ROOT=1 ./arch.fim
 ```
 
 In this case `arch.fim` is now a portable building environment for htop.
+
+# Samples
+
+[1.](https://gitlab.com/formigoni/flatimage/-/blob/master/samples/sample-steam.sh?ref_type=heads) Portable steam
+
+[2.](https://gitlab.com/formigoni/wine/-/releases) Portable wine
 
 # Further Considerations
 

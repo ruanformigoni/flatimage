@@ -46,7 +46,7 @@ function _main()
   ./arch.fim fim-root fakechroot pacman -S steam
 
   # Set permissions
-  ./arch.fim fim-perms-set wayland,x11,gpu,session_bus
+  ./arch.fim fim-perms-set wayland,x11,gpu,session_bus,pulseaudio,input
 
   # Set command to run by default
   ./arch.fim fim-cmd steam

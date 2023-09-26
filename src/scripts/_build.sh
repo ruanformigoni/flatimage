@@ -99,8 +99,8 @@ function _create_subsystem_debootstrap()
   mkdir -p bin
 
   local dist="$1"
-
-  [[ "$dist" =~ bionic|focal|jammy ]] || _die "Invalid distribution $1"
+    
+  [[ "$dist" =~ bionic|focal|jammy|lunar ]] || _die "Invalid distribution $1"
 
   # Update exec permissions
   chmod -R +x ./bin/.
@@ -116,12 +116,34 @@ function _create_subsystem_debootstrap()
 
   # Update sources
   # shellcheck disable=2002
-  cat "$FIM_SCRIPT_DIR/../../sources/${dist}.list" | tee "/tmp/$dist/etc/apt/sources.list"
+  cat "$FIM_SCRIPT_DIR/../../sources/apt.list" | sed "s|DISTRO|$dist|" | tee "/tmp/$dist/etc/apt/sources.list"
 
   # Update packages
+  pkglist=(
+	  'rsync'
+	  'alsa-utils'
+	  'alsa-base'
+	  'alsa-oss'
+	  'pulseaudio'
+	  'libc6'
+	  'libc6-i386'
+	  'libpaper1'
+	  'fontconfig-config'
+	  'ppp'
+	  'man-db'
+	  'libnss-mdns'
+	  'gdm3'
+  )
+
+  # Ubuntu 20.04 and earlier use 'ippusbxd', but 'ipp-usb' is used as a replacement in all further releases.
+  case "$dist" in
+    bionic|focal) pkglist+=('ippusbxd') ;;
+    *)            pkglist+=('ipp-usb') ;;
+  esac
+
   chroot "/tmp/$dist" /bin/bash -c 'apt -y update && apt -y upgrade'
   chroot "/tmp/$dist" /bin/bash -c 'apt -y clean && apt -y autoclean && apt -y autoremove'
-  chroot "/tmp/$dist" /bin/bash -c 'apt install -y rsync alsa-utils alsa-base alsa-oss pulseaudio libc6 libc6-i386 libpaper1 fontconfig-config ppp man-db libnss-mdns ippusbxd gdm3'
+  chroot "/tmp/$dist" /bin/bash -c "apt install -y ${pkglist[*]}"
 
   # Umount binds
   umount  "/tmp/$dist/proc/"

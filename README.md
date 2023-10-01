@@ -24,6 +24,7 @@
       - [Outside the container](#outside-the-container)
       - [Inside the container](#inside-the-container)
 - [Samples](#samples)
+- [Usage Inside Docker](#usage-inside-docker)
 - [Further Considerations](#further-considerations)
 - [Motivations](#motivations)
 - [Related Projects](#related-projects)
@@ -418,6 +419,17 @@ In this case `arch.fim` is now a portable building environment for htop.
 [1.](https://gitlab.com/formigoni/flatimage/-/blob/master/samples/sample-steam.sh?ref_type=heads) Portable steam
 
 [2.](https://gitlab.com/formigoni/wine/-/releases) Portable wine
+
+# Usage Inside Docker
+
+Currently to run a flatimage inside docker, the `--privileged` flag is required.
+Assuming that the current directory contains the image `alpine.fim`:
+
+```
+docker run --privileged -it --rm -v "$(pwd):/workdir" ubuntu:focal /bin/bash
+cd workdir
+./alpine.fim
+```
 
 # Further Considerations
 

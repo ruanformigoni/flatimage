@@ -149,7 +149,7 @@ package-ubuntu:
   stage: package
   parallel:
     matrix:
-      - DISTRO: [bionic, focal, jammy, lunar]
+      - DISTRO: [focal, jammy]
   before_script:
     - apt update && apt -y upgrade
     - apt install -y git wget curl zstd debootstrap e2fsprogs proot fuse2fs xz-utils rsync
@@ -235,10 +235,8 @@ upload:
     apk add curl
   script: |
     curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${ALPINE_TARBALL}" "${PACKAGE_REGISTRY_URL}/${ALPINE_TARBALL}"
-    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${BIONIC_TARBALL}" "${PACKAGE_REGISTRY_URL}/${BIONIC_TARBALL}"
     curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${FOCAL_TARBALL}" "${PACKAGE_REGISTRY_URL}/${FOCAL_TARBALL}"
     curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${JAMMY_TARBALL}" "${PACKAGE_REGISTRY_URL}/${JAMMY_TARBALL}"
-    curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${LUNAR_TARBALL}" "${PACKAGE_REGISTRY_URL}/${LUNAR_TARBALL}"
     curl --header "PRIVATE-TOKEN: $PRIVATE_TOKEN" --upload-file "dist/${ARCH_TARBALL}" "${PACKAGE_REGISTRY_URL}/${ARCH_TARBALL}"
   needs:
     - job: package-arch
@@ -261,14 +259,10 @@ deploy:
     description: 'Release $CI_COMMIT_SHORT_SHA : ${RELEASE_DATE}'
     assets:
       links:
-        - name: 'bionic.tar.xz'
-          url: '${PACKAGE_REGISTRY_URL}/bionic.tar.xz'
         - name: 'focal.tar.xz'
           url: '${PACKAGE_REGISTRY_URL}/focal.tar.xz'
         - name: 'jammy.tar.xz'
           url: '${PACKAGE_REGISTRY_URL}/jammy.tar.xz'
-        - name: 'lunar.tar.xz'
-          url: '${PACKAGE_REGISTRY_URL}/lunar.tar.xz'
         - name: 'arch.tar.xz'
           url: '${PACKAGE_REGISTRY_URL}/arch.tar.xz'
         - name: 'alpine.tar.xz'

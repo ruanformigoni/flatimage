@@ -512,7 +512,7 @@ function _compress()
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$FIM_DIR_TEMP/dir_compressed"
+  local dir_compressed="$FIM_DIR_BINARY/$(basename "$FIM_FILE_BINARY").tmp"
   rm -rf "$dir_compressed"
   mkdir "$dir_compressed"
 

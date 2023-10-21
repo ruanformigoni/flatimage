@@ -218,12 +218,16 @@ function _help()
   :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
   :    - E.g.: ./focal.fim fim-perms pulseaudio,wayland,x11
   :- fim-perms-list: List the current permissions for the container
+  :- fim-config-set: Sets a configuration that persists inside the image
+  :    - E.g.: ./focal.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.focal'
+  :    - E.g.: ./focal.fim fim-config-set backend "proot"
+  :- fim-config-list: List the current configurations for the container
   :- fim-help: Print this message.
 	EOF
 }
 
 # Changes the filesystem size
-# $1 New sise
+# $1 New size
 function _resize()
 {
   # Unmount

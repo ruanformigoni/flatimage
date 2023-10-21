@@ -90,6 +90,11 @@ function _mount()
   local mode="${FIM_RW:-ro,}"
   local mode="${mode#1}"
   "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
+
+  if ! mount 2>&1 | grep "$FIM_DIR_MOUNT" &>/dev/null ; then
+    echo "Could not mount main filesystem '$FIM_FILE_BINARY' to '$FIM_DIR_MOUNT'"
+    kill "$PID"
+  fi
 }
 
 # Unmount the main filesystem

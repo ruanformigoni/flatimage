@@ -311,231 +311,186 @@ function _exec()
   # Remove override to avoid problems with apt
   [ -n "$FIM_RO" ] || rm ${FIM_DEBUG:+-v} -f "$FIM_DIR_MOUNT/var/lib/dpkg/statoverride"
 
-  declare -a _cmd
+  declare -a _cmd_bwrap
+  declare -a _cmd_proot
 
   # Fetch permissions
   # shellcheck disable=1090
   source "$FIM_FILE_PERMS"
 
-  # Run in container
+  # Main binary
+  _cmd_bwrap+=("$FIM_DIR_STATIC/bwrap")
+  _cmd_proot+=("$FIM_DIR_STATIC/proot")
+
+  # Root binding
+  _cmd_bwrap+=("${FIM_ROOT:+--uid 0 --gid 0}")
+  _cmd_proot+=("-0")
+
+  # Path to subsystem
+  _cmd_bwrap+=("--bind \"$FIM_DIR_MOUNT\" /")
+  _cmd_proot+=("-r \"$FIM_DIR_MOUNT\"")
+
+  # User home
+  _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
+  _cmd_proot+=("-b \"$HOME\"")
+
+  # System bindings
+  ## bwrap
+  _cmd_bwrap+=("--dev /dev")
+  _cmd_bwrap+=("--proc /proc")
+  _cmd_bwrap+=("--bind /tmp /tmp")
+  _cmd_bwrap+=("--bind /sys /sys")
+  ## proot
+  _cmd_proot+=("-b /dev")
+  _cmd_proot+=("-b /proc")
+  _cmd_proot+=("-b /tmp")
+  _cmd_proot+=("-b /sys")
+
+  # Pulseaudio
+  if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
+     [[ -n "$XDG_RUNTIME_DIR" ]]; then
+    _msg "PERM: Pulseaudio"
+    local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
+    export PULSE_SERVER="unix:$PULSE_SOCKET"
+    # bwrap
+    _cmd_bwrap+=("--setenv PULSE_SERVER unix:$PULSE_SOCKET")
+    _cmd_bwrap+=("--bind $PULSE_SOCKET $PULSE_SOCKET")
+    # proot
+    _cmd_proot+=("-b $PULSE_SOCKET")
+  fi
+
+  # Wayland
+  if [[ "$FIM_PERM_WAYLAND" -eq 1 ]] &&
+     [[ -n "$XDG_RUNTIME_DIR" ]] &&
+     [[ -n "$WAYLAND_DISPLAY" ]]; then
+    _msg "PERM: Wayland"
+    local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+    export WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+    export XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+    ## bwrap
+    _cmd_bwrap+=("--bind $WAYLAND_SOCKET_PATH $WAYLAND_SOCKET_PATH")
+    _cmd_bwrap+=("--setenv WAYLAND_DISPLAY $WAYLAND_DISPLAY")
+    _cmd_bwrap+=("--setenv XDG_RUNTIME_DIR $XDG_RUNTIME_DIR")
+    ## proot
+    _cmd_proot+=("-b $WAYLAND_SOCKET_PATH")
+  fi
+
+  # X11
+  if [[ "$FIM_PERM_X11" -eq 1 ]] &&
+     [[ -n "$DISPLAY" ]] &&
+     [[ -n "$XAUTHORITY" ]]; then
+    _msg "PERM: X11"
+    export DISPLAY="$DISPLAY"
+    export XAUTHORITY="$XAUTHORITY"
+    ## bwrap
+    _cmd_bwrap+=("--setenv DISPLAY $DISPLAY")
+    _cmd_bwrap+=("--setenv XAUTHORITY $XAUTHORITY")
+    _cmd_bwrap+=("--ro-bind $XAUTHORITY $XAUTHORITY")
+    ## proot
+    _cmd_proot+=("-b $XAUTHORITY")
+  fi
+
+  # dbus (user)
+  if [[ "$FIM_PERM_SESSION_BUS" -eq 1 ]] &&
+     [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+    _msg "PERM: SESSION BUS"
+    local dbus_session_bus_path="${DBUS_SESSION_BUS_ADDRESS#*=}"
+    dbus_session_bus_path="${dbus_session_bus_path%%,*}"
+    export DBUS_SESSION_BUS_ADDRESS
+    ## bwrap
+    _cmd_bwrap+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
+    _cmd_bwrap+=("--bind $dbus_session_bus_path $dbus_session_bus_path")
+    ## proot
+    _cmd_proot+=("-b ${DBUS_SESSION_BUS_ADDRESS#*=}")
+  fi
+
+  # dbus (system)
+  if [[ "$FIM_PERM_SYSTEM_BUS" -eq 1 ]] &&
+     [[ -e "/run/dbus/system_bus_socket" ]]; then
+    _msg "PERM: SYSTEM BUS"
+    ## bwrap
+    _cmd_bwrap+=("--bind /run/dbus/system_bus_socket /run/dbus/system_bus_socket")
+    ## proot
+    _cmd_proot+=("-b /run/dbus/system_bus_socket")
+  fi
+
+  # GPU
+  if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
+     [[ -e "/dev/dri" ]]; then
+    _msg "PERM: GPU"
+    ## bwrap
+    _cmd_bwrap+=("--dev-bind /dev/dri /dev/dri")
+    ## proot
+    _cmd_proot+=("-b /dev/dri")
+  fi
+
+  # Input
+  if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
+     [[ -e "/dev/input" ]]; then
+    _msg "PERM: Input - /dev/input"
+    ## bwrap
+    _cmd_bwrap+=("--dev-bind /dev/input /dev/input")
+    ## proot
+    _cmd_proot+=("--dev-bind /dev/input /dev/input")
+  fi
+  if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
+     [[ -e "/dev/uinput" ]]; then
+    _msg "PERM: Input - /dev/uinput"
+    ## bwrap
+    _cmd_bwrap+=("--dev-bind /dev/uinput /dev/uinput")
+    ## proot
+    _cmd_proot+=("--dev-bind /dev/uinput /dev/uinput")
+  fi
+
+  # USB
+  if [[ "$FIM_PERM_USB" -eq 1 ]] &&
+     [[ -e "/dev/bus/usb" ]]; then
+    _msg "PERM: USB - /dev/bus/usb"
+    ## bwrap
+    _cmd_bwrap+=("--dev-bind /dev/bus/usb /dev/bus/usb")
+    ## proot
+    _cmd_proot+=("--dev-bind /dev/bus/usb /dev/bus/usb")
+  fi
+  if [[ "$FIM_PERM_USB" -eq 1 ]] &&
+     [[ -e "/dev/usb" ]]; then
+    _msg "PERM: USB - /dev/usb"
+    ## bwrap
+    _cmd_bwrap+=("--dev-bind /dev/usb /dev/usb")
+    ## proot
+    _cmd_proot+=("--dev-bind /dev/usb /dev/usb")
+  fi
+
+  # Host info
+  ## bwrap
+  [ ! -f "/etc/host.conf"     ] || _cmd_bwrap+=('--bind "/etc/host.conf"     "/etc/host.conf"')
+  [ ! -f "/etc/hosts"         ] || _cmd_bwrap+=('--bind "/etc/hosts"         "/etc/hosts"')
+  [ ! -f "/etc/passwd"        ] || _cmd_bwrap+=('--bind "/etc/passwd"        "/etc/passwd"')
+  [ ! -f "/etc/group"         ] || _cmd_bwrap+=('--bind "/etc/group"         "/etc/group"')
+  [ ! -f "/etc/nsswitch.conf" ] || _cmd_bwrap+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
+  [ ! -f "/etc/resolv.conf"   ] || _cmd_bwrap+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')
+  ## proot
+  [ ! -f "/etc/host.conf"     ] || _cmd_proot+=('-b "/etc/host.conf"')
+  [ ! -f "/etc/hosts"         ] || _cmd_proot+=('-b "/etc/hosts"')
+  [ ! -f "/etc/passwd"        ] || _cmd_proot+=('-b "/etc/passwd"')
+  [ ! -f "/etc/group"         ] || _cmd_proot+=('-b "/etc/group"')
+  [ ! -f "/etc/nsswitch.conf" ] || _cmd_proot+=('-b "/etc/nsswitch.conf"')
+  [ ! -f "/etc/resolv.conf"   ] || _cmd_proot+=('-b "/etc/resolv.conf"')
+
+  # Shell
+  _cmd_bwrap+=("$FIM_FILE_BASH -c '${cmd[*]}'")
+  _cmd_proot+=("$FIM_FILE_BASH -c '${cmd[*]}'")
+
+  # Run in contained environment
   if [[ "$FIM_BACKEND" = "bwrap" ]]; then
     _msg "Using bubblewrap"
-
-    # Main binary
-    _cmd+=("$FIM_DIR_STATIC/bwrap")
-
-    # Root binding
-    _cmd+=("${FIM_ROOT:+--uid 0 --gid 0}")
-
-    # Path to subsystem
-    _cmd+=("--bind \"$FIM_DIR_MOUNT\" /")
-
-    # User home
-    _cmd+=("--bind \"$HOME\" \"$HOME\"")
-
-    # System bindings
-    _cmd+=("--dev /dev")
-    _cmd+=("--proc /proc")
-    _cmd+=("--bind /tmp /tmp")
-    _cmd+=("--bind /sys /sys")
-
-    # Pulseaudio
-    if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
-       [[ -n "$XDG_RUNTIME_DIR" ]]; then
-      _msg "PERM: Pulseaudio"
-      local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
-      _cmd+=("--setenv PULSE_SERVER unix:$PULSE_SOCKET")
-      _cmd+=("--bind $PULSE_SOCKET $PULSE_SOCKET")
-    fi
-
-    # Wayland
-    if [[ "$FIM_PERM_WAYLAND" -eq 1 ]] &&
-       [[ -n "$XDG_RUNTIME_DIR" ]] &&
-       [[ -n "$WAYLAND_DISPLAY" ]]; then
-      _msg "PERM: Wayland"
-      local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
-      _cmd+=("--bind $WAYLAND_SOCKET_PATH $WAYLAND_SOCKET_PATH")
-      _cmd+=("--setenv WAYLAND_DISPLAY $WAYLAND_DISPLAY")
-      _cmd+=("--setenv XDG_RUNTIME_DIR $XDG_RUNTIME_DIR")
-    fi
-
-    # X11
-    if [[ "$FIM_PERM_X11" -eq 1 ]] &&
-       [[ -n "$DISPLAY" ]] &&
-       [[ -n "$XAUTHORITY" ]]; then
-      _msg "PERM: X11"
-      _cmd+=("--setenv DISPLAY $DISPLAY")
-      _cmd+=("--setenv XAUTHORITY $XAUTHORITY")
-      _cmd+=("--ro-bind $XAUTHORITY $XAUTHORITY")
-    fi
-
-    # dbus (user)
-    if [[ "$FIM_PERM_SESSION_BUS" -eq 1 ]] &&
-       [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
-      _msg "PERM: SESSION BUS"
-      local dbus_session_bus_path="${DBUS_SESSION_BUS_ADDRESS#*=}"
-      dbus_session_bus_path="${dbus_session_bus_path%%,*}"
-      _cmd+=("--setenv DBUS_SESSION_BUS_ADDRESS $DBUS_SESSION_BUS_ADDRESS")
-      _cmd+=("--bind $dbus_session_bus_path $dbus_session_bus_path")
-    fi
-
-    # dbus (system)
-    if [[ "$FIM_PERM_SYSTEM_BUS" -eq 1 ]] &&
-       [[ -e "/run/dbus/system_bus_socket" ]]; then
-      _msg "PERM: SYSTEM BUS"
-      _cmd+=("--bind /run/dbus/system_bus_socket /run/dbus/system_bus_socket")
-    fi
-
-    # GPU
-    if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
-       [[ -e "/dev/dri" ]]; then
-      _msg "PERM: GPU"
-      _cmd+=("--dev-bind /dev/dri /dev/dri")
-    fi
-
-    # Input
-    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
-       [[ -e "/dev/input" ]]; then
-      _msg "PERM: Input"
-      _cmd+=("--dev-bind /dev/input /dev/input")
-    fi
-    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
-       [[ -e "/dev/uinput" ]]; then
-      _msg "PERM: Input"
-      _cmd+=("--dev-bind /dev/uinput /dev/uinput")
-    fi
-
-    # USB
-    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
-       [[ -e "/dev/bus/usb" ]]; then
-      _msg "PERM: USB"
-      _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
-    fi
-    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
-       [[ -e "/dev/usb" ]]; then
-      _msg "PERM: USB"
-      _cmd+=("--dev-bind /dev/usb /dev/usb")
-    fi
-
-    # Host info
-    [ ! -f "/etc/host.conf"     ] || _cmd+=('--bind "/etc/host.conf"     "/etc/host.conf"')
-    [ ! -f "/etc/hosts"         ] || _cmd+=('--bind "/etc/hosts"         "/etc/hosts"')
-    [ ! -f "/etc/passwd"        ] || _cmd+=('--bind "/etc/passwd"        "/etc/passwd"')
-    [ ! -f "/etc/group"         ] || _cmd+=('--bind "/etc/group"         "/etc/group"')
-    [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
-    [ ! -f "/etc/resolv.conf"   ] || _cmd+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')
+    eval "${_cmd_bwrap[*]}"
   elif [[ "$FIM_BACKEND" = "proot" ]]; then
     _msg "Using proot"
-
-    # Main binary
-    _cmd+=("$FIM_DIR_STATIC/proot")
-
-    # Root binding
-    _cmd+=("-0")
-
-    # Path to subsystem
-    _cmd+=("-r \"$FIM_DIR_MOUNT\"")
-
-    # User home
-    _cmd+=("-b \"$HOME\"")
-
-    # System bindings
-    _cmd+=("-b /dev")
-    _cmd+=("-b /proc")
-    _cmd+=("-b /tmp")
-    _cmd+=("-b /sys")
-
-    # Pulseaudio
-    if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
-       [[ -n "$XDG_RUNTIME_DIR" ]]; then
-      _msg "PERM: Pulseaudio"
-      local PULSE_SOCKET="$XDG_RUNTIME_DIR/pulse/native"
-      export PULSE_SERVER="unix:$PULSE_SOCKET"
-      _cmd+=("-b $PULSE_SOCKET")
-    fi
-
-    # Wayland
-    if [[ "$FIM_PERM_WAYLAND" -eq 1 ]] &&
-       [[ -n "$XDG_RUNTIME_DIR" ]] &&
-       [[ -n "$WAYLAND_DISPLAY" ]]; then
-      _msg "PERM: Wayland"
-      local WAYLAND_SOCKET_PATH="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
-      _cmd+=("-b $WAYLAND_SOCKET_PATH")
-      export WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
-      export XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
-    fi
-
-    # X11
-    if [[ "$FIM_PERM_X11" -eq 1 ]] &&
-       [[ -n "$DISPLAY" ]] &&
-       [[ -n "$XAUTHORITY" ]]; then
-      _msg "PERM: X11"
-      export DISPLAY="$DISPLAY"
-      export XAUTHORITY="$XAUTHORITY"
-      _cmd+=("-b $XAUTHORITY")
-    fi
-
-    # dbus (user)
-    if [[ "$FIM_PERM_SESSION_BUS" -eq 1 ]] &&
-       [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
-      _msg "PERM: SESSION BUS"
-      export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
-      _cmd+=("-b ${DBUS_SESSION_BUS_ADDRESS#*=}")
-    fi
-
-    # dbus (system)
-    if [[ "$FIM_PERM_SYSTEM_BUS" -eq 1 ]] &&
-       [[ -e "/run/dbus/system_bus_socket" ]]; then
-      _msg "PERM: SYSTEM BUS"
-      _cmd+=("-b /run/dbus/system_bus_socket")
-    fi
-
-    # GPU
-    if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
-       [[ -e "/dev/dri" ]]; then
-      _msg "PERM: GPU"
-      _cmd+=("-b /dev/dri")
-    fi
-
-    # Input
-    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
-       [[ -e "/dev/input" ]]; then
-      _msg "PERM: Input"
-      _cmd+=("--dev-bind /dev/input /dev/input")
-    fi
-    if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
-       [[ -e "/dev/uinput" ]]; then
-      _msg "PERM: Input"
-      _cmd+=("--dev-bind /dev/uinput /dev/uinput")
-    fi
-
-    # USB
-    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
-       [[ -e "/dev/bus/usb" ]]; then
-      _msg "PERM: USB"
-      _cmd+=("--dev-bind /dev/bus/usb /dev/bus/usb")
-    fi
-    if [[ "$FIM_PERM_USB" -eq 1 ]] &&
-       [[ -e "/dev/usb" ]]; then
-      _msg "PERM: USB"
-      _cmd+=("--dev-bind /dev/usb /dev/usb")
-    fi
-
-    # Host info
-    [ ! -f "/etc/host.conf"     ] || _cmd+=('-b "/etc/host.conf"')
-    [ ! -f "/etc/hosts"         ] || _cmd+=('-b "/etc/hosts"')
-    [ ! -f "/etc/passwd"        ] || _cmd+=('-b "/etc/passwd"')
-    [ ! -f "/etc/group"         ] || _cmd+=('-b "/etc/group"')
-    [ ! -f "/etc/nsswitch.conf" ] || _cmd+=('-b "/etc/nsswitch.conf"')
-    [ ! -f "/etc/resolv.conf"   ] || _cmd+=('-b "/etc/resolv.conf"')
+    eval "${_cmd_proot[*]}"
   else
     _die "Invalid backend $FIM_BACKEND"
   fi
 
-  # Shell
-  _cmd+=("$FIM_FILE_BASH -c '${cmd[*]}'")
-
-  eval "${_cmd[*]}"
 }
 
 # Subdirectory compression

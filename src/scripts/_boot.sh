@@ -464,7 +464,7 @@ function _exec()
   ## bwrap
   [ ! -f "/etc/host.conf"     ] || _cmd_bwrap+=('--bind "/etc/host.conf"     "/etc/host.conf"')
   [ ! -f "/etc/hosts"         ] || _cmd_bwrap+=('--bind "/etc/hosts"         "/etc/hosts"')
-  [ ! -f "/etc/passwd"        ] || _cmd_bwrap+=('--bind "/etc/passwd"        "/etc/passwd"')
+  # [ ! -f "/etc/passwd"        ] || _cmd_bwrap+=('--bind "/etc/passwd"        "/etc/passwd"')
   [ ! -f "/etc/group"         ] || _cmd_bwrap+=('--bind "/etc/group"         "/etc/group"')
   [ ! -f "/etc/nsswitch.conf" ] || _cmd_bwrap+=('--bind "/etc/nsswitch.conf" "/etc/nsswitch.conf"')
   [ ! -f "/etc/resolv.conf"   ] || _cmd_bwrap+=('--bind "/etc/resolv.conf"   "/etc/resolv.conf"')

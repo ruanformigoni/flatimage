@@ -343,6 +343,15 @@ function _exec()
   _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
   _cmd_proot+=("-b \"$HOME\"")
 
+  # Set mount bindings for external media
+  for i in "/media" "/run/media" "/mnt"; do
+    if [ -d "$i" ]; then
+      _msg "BIND: $i"
+      _cmd_bwrap+=("--ro-bind \"$i\" \"$i\"")
+      _cmd_proot+=("-b \"$i\" \"$i\"")
+    fi
+  done
+
   # System bindings
   ## bwrap
   _cmd_bwrap+=("--dev /dev")

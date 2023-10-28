@@ -445,7 +445,7 @@ function _exec()
     ## bwrap
     _cmd_bwrap+=("--dev-bind /dev/input /dev/input")
     ## proot
-    _cmd_proot+=("--dev-bind /dev/input /dev/input")
+    _cmd_proot+=("-b /dev/input /dev/input")
   fi
   if [[ "$FIM_PERM_INPUT" -eq 1 ]] &&
      [[ -e "/dev/uinput" ]]; then
@@ -453,7 +453,7 @@ function _exec()
     ## bwrap
     _cmd_bwrap+=("--dev-bind /dev/uinput /dev/uinput")
     ## proot
-    _cmd_proot+=("--dev-bind /dev/uinput /dev/uinput")
+    _cmd_proot+=("-b /dev/uinput /dev/uinput")
   fi
 
   # USB
@@ -463,7 +463,7 @@ function _exec()
     ## bwrap
     _cmd_bwrap+=("--dev-bind /dev/bus/usb /dev/bus/usb")
     ## proot
-    _cmd_proot+=("--dev-bind /dev/bus/usb /dev/bus/usb")
+    _cmd_proot+=("-b /dev/bus/usb /dev/bus/usb")
   fi
   if [[ "$FIM_PERM_USB" -eq 1 ]] &&
      [[ -e "/dev/usb" ]]; then
@@ -471,7 +471,7 @@ function _exec()
     ## bwrap
     _cmd_bwrap+=("--dev-bind /dev/usb /dev/usb")
     ## proot
-    _cmd_proot+=("--dev-bind /dev/usb /dev/usb")
+    _cmd_proot+=("-b /dev/usb /dev/usb")
   fi
 
   # Host info

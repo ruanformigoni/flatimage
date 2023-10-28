@@ -344,7 +344,7 @@ function _exec()
     if [ -d "$i" ]; then
       _msg "BIND: $i"
       _cmd_bwrap+=("--ro-bind \"$i\" \"$i\"")
-      _cmd_proot+=("-b \"$i\" \"$i\"")
+      _cmd_proot+=("-b \"$i\"")
     fi
   done
 

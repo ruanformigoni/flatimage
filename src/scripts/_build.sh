@@ -154,7 +154,7 @@ function _create_subsystem_debootstrap()
   rm -rf /tmp/"$dist"/{tmp,proc,sys,dev,run}
 
   # Create required mount point folders
-  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run,home}
+  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run/media,mnt,media,home}
 
   # Create required files for later binding
   rm -f /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
@@ -226,7 +226,7 @@ function _create_subsystem_alpine()
   rm -rf /tmp/"$dist"/{tmp,proc,sys,dev,run}
 
   # Create required mount point folders
-  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run,home}
+  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run/media,mnt,media,home}
 
   # Create required files for later binding
   rm -f /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
@@ -341,7 +341,7 @@ function _create_subsystem_arch()
   rm -rf arch/{tmp,proc,sys,dev,run}
 
   # Create required mount points if not exists
-  mkdir -p arch/{tmp,proc,sys,dev,run,home}
+  mkdir -p arch/{tmp,proc,sys,dev,run/media,mnt,media,home}
 
   # Create required files for later binding
   rm -f arch/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}

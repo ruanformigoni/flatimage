@@ -60,6 +60,9 @@ export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 export FIM_STREAM="${FIM_DEBUG:+/dev/stdout}"
 export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
+# shopt
+shopt -s nullglob
+
 # Emits a message in &2
 # $(1..n-1) arguments to echo
 # $n message
@@ -432,10 +435,36 @@ function _exec()
   if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
      [[ -e "/dev/dri" ]]; then
     _msg "PERM: GPU"
-    ## bwrap
+
     _cmd_bwrap+=("--dev-bind /dev/dri /dev/dri")
-    ## proot
     _cmd_proot+=("-b /dev/dri")
+
+    if { lsmod | grep -i nvidia; } &>/dev/null; then
+      _msg "Nvidia GPU detected, setting up driver bindings..."
+      ### Bind devices
+      for i in /dev/*nvidia*; do
+        _cmd_bwrap+=("--dev-bind \"$i\" \"$i\"")
+        _cmd_proot+=("-b \"$i\"")
+      done &>"$FIM_STREAM" || true
+      ### Bind files
+      declare -a nvidia_binds
+      nvidia_binds+=(/usr/lib/*nvidia*)
+      nvidia_binds+=(/usr/lib/*cuda*)
+      nvidia_binds+=(/usr/lib/*nvcuvid*)
+      nvidia_binds+=(/usr/lib/*nvoptix*)
+      nvidia_binds+=(/usr/lib/*vdpau*)
+      nvidia_binds+=(/usr/bin/*nvidia*)
+      nvidia_binds+=(/usr/share/*nvidia*)
+      nvidia_binds+=(/usr/share/vulkan/icd.d/*nvidia*)
+      nvidia_binds+=(/usr/lib32/*nvidia*)
+      nvidia_binds+=(/usr/lib32/*cuda*)
+      nvidia_binds+=(/usr/lib32/*vdpau*)
+      for i in "${nvidia_binds[@]}"; do
+        _cmd_bwrap+=("--bind \"$i\" \"$i\"")
+        _cmd_proot+=("-b \"$i\"")
+        _msg "NVIDIA bind '$i'"
+      done &>"$FIM_STREAM" || true
+    fi
   fi
 
   # Input

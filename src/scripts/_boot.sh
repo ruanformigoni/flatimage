@@ -520,7 +520,7 @@ function _exec()
   [ ! -f "/etc/resolv.conf"   ] || _cmd_proot+=('-b "/etc/resolv.conf"')
 
   # Set home binding
-  if [ "$HOME" != "/home/$(whoami)" ]; then
+  if [ "$HOME" != "/home/$(whoami)" ] && [ "$(id -u)" != "0" ]; then
     _msg "HOME_BIND: Nested"
     # Host home
     _cmd_bwrap+=("--ro-bind \"/home/$(whoami)\" \"/home/$(whoami)\"")

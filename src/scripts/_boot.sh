@@ -53,7 +53,7 @@ export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
-export FIM_COMPRESSION_SLACK="${FIM_COMPRESSION_SLACK:-50000}" # 50MB
+export FIM_COMPRESSION_SLACK="${FIM_COMPRESSION_SLACK:-50000000}" # 50MB
 export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 
 # Output stream
@@ -252,6 +252,8 @@ function _rebuild()
 {
   _unmount
 
+  declare -i size="$1"
+
   # Erase current file
   rm "$FIM_FILE_BINARY"
 
@@ -265,8 +267,14 @@ function _rebuild()
   FIM_OFFSET="$(du -sb "$FIM_FILE_BINARY" | awk '{print $1}')"
 
   # Create filesystem
-  truncate -s "$1" "$FIM_DIR_TEMP/image.fim"
-  "$FIM_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b1024 -t ext2 "$FIM_DIR_TEMP/image.fim"
+  truncate -s "$size" "$FIM_DIR_TEMP/image.fim"
+
+  # Check block size of host
+  local block_size="$(stat -fc %s .)"
+  _msg "block size: $block_size"
+
+  # Format as ext2
+  "$FIM_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b"$block_size" -t ext2 "$FIM_DIR_TEMP/image.fim"
 
   # Append filesystem to binary
   cat "$FIM_DIR_TEMP/image.fim" >> "$FIM_FILE_BINARY"
@@ -597,18 +605,16 @@ function _compress()
   chmod -R +rw "$dir_compressed"
 
   # Resize to fit files size + slack
-  local size_files="$( echo $(( $(du -sb "$dir_compressed" | awk '{print $1}') / 1024 )) | awk '{ gsub("K","",$1); print $1}')"
-  local size_offset="$((FIM_OFFSET/1024))" # Bytes to K
+  local size_files="$(du -sb "$dir_compressed" | awk '{print $1}')"
   local size_slack="$FIM_COMPRESSION_SLACK";
-  size_new="$((size_files+size_offset+size_slack))"
+  local size_new="$((size_files+size_slack))"
 
-  _msg "Size files  : $size_files"
-  _msg "Size offset : $size_files"
-  _msg "Size slack  : $size_slack"
-  _msg "Size sum    : $size_new"
+  _msg "Size files        : $size_files"
+  _msg "Size slack        : $size_slack"
+  _msg "Size sum          : $size_new"
 
   # Resize
-  _rebuild "$size_new"K "$dir_compressed"
+  _rebuild "$size_new" "$dir_compressed"
 
   # Remove mount dirs
   rm -rf "${FIM_DIR_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}

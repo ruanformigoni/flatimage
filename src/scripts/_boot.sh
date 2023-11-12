@@ -302,8 +302,8 @@ function _exec()
   _msg "cmd: ${cmd[*]}"
 
   # Fetch SHA
-  local sha="$(_config_fetch "sha")"
-  _msg "sha: $sha"
+  export DWARFS_SHA="$(_config_fetch "sha")"
+  _msg "DWARFS_SHA: $DWARFS_SHA"
 
   # Mount dwarfs files if exist
   [ -f "$FIM_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/dwarfs" "$FIM_DIR_GLOBAL_BIN"/dwarfs
@@ -313,7 +313,7 @@ function _exec()
   for i in $(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
     local fs="$FIM_DIR_MOUNT/$i"
-    local mp="$FIM_DIR_GLOBAL/dwarfs/$sha/${i%.dwarfs}"; mkdir -p "$mp"
+    local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"; mkdir -p "$mp"
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done
 

@@ -270,10 +270,14 @@ function _match_free_space()
     sleep 1
     ## Grep free size
     declare -i curr_free="$(df -B1 -P | grep -i "$mount" | awk '{print $4}')"
+    ## Wait for mount process termination
+    local pid_fuse2fs="$(pgrep -f "fuse2fs.*$file_filesystem")"
+    fusermount -u "$mount"
+    _wait "$pid_fuse2fs"
+    ## Check if got an integral number
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
     ## Convert from bytes to kibibytes
     curr_free="$((curr_free / 1024))"
-    pkill -f "fuse2fs.*$file_filesystem"
     _msg "Free space $curr_free"
 
     # Check if has reached desired size

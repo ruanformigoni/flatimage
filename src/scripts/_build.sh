@@ -303,6 +303,36 @@ function _create_subsystem_arch()
   # pkgs_va+=("lib32-mesa-utils")
   chroot arch /bin/bash -c "pacman -S ${pkgs_va[*]} --noconfirm"
 
+  # Pacman hooks
+  ## Avoid taking too long on 'Arming ConditionNeedsUpdate' and 'Update MIME database'
+  { sed -E 's/^\s+://' | tee ./arch/patch.sh | sed -e 's/^/-- /'; } <<-"END"
+  :#!/usr/bin/env bash
+  :shopt -s nullglob
+  :for i in $(grep -rin -m1 -l "ConditionNeedsUpdate" /usr/lib/systemd/system/); do
+  :  sed -Ei "s/ConditionNeedsUpdate=.*/ConditionNeedsUpdate=/" "$i"
+  :done
+  :grep -rin "ConditionNeedsUpdate" /usr/lib/systemd/system/
+  :
+  :mkdir -p /etc/pacman.d/hooks
+  :
+  :tee /etc/pacman.d/hooks/{update-desktop-database.hook,30-update-mime-database.hook} <<-"END"
+  :[Trigger]
+  :Type = Path
+  :Operation = Install
+  :Operation = Upgrade
+  :Operation = Remove
+  :Target = *
+
+  :[Action]
+  :Description = Overriding the desktop file MIME type cache...
+  :When = PostTransaction
+  :Exec = /bin/true
+  :END
+	END
+  chmod +x ./arch/patch.sh
+  chroot arch /bin/bash -c /patch.sh
+  rm ./arch/patch.sh
+
   # Input
   chroot arch /bin/bash -c "pacman -S libusb sdl2 lib32-sdl2 --noconfirm"
 

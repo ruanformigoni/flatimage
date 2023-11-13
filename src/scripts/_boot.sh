@@ -269,7 +269,7 @@ function _match_free_space()
     ## Wait for mount
     sleep 1
     ## Grep free size
-    declare -i curr_free="$(df -B1 | grep -i "$mount" | awk '{print $4}')"
+    declare -i curr_free="$(df -B1 -P | grep -i "$mount" | awk '{print $4}')"
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
     ## Convert from bytes to kibibytes
     curr_free="$((curr_free / 1024))"

@@ -264,10 +264,14 @@ function _match_free_space()
   [[ "$target" =~ ^[0-9]+$ ]] || _die "target is NaN"
 
   while :; do
-    # Get current size
+    # Get current free size
     "$FIM_DIR_GLOBAL_BIN"/fuse2fs "$file_filesystem" "$mount"
+    ## Wait for mount
+    sleep 1
+    ## Grep free size
     declare -i curr_free="$(df -B1 | grep -i "$mount" | awk '{print $4}')"
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
+    ## Convert from bytes to kibibytes
     curr_free="$((curr_free / 1024))"
     pkill -f "fuse2fs.*$file_filesystem"
     _msg "Free space $curr_free"

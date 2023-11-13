@@ -45,8 +45,9 @@ export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
 export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
 export FIM_FILE_CONFIG="$FIM_DIR_MOUNT/fim/config"
 export FIM_DIR_TEMP="${FIM_DIR_TEMP:?FIM_DIR_TEMP is unset or null}"
-export FIM_FILE_BINARY="${FIM_FILE_BINARY:?FIM_FILE_BINARY is unset or null}"
-export FIM_DIR_BINARY="$(dirname "$FIM_FILE_BINARY")"
+export FIM_PATH_FILE_BINARY="${FIM_PATH_FILE_BINARY:?FIM_PATH_FILE_BINARY is unset or null}"
+export FIM_FILE_BINARY="$(basename "$FIM_PATH_FILE_BINARY")"
+export FIM_DIR_BINARY="$(dirname "$FIM_PATH_FILE_BINARY")"
 export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
 export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
@@ -92,10 +93,10 @@ function _mount()
 {
   local mode="${FIM_RW:-ro,}"
   local mode="${mode#1}"
-  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
+  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_PATH_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
 
   if ! mount 2>&1 | grep "$FIM_DIR_MOUNT" &>/dev/null ; then
-    echo "Could not mount main filesystem '$FIM_FILE_BINARY' to '$FIM_DIR_MOUNT'"
+    echo "Could not mount main filesystem '$FIM_PATH_FILE_BINARY' to '$FIM_DIR_MOUNT'"
     kill "$PID"
   fi
 }
@@ -104,7 +105,7 @@ function _mount()
 function _unmount()
 {
   # Get parent pid
-  local ppid="$(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY")"
+  local ppid="$(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY")"
 
   fusermount -zu "$FIM_DIR_MOUNT"
 
@@ -237,12 +238,67 @@ function _resize()
   _unmount
 
   # Resize
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
-  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" "$1"
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" "$1"
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
 
   # Mount
   _mount
+}
+
+# The size of a filesystem and the free size of a filesystem differ
+# This makes the free space on the filesystem match the target size
+# $1 filesystem file
+# $2 target size
+function _match_free_space()
+{
+  # Get filesystem file
+  local file_filesystem="$1"
+  local mount="$FIM_DIR_BINARY/${FIM_FILE_BINARY}.mount"
+
+  mkdir -p "$mount"
+
+  # Get target size
+  declare -i target="$2"
+  target="$((target / 1024))"
+  [[ "$target" =~ ^[0-9]+$ ]] || _die "target is NaN"
+
+  while :; do
+    # Get current size
+    "$FIM_DIR_GLOBAL_BIN"/fuse2fs "$file_filesystem" "$mount"
+    declare -i curr_free="$(df -B1 | grep -i "$mount" | awk '{print $4}')"
+    [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
+    curr_free="$((curr_free / 1024))"
+    pkill -f "fuse2fs.*$file_filesystem"
+    _msg "Free space $curr_free"
+
+    # Check if has reached desired size
+    if [[ "$curr_free" -gt "$target" ]]; then break; fi
+
+    # Get the curr total
+    declare -i curr_total="$(du -sb "$file_filesystem" | awk '{print $1}')"
+    [[ "$curr_total" =~ ^[0-9]+$ ]] || _die "curr_total is NaN"
+    curr_total="$((curr_total / 1024))"
+
+    # Increase on step
+    declare -i step="50000"
+
+    # Calculate new size
+    declare -i new_size="$((curr_total+step))"
+
+    # Include size limit
+    if [[ "$new_size" -gt "10000000" ]];  then _die "Too large filesystem resize attempt"; fi
+
+    # Resize
+    "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$file_filesystem" &> "$FIM_STREAM" || true
+    "$FIM_DIR_GLOBAL_BIN"/resize2fs "$file_filesystem" "${new_size}K" &> "$FIM_STREAM"
+    "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$file_filesystem" &> "$FIM_STREAM" || true
+
+    _msg "Target of $target"
+    _msg "Resize from $curr_total to $new_size"
+  done
+
+  rmdir "$mount"
 }
 
 # Re-create the filesystem with new data
@@ -252,35 +308,43 @@ function _rebuild()
 {
   _unmount
 
-  declare -i size="$1"
+  declare -i size_image="$1"
+  local dir_system="$2"
+  local file_image="$FIM_DIR_BINARY/image.fim"
 
   # Erase current file
-  rm "$FIM_FILE_BINARY"
+  rm "$FIM_PATH_FILE_BINARY"
 
   # Copy startup binary
-  cp "$FIM_DIR_TEMP/main" "$FIM_FILE_BINARY"
+  cp "$FIM_DIR_TEMP/main" "$FIM_PATH_FILE_BINARY"
 
   # Append tools
-  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_FILE_BINARY"
+  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_PATH_FILE_BINARY"
 
   # Update offset
-  FIM_OFFSET="$(du -sb "$FIM_FILE_BINARY" | awk '{print $1}')"
+  FIM_OFFSET="$(du -sb "$FIM_PATH_FILE_BINARY" | awk '{print $1}')"
 
   # Create filesystem
-  truncate -s "$size" "$FIM_DIR_TEMP/image.fim"
+  truncate -s "$size_image" "$file_image"
 
   # Check block size of host
   local block_size="$(stat -fc %s .)"
   _msg "block size: $block_size"
 
   # Format as ext2
-  "$FIM_DIR_GLOBAL_BIN"/mke2fs -d "$2" -b"$block_size" -t ext2 "$FIM_DIR_TEMP/image.fim"
+  "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
+
+  # Make sure enough free space is available
+  _match_free_space "$file_image" "$size_image"
+
+  # Re-format and include files
+  "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
 
   # Append filesystem to binary
-  cat "$FIM_DIR_TEMP/image.fim" >> "$FIM_FILE_BINARY"
+  cat "$file_image" >> "$FIM_PATH_FILE_BINARY"
 
   # Remove filesystem
-  rm "$FIM_DIR_TEMP/image.fim"
+  rm "$file_image"
 
   # Re-mount
   _mount
@@ -574,12 +638,12 @@ function _compress()
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$FIM_DIR_BINARY/$(basename "$FIM_FILE_BINARY").tmp"
+  local dir_compressed="$FIM_DIR_BINARY/$FIM_FILE_BINARY.tmp"
   rm -rf "$dir_compressed"
   mkdir "$dir_compressed"
 
   # Get SHA and save to re-mount (used as unique identifier)
-  local sha="$(sha256sum "$FIM_FILE_BINARY" | awk '{print $1}')"
+  local sha="$(sha256sum "$FIM_PATH_FILE_BINARY" | awk '{print $1}')"
   _config_set "sha" "$sha"
   _msg "sha: $sha"
 
@@ -653,24 +717,25 @@ function _config_set()
 
 function main()
 {
-  _msg "FIM_OFFSET         : $FIM_OFFSET"
-  _msg "FIM_RO             : $FIM_RO"
-  _msg "FIM_RW             : $FIM_RW"
-  _msg "FIM_STREAM         : $FIM_STREAM"
-  _msg "FIM_ROOT           : $FIM_ROOT"
-  _msg "FIM_NORM           : $FIM_NORM"
-  _msg "FIM_DEBUG          : $FIM_DEBUG"
-  _msg "FIM_NDEBUG         : $FIM_NDEBUG"
-  _msg "FIM_DIR_GLOBAL     : $FIM_DIR_GLOBAL"
-  _msg "FIM_DIR_GLOBAL_BIN : $FIM_DIR_GLOBAL_BIN"
-  _msg "FIM_DIR_MOUNT      : $FIM_DIR_MOUNT"
-  _msg "FIM_DIR_TEMP       : $FIM_DIR_TEMP"
-  _msg "FIM_DIR_BINARY     : $FIM_DIR_BINARY"
-  _msg "FIM_FILE_BINARY    : $FIM_FILE_BINARY"
-  _msg '$*                  : '"$*"
+  _msg "FIM_OFFSET           : $FIM_OFFSET"
+  _msg "FIM_RO               : $FIM_RO"
+  _msg "FIM_RW               : $FIM_RW"
+  _msg "FIM_STREAM           : $FIM_STREAM"
+  _msg "FIM_ROOT             : $FIM_ROOT"
+  _msg "FIM_NORM             : $FIM_NORM"
+  _msg "FIM_DEBUG            : $FIM_DEBUG"
+  _msg "FIM_NDEBUG           : $FIM_NDEBUG"
+  _msg "FIM_DIR_GLOBAL       : $FIM_DIR_GLOBAL"
+  _msg "FIM_DIR_GLOBAL_BIN   : $FIM_DIR_GLOBAL_BIN"
+  _msg "FIM_DIR_MOUNT        : $FIM_DIR_MOUNT"
+  _msg "FIM_DIR_TEMP         : $FIM_DIR_TEMP"
+  _msg "FIM_PATH_FILE_BINARY : $FIM_PATH_FILE_BINARY"
+  _msg "FIM_FILE_BINARY      : $FIM_FILE_BINARY"
+  _msg "FIM_DIR_BINARY       : $FIM_DIR_BINARY"
+  _msg '$*                   : '"$*"
 
   # Check filesystem
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   _copy_tools "resize2fs" "mke2fs"

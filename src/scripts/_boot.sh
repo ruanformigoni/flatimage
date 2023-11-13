@@ -10,7 +10,7 @@
 
 #shellcheck disable=2155
 
-set -e
+set "${FIM_DEBUG_SET_ARGS:-"-e"}"
 
 PID="$$"
 

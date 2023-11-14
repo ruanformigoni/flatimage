@@ -766,7 +766,7 @@ function _config_fetch()
     if [[ "$i" =~ $regex ]]; then
       # Print value or entire expression
       if [[ "$value" -eq 1 ]]; then
-        [[ "$i" =~ (.*)=(.*) ]] && echo "${BASH_REMATCH[2]}"
+        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[2]}"
       else
         echo "$i"
       fi

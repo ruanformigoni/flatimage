@@ -431,7 +431,7 @@ function _exec()
   export HOST_USERNAME="$(whoami)"
   export PATH="$PATH:/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin"
   tee "$BASHRC_FILE" &>/dev/null <<- 'EOF'
-    export PS1="(flatimage@$(echo "$FIM_DIST" | tr '[:upper:]' '[:lower:]')) → "
+    export PS1="(flatimage@"${FIM_DIST,,}") → "
 	EOF
 
   # Remove override to avoid problems with apt

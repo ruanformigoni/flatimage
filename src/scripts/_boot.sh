@@ -751,12 +751,15 @@ function _config_fetch()
   declare -i single=0
   # Print only value
   declare -i value=0
+  # Print only key
+  declare -i key=0
 
   # Parse args
   while :; do
     case "$1" in
       --single) single=1; shift ;;
       --value) value=1; shift ;;
+      --key) key=1; shift ;;
       *) break
     esac
   done
@@ -772,9 +775,11 @@ function _config_fetch()
     if [[ "$i" =~ $regex ]]; then
       # Print value or entire expression
       if [[ "$value" -eq 1 ]]; then
-        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[2]}"
+        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[2]}" | xargs
+      elif [[ "$key" -eq 1 ]]; then
+        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[1]}" | xargs
       else
-        echo "$i"
+        echo "$i" | xargs
       fi
       if [[ "$single" -eq 1 ]]; then break; fi
     fi

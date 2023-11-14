@@ -793,7 +793,7 @@ function _config_set()
   local opt="$1"; shift
   local entry="$opt = $*"
 
-  if grep "$opt" "$FIM_FILE_CONFIG" &>"$FIM_STREAM"; then
+  if grep "$opt =" "$FIM_FILE_CONFIG" &>"$FIM_STREAM"; then
     sed -i "s|$opt =.*|$entry|" "$FIM_FILE_CONFIG"
   else
     echo "$entry" >> "$FIM_FILE_CONFIG"

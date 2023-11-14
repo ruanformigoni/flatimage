@@ -142,7 +142,7 @@ function _die()
 {
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
   # Unmount dwarfs
-  local sha="$(_config_fetch "sha")"
+  local sha="$(_config_fetch --value --single "sha")"
   if [ -n "$sha" ]; then
     shopt -s nullglob
     for i in "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/*; do
@@ -248,6 +248,10 @@ function _help()
   :    - E.g.: ./focal.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.focal'
   :    - E.g.: ./focal.fim fim-config-set backend "proot"
   :- fim-config-list: List the current configurations for the container
+  :    - E.g.: ./focal.fim fim-config-list                      # List all
+  :    - E.g.: ./focal.fim fim-config-list "overlay.*"          # List ones that match regex
+  :    - E.g.: ./focal.fim fim-config-list --single "overlay.*" # Stop on first match
+  :    - E.g.: ./focal.fim fim-config-list --value  "overlay.*" # Print only the value
   :- fim-help: Print this message.
 	EOF
 }
@@ -404,7 +408,7 @@ function _exec()
   _msg "cmd: ${cmd[*]}"
 
   # Fetch SHA
-  export DWARFS_SHA="$(_config_fetch "sha")"
+  export DWARFS_SHA="$(_config_fetch --value --single "sha")"
   _msg "DWARFS_SHA: $DWARFS_SHA"
 
   # Mount dwarfs files if exist
@@ -668,7 +672,7 @@ function _exec()
 function _compress()
 {
   [ -n "$FIM_RW" ] || _die "Set FIM_RW to 1 before compression"
-  [ -z "$(_config_fetch "sha")" ] || _die "sha is set (already compressed?)"
+  [ -z "$(_config_fetch --value --single "sha")" ] || _die "sha is set (already compressed?)"
 
   # Copy compressor to binary dir
   [ -f "$FIM_DIR_GLOBAL_BIN/mkdwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/mkdwarfs" "$FIM_DIR_GLOBAL_BIN"/mkdwarfs
@@ -728,23 +732,47 @@ function _compress()
 }
 # }}}
 
-# _config_list() {{{
-function _config_list()
-{
-  while read -r i; do
-    [ -z "$i" ] || echo "$i"
-  done < "$FIM_FILE_CONFIG"
-}
-# }}}
-
 # _config_fetch() {{{
+# Fetches a configuration from $FIM_FILE_CONFIG
+# --single: Quits on first match
+# --value: Only prints the value
+# $*: A regex, empty matches all
 function _config_fetch()
 {
-  local opt="$1"
+  [ -f "$FIM_FILE_CONFIG" ] || exit
 
-  [ -f "$FIM_FILE_CONFIG" ] || { echo ""; exit; }
+  # Exit on first match
+  declare -i single=0
+  # Print only value
+  declare -i value=0
 
-  grep -io "$opt = .*" "$FIM_FILE_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
+  # Parse args
+  while :; do
+    case "$1" in
+      --single) single=1; shift ;;
+      --value) value=1; shift ;;
+      *) break
+    esac
+  done
+
+  # Remainder of args is regex
+  local regex="$*"
+  # Match all on empty query
+  local regex="${regex:-".*"}"
+
+  # List ones that match regex
+  while read -r i; do
+    if [[ -z "$i" ]]; then continue; fi
+    if [[ "$i" =~ $regex ]]; then
+      # Print value or entire expression
+      if [[ "$value" -eq 1 ]]; then
+        [[ "$i" =~ (.*)=(.*) ]] && echo "${BASH_REMATCH[2]}"
+      else
+        echo "$i"
+      fi
+      if [[ "$single" -eq 1 ]]; then break; fi
+    fi
+  done < "$FIM_FILE_CONFIG"
 }
 # }}}
 
@@ -795,7 +823,7 @@ function main()
   [ -f "$FIM_FILE_CONFIG" ] || { [ -n "$FIM_RO" ] || touch "$FIM_FILE_CONFIG"; }
 
   # Check if custom home directory is set
-  local home="$(_config_fetch "home")"
+  local home="$(_config_fetch --value --single "home")"
   # # Expand
   home="$(eval echo "$home")"
   # # Set & show on debug mode
@@ -805,7 +833,7 @@ function main()
   # If FIM_BACKEND is not defined check the config
   # or set it to bwrap
   if [[ -z "$FIM_BACKEND" ]]; then
-    local fim_tool="$(_config_fetch "backend")"
+    local fim_tool="$(_config_fetch --value --single "backend")"
     if [[ -n "$fim_tool" ]]; then
       FIM_BACKEND="$fim_tool"
     else
@@ -822,7 +850,7 @@ function main()
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
-      "config-list") _config_list ;;
+      "config-list") shift; _config_fetch "$*" ;;
       "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
@@ -830,7 +858,7 @@ function main()
       *) _help; _die "Unknown fim command" ;;
     esac
   else
-    local default_cmd="$(_config_fetch "cmd")"
+    local default_cmd="$(_config_fetch --value --single "cmd")"
     _exec  "${default_cmd:-"$FIM_FILE_BASH"}" "$@"
   fi
 

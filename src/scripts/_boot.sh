@@ -483,6 +483,22 @@ function _exec()
   _cmd_proot+=("-b /tmp")
   _cmd_proot+=("-b /sys")
 
+  # Set home binding
+  if [ "$HOME" != "/home/$(whoami)" ] && [ "$(id -u)" != "0" ]; then
+    _msg "HOME_BIND: Nested"
+    # Host home
+    _cmd_bwrap+=("--ro-bind \"/home/$(whoami)\" \"/home/$(whoami)\"")
+    _cmd_proot+=("-b \"/home/$(whoami)\"")
+    # User home
+    _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
+    _cmd_proot+=("-b \"$HOME\"")
+  else
+    _msg "HOME_BIND: Host"
+    # User home
+    _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
+    _cmd_proot+=("-b \"$HOME\"")
+  fi
+
   # Pulseaudio
   if [[ "$FIM_PERM_PULSEAUDIO" -eq 1 ]] &&
      [[ -n "$XDG_RUNTIME_DIR" ]]; then
@@ -638,22 +654,6 @@ function _exec()
   [ ! -f "/etc/group"         ] || _cmd_proot+=('-b "/etc/group"')
   [ ! -f "/etc/nsswitch.conf" ] || _cmd_proot+=('-b "/etc/nsswitch.conf"')
   [ ! -f "/etc/resolv.conf"   ] || _cmd_proot+=('-b "/etc/resolv.conf"')
-
-  # Set home binding
-  if [ "$HOME" != "/home/$(whoami)" ] && [ "$(id -u)" != "0" ]; then
-    _msg "HOME_BIND: Nested"
-    # Host home
-    _cmd_bwrap+=("--ro-bind \"/home/$(whoami)\" \"/home/$(whoami)\"")
-    _cmd_proot+=("-b \"/home/$(whoami)\"")
-    # User home
-    _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
-    _cmd_proot+=("-b \"$HOME\"")
-  else
-    _msg "HOME_BIND: Host"
-    # User home
-    _cmd_bwrap+=("--bind \"$HOME\" \"$HOME\"")
-    _cmd_proot+=("-b \"$HOME\"")
-  fi
 
   # Shell
   _cmd_bwrap+=("$FIM_FILE_BASH -c '${cmd[*]}'")

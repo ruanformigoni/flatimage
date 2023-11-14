@@ -67,6 +67,7 @@ export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 # shopt
 shopt -s nullglob
 
+# _msg() {{{
 # Emits a message in &2
 # $(1..n-1) arguments to echo
 # $n message
@@ -74,7 +75,9 @@ function _msg()
 {
   [ -z "$FIM_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[\033[32m*\033[m] ${*: -1}" >&2;
 }
+# }}}
 
+# _wait() {{{
 # Wait for a pid to finish execution, similar to 'wait'
 # but also works for non-child pids
 # $1: pid
@@ -90,7 +93,9 @@ function _wait()
   done
   _msg "Pid $pid finished..."
 }
+# }}}
 
+# _mount() {{{
 # Mount the main filesystem
 function _mount()
 {
@@ -103,7 +108,9 @@ function _mount()
     kill "$PID"
   fi
 }
+# }}}
 
+# _unmount() {{{
 # Unmount the main filesystem
 function _unmount()
 {
@@ -114,7 +121,9 @@ function _unmount()
 
   _wait "$ppid"
 }
+# }}}
 
+# _re_mount() {{{
 # Re-mount the filesystem in new mountpoint
 # $1 New mountpoint
 function _re_mount()
@@ -124,7 +133,9 @@ function _re_mount()
   # Mount in new mountpoint
   export FIM_DIR_MOUNT="$1"; _mount
 }
+# }}}
 
+# _die() {{{
 # Quits the program
 # $* = Termination message
 function _die()
@@ -149,9 +160,11 @@ function _die()
   # Exit
   kill -s SIGTERM "$PID"
 }
-
 trap _die SIGINT EXIT
+# }}}
 
+# _copy_tools() {{{
+# Copies tools from fim static folder to host on /tmp
 function _copy_tools()
 {
   FIM_RO=1 FIM_RW="" _mount
@@ -167,7 +180,9 @@ function _copy_tools()
 
   _unmount
 }
+# }}}
 
+# _perms_list() {{{
 # List permissions of sandbox
 function _perms_list()
 {
@@ -180,7 +195,9 @@ function _perms_list()
   ! grep -i "FIM_PERM_INPUT" "$FIM_FILE_PERMS"       &>/dev/null || echo "input"
   ! grep -i "FIM_PERM_USB" "$FIM_FILE_PERMS"         &>/dev/null || echo "usb"
 }
+# }}}
 
+# _perms_set() {{{
 # Set permissions of sandbox
 function _perms_set()
 {
@@ -206,7 +223,9 @@ function _perms_set()
   done
   IFS="$ifs" 
 }
+# }}}
 
+# _help() {{{
 function _help()
 {
   sed -E 's/^\s+://' <<-EOF
@@ -232,7 +251,9 @@ function _help()
   :- fim-help: Print this message.
 	EOF
 }
+# }}}
 
+# _resize() {{{
 # Changes the filesystem size
 # $1 New size
 function _resize()
@@ -248,7 +269,9 @@ function _resize()
   # Mount
   _mount
 }
+# }}}
 
+# _match_free_space() {{{
 # The size of a filesystem and the free size of a filesystem differ
 # This makes the free space on the filesystem match the target size
 # $1 filesystem file
@@ -311,7 +334,9 @@ function _match_free_space()
 
   rmdir "$mount"
 }
+# }}}
 
+# _rebuild() {{{
 # Re-create the filesystem with new data
 # $1 New size
 # $2 Dir to create image from
@@ -360,7 +385,9 @@ function _rebuild()
   # Re-mount
   _mount
 }
+# }}}
 
+# _exec() {{{
 # Chroots into the filesystem
 # $* Command and args
 function _exec()
@@ -634,7 +661,9 @@ function _exec()
   fi
 
 }
+# }}}
 
+# _compress() {{{
 # Subdirectory compression
 function _compress()
 {
@@ -697,14 +726,18 @@ function _compress()
   # Create required mount points if not exists
   mkdir -p "$FIM_DIR_MOUNT"/{tmp,proc,sys,dev,run,home}
 }
+# }}}
 
+# _config_list() {{{
 function _config_list()
 {
   while read -r i; do
     [ -z "$i" ] || echo "$i"
   done < "$FIM_FILE_CONFIG"
 }
+# }}}
 
+# _config_fetch() {{{
 function _config_fetch()
 {
   local opt="$1"
@@ -713,7 +746,9 @@ function _config_fetch()
 
   grep -io "$opt = .*" "$FIM_FILE_CONFIG" | awk '{$1=$2=""; print substr($0, 3)}'
 }
+# }}}
 
+# _config_set() {{{
 function _config_set()
 {
   local opt="$1"; shift
@@ -725,7 +760,9 @@ function _config_set()
     echo "$entry" >> "$FIM_FILE_CONFIG"
   fi
 }
+# }}}
 
+# main() {{{
 function main()
 {
   _msg "FIM_OFFSET           : $FIM_OFFSET"
@@ -798,6 +835,7 @@ function main()
   fi
 
 }
+# }}}
 
 main "$@"
 

@@ -424,7 +424,7 @@ function _exec()
     local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"
     mkdir -p "$mp"
     # Symlink
-    ln -T -sf --no-dereference "$mp" "${fs%.dwarfs}"
+    ln -T -sfn "$mp" "${fs%.dwarfs}"
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done

@@ -407,19 +407,25 @@ function _exec()
 
   _msg "cmd: ${cmd[*]}"
 
-  # Fetch SHA
+  # Mount dwarfs files
+  ## Fetch SHA
   export DWARFS_SHA="$(_config_fetch --value --single "sha")"
   _msg "DWARFS_SHA: $DWARFS_SHA"
 
-  # Mount dwarfs files if exist
+  ## Copy dwarfs binary
   [ -f "$FIM_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/dwarfs" "$FIM_DIR_GLOBAL_BIN"/dwarfs
   chmod +x "$FIM_DIR_GLOBAL_BIN/dwarfs"
 
+  ## Mount dwarfs files if exist
   # shellcheck disable=2044
   for i in $(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
     i="$(basename "$i")"
     local fs="$FIM_DIR_MOUNT/$i"
-    local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"; mkdir -p "$mp"
+    local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"
+    mkdir -p "$mp"
+    # Symlink
+    ln -T -sf --no-dereference "$mp" "${fs%.dwarfs}"
+    # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done
 

@@ -100,17 +100,17 @@ function _wait_kill()
   # Wait message
   _msg "[ $pid ] : $*"
   # Get time limit
-  declare -i limit="${3:-5}"
+  declare -i limit="${3:-50}"
 
   # Wait for process to finish
   # ...or kill on timeout
-  declare -i sec_sleep=1
-  declare -i elapsed=0
+  declare ms_sleep=0.1
+  declare -i iterations=0
   while kill -0 "$pid" 2>/dev/null; do
-    _msg "Pid $pid running, limit ${limit}s..."
-    elapsed+=1
-    sleep "$sec_sleep"
-    if test "$elapsed" -gt "$limit"; then
+    _msg "Pid $pid running with sleep ${ms_sleep}ms, $iterations of $limit iterations..."
+    iterations+=1
+    sleep "$ms_sleep"
+    if test "$iterations" -gt "$limit"; then
       kill -s SIGTERM "$pid"
       _msg "Pid $pid killed..."
       break

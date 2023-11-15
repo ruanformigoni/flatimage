@@ -11,6 +11,25 @@ variables:
   PACKAGE_REGISTRY_URL: "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages/generic/fim/continuous"
   PROJECT_URL: "https://gitlab.com/api/v4/projects/43000137"
 
+fetch-coreutils:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget tar xz-utils
+    - echo JOB_ID_FETCH_COREUTILS=$CI_JOB_ID > build.env
+  script:
+    - |
+      wget "https://github.com/ruanformigoni/coreutils-static/releases/download/d7f4cd2/coreutils-x86_64.tar.xz"
+      tar xf "coreutils-x86_64.tar.xz"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 fetch-e2fsprogs:
   image: "ubuntu:focal"
   stage: fetch
@@ -65,6 +84,25 @@ fetch-bwrap:
     - |
       mkdir -p ./bin
       wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/559a725/bwrap"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
+fetch-overlayfs:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget
+    - echo JOB_ID_FETCH_OVERLAYFS=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p ./bin
+      wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/af507a2/fuse-overlayfs-x86_64"
   artifacts:
     paths:
       - ./bin
@@ -163,8 +201,10 @@ package-ubuntu:
     - echo "${DISTRO^^}_TARBALL=${DISTRO}.tar.xz" >> build.env
   needs:
     - job: build-elf
+    - job: fetch-coreutils
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
+    - job: fetch-overlayfs
     - job: fetch-dwarfs
     - job: fetch-bash
     - job: fetch-proot
@@ -190,8 +230,10 @@ package-arch:
     - echo "ARCH_TARBALL=arch.tar.xz" >> build.env
   needs:
     - job: build-elf
+    - job: fetch-coreutils
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
+    - job: fetch-overlayfs
     - job: fetch-dwarfs
     - job: fetch-bash
     - job: fetch-proot
@@ -217,8 +259,10 @@ package-alpine:
     - echo "ALPINE_TARBALL=alpine.tar.xz" >> build.env
   needs:
     - job: build-elf
+    - job: fetch-coreutils
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
+    - job: fetch-overlayfs
     - job: fetch-dwarfs
     - job: fetch-bash
     - job: fetch-proot

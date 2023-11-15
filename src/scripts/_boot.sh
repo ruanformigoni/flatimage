@@ -960,7 +960,19 @@ function main()
   "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
-  _copy_tools "resize2fs" "mke2fs"
+  declare -a ext_tools=(
+    "[" "b2sum" "base32" "base64" "basename" "cat" "chcon" "chgrp" "chmod" "chown" "chroot" "cksum"
+    "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du" "echo" "env"
+    "expand" "expr" "factor" "false" "fmt" "fold" "groups" "head" "hostid" "id" "join" "kill" "link"
+    "ln" "logname" "ls" "md5sum" "mkdir" "mkfifo" "mknod" "mktemp" "mv" "nice" "nl" "nohup" "nproc"
+    "numfmt" "od" "paste" "pathchk" "pr" "printenv" "printf" "ptx" "pwd" "readlink" "realpath" "rm"
+    "rmdir" "runcon" "seq" "sha1sum" "sha224sum" "sha256sum" "sha384sum" "sha512sum" "shred" "shuf"
+    "sleep" "sort" "split" "stat" "stty" "sum" "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr"
+    "true" "truncate" "tsort" "uname" "unexpand" "uniq" "unlink" "uptime" "users" "vdir" "wc" "who"
+    "whoami" "yes" "resize2fs" "mke2fs"
+  )
+
+  _copy_tools "${ext_tools[@]}"
 
   # Mount filesystem
   _mount

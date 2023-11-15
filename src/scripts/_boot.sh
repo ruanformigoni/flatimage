@@ -66,6 +66,7 @@ export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
 # Overlayfs filesystems mounts
 declare -a FIM_MOUNTS_OVERLAYFS
+declare -a FIM_MOUNTS_DWARFS
 
 # shopt
 shopt -s nullglob
@@ -180,22 +181,13 @@ function _die()
   done
 
   # Unmount dwarfs
-  local sha="$(_config_fetch --value --single "sha")"
-  if [ -n "$sha" ]; then
-    for i in "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/*; do
-      # Check if is mounted
-      if mount | grep "$i" &>/dev/null; then
-        # Get pid of dwarfs
-        local pid="$(pgrep -f "dwarfs.*$i")"
-        # Get mount of dwarfs
-        local mountpoint="$FIM_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")"
-        # Send unmount signal to dwarfs mountpoint
-        fusermount -zu "$mountpoint" &> "$FIM_STREAM"
-        # Wait and kill if it takes too long
-        _wait_kill "Wait for unmount of dwarfs in $mountpoint" "$pid"
-      fi
-    done
-  fi
+  for i in "${FIM_MOUNTS_DWARFS[@]}"; do
+    local pid="$(pgrep -f "$i")"
+    # Send unmount signal to dwarfs mountpoint
+    fusermount -zu "$i" &> "$FIM_STREAM"
+    # Wait and kill if it takes too long
+    _wait_kill "Wait for unmount of dwarfs in $i" "$pid"
+  done
 
   # Unmount image
   _unmount &> "$FIM_STREAM"
@@ -470,6 +462,8 @@ function _exec()
     ln -T -sfn "$mp" "${fs%.dwarfs}"
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
+    # Save mountpoint
+    FIM_MOUNTS_DWARFS+=("$mp")
   done
 
   # Mount overlayfs

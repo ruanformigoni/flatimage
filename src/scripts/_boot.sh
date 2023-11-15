@@ -77,19 +77,40 @@ function _msg()
 }
 # }}}
 
-# _wait() {{{
+# _wait_kill() {{{
 # Wait for a pid to finish execution, similar to 'wait'
 # but also works for non-child pids
+# Kills on timeout
 # $1: pid
-function _wait()
+function _wait_kill()
 {
   # Get pid
-  local pid="$1"
+  declare -i pid="$2"
+
+  # Ignore pid 0, this might happen if pgrep
+  # was done after process exit
+  if test "$pid" -eq 0 || test -z "$pid"; then
+    _msg "Pid $pid ignore..."
+  fi
+
+  # Wait message
+  _msg "[ $pid ] : $*"
+  # Get time limit
+  declare -i limit="${3:-5}"
 
   # Wait for process to finish
+  # ...or kill on timeout
+  declare -i sec_sleep=1
+  declare -i elapsed=0
   while kill -0 "$pid" 2>/dev/null; do
-    _msg "Pid $pid running..."
-    sleep .1
+    _msg "Pid $pid running, limit ${limit}s..."
+    elapsed+=1
+    sleep "$sec_sleep"
+    if test "$elapsed" -gt "$limit"; then
+      kill -s SIGTERM "$pid"
+      _msg "Pid $pid killed..."
+      break
+    fi
   done
   _msg "Pid $pid finished..."
 }
@@ -119,7 +140,7 @@ function _unmount()
 
   fusermount -zu "$FIM_DIR_MOUNT"
 
-  _wait "$ppid"
+  _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$ppid"
 }
 # }}}
 
@@ -140,23 +161,33 @@ function _re_mount()
 # $* = Termination message
 function _die()
 {
+  # In case of failure continue cleaning up
+  set +e
+
+  # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
+
   # Unmount dwarfs
   local sha="$(_config_fetch --value --single "sha")"
   if [ -n "$sha" ]; then
-    shopt -s nullglob
     for i in "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/*; do
       # Check if is mounted
       if mount | grep "$i" &>/dev/null; then
-        # Get parent pid
-        local ppid="$(pgrep -f "dwarfs2.*$i")"
-        fusermount -zu "$FIM_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")" &> "$FIM_STREAM" || true
-        _wait "$ppid"
+        # Get pid of dwarfs
+        local pid="$(pgrep -f "dwarfs.*$i")"
+        # Get mount of dwarfs
+        local mountpoint="$FIM_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")"
+        # Send unmount signal to dwarfs mountpoint
+        fusermount -zu "$mountpoint" &> "$FIM_STREAM" || true
+        # Wait and kill if it takes too long
+        _wait_kill "Wait for unmount of dwarfs in $mountpoint" "$pid"
       fi
     done
   fi
+
   # Unmount image
   _unmount &> "$FIM_STREAM"
+
   # Exit
   kill -s SIGTERM "$PID"
 }
@@ -303,7 +334,7 @@ function _match_free_space()
     ## Wait for mount process termination
     local pid_fuse2fs="$(pgrep -f "fuse2fs.*$file_filesystem")"
     fusermount -u "$mount"
-    _wait "$pid_fuse2fs"
+    _wait_kill "Wait for unmount of fuse2fs in $mount" "$pid_fuse2fs"
     ## Check if got an integral number
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
     ## Convert from bytes to kibibytes

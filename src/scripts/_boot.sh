@@ -139,12 +139,11 @@ function _mount()
 # Unmount the main filesystem
 function _unmount()
 {
-  # Get parent pid
-  local ppid="$(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY")"
-
   fusermount -zu "$FIM_DIR_MOUNT"
 
-  _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$ppid"
+  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY.*$FIM_DIR_MOUNT"); do
+    _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$pid"
+  done
 }
 # }}}
 
@@ -339,9 +338,10 @@ function _match_free_space()
     ## Grep free size
     declare -i curr_free="$(df -B1 -P | grep -i "$mount" | awk '{print $4}')"
     ## Wait for mount process termination
-    local pid_fuse2fs="$(pgrep -f "fuse2fs.*$file_filesystem")"
     fusermount -u "$mount"
-    _wait_kill "Wait for unmount of fuse2fs in $mount" "$pid_fuse2fs"
+    for pid in $(pgrep -f "fuse2fs.*$file_filesystem"); do
+      _wait_kill "Wait for unmount of fuse2fs in $mount" "$pid"
+    done
     ## Check if got an integral number
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
     ## Convert from bytes to kibibytes

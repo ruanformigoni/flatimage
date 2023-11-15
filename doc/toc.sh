@@ -15,7 +15,7 @@ readarray -t arr <<<"$(grep -Ei "^#+" ../README.md)"
 
 for i in "${arr[@]}"; do
   lead="${i//${i//\#/}/}"
-  lead="${lead//#/  }"
+  lead="${lead//#/"    "}"
   text="${i#\#* }"
   link="${text// /-}"
   link="${link//\(/}"

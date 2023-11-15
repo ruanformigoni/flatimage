@@ -1,28 +1,29 @@
 # Table of contents
 
 - [Table of contents](#table-of-contents)
-- [What is FlatImage?](#what-is-flatimage)
-- [Comparison](#comparison)
+    - [What is FlatImage?](#what-is-flatimage)
+    - [Comparison](#comparison)
 - [Get FlatImage](#get-flatimage)
 - [Usage](#usage)
     - [Options](#options)
     - [Environment Variables](#environment-variables)
-      - [Configurable](#configurable)
-      - [Read-Only](#read-only)
+        - [Configurable](#configurable)
+        - [Read-Only](#read-only)
     - [Configure](#configure)
-      - [HOME directory](#home-directory)
-      - [Backend](#backend)
+        - [HOME directory](#home-directory)
+        - [Backend](#backend)
+        - [Overlayfs](#overlayfs)
 - [Use cases](#use-cases)
     - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
     - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
     - [Use alpine (apk) packages](#use-alpine-apk-packages)
     - [Use a pip package without installing pip](#use-a-pip-package-without-installing-pip)
     - [Use an npm package without installing npm](#use-an-npm-package-without-installing-npm)
-      - [Outside the container](#outside-the-container)
-      - [Inside the container](#inside-the-container)
+        - [Outside the container](#outside-the-container)
+        - [Inside the container](#inside-the-container)
     - [Compile an application without installing dependencies on the host](#compile-an-application-without-installing-dependencies-on-the-host)
-      - [Outside the container](#outside-the-container)
-      - [Inside the container](#inside-the-container)
+        - [Outside the container](#outside-the-container)
+        - [Inside the container](#inside-the-container)
 - [Samples](#samples)
 - [Usage Inside Docker](#usage-inside-docker)
 - [Further Considerations](#further-considerations)
@@ -58,9 +59,10 @@ software compatibility challenges. FlatImage addresses these issues by:
 | Feature                                                                   | FlatImage     | Docker                     | AppImage |
 | :---                                                                      | :---:         | :---:                      | :---:    |
 | No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
+| **Overlayfs** (allows to install programs even after compression)             | x             |                            |
 | No installation necessary (click and use)                                 | x             | Requires docker on the host| x
 | Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
-| Runs without mounting the filesystem                                      | x<sup>1</sup> |                            | x
+| Runs without mounting the filesystem                                      |               |                            | x
 | Straightforward build process                                             | x             | x                          |
 | Desktop integration                                                       |               |                            | x
 | Extract the contents                                                      | x             | x                          | x
@@ -70,7 +72,7 @@ software compatibility challenges. FlatImage addresses these issues by:
 | Portable mutable user configuration                                       | x             | x                          |
 | Granular control over containerization                                    | x             | x                          |
 | Works without fuse installed (still requires kernel support)              | x<sup>4</sup> | x                          | x<sup>5</sup>
-| Layered filesystem                                                        |               | x                          |
+| Layered filesystem                                                        | x (overlayfs) | x                          |
 | Advanced networking management                                            |               | x                          |
 | Advanced security features                                                |               | x                          |
 
@@ -95,7 +97,7 @@ on it, else there won't be enough space for it.
 ## Options
 
 ```
-# FlatImage
+ # FlatImage
 Avaliable options:
 - fim-compress: Compress the filesystem to a read-only format.
 - fim-root: Execute an arbitrary command as root.
@@ -134,7 +136,8 @@ compression, default is 50000 (50MB).
 
 ### Read-Only
 
-* `FIM_FILE_BINARY`: The path to the executed binary file.
+* `FIM_PATH_FILE_BINARY`: Full path to the executed binary file
+* `FIM_FILE_BINARY`: Basename of the executed binary file.
 * `FIM_DIR_BINARY`: The path to the directory of the executed binary file.
 * `FIM_DIR_TEMP`: Location of the temporary runtime directory.
 * `FIM_DIR_MOUNT`: Location of the runtime fim mountpoint.
@@ -151,13 +154,13 @@ It is possible to change the default home path with `fim-config-set home`,
 e.g.:
 
 ```bash
-# Default, uses the host's home directory
+ # Default, uses the host's home directory
 ./arch.fim fim-config-set home '$HOME'
-# Use the directory where the fim binary is located / arch.home, if called from
-# $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
+ # Use the directory where the fim binary is located / arch.home, if called from
+ # $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
 ./arch.fim fim-config-set home '"$FIM_DIR_BINARY"/arch.home'
-# You can use subshells to compute the path, in this case it computes the
-# directory where the fim binary is in, same as "$FIM_DIR_BINARY"
+ # You can use subshells to compute the path, in this case it computes the
+ # directory where the fim binary is in, same as "$FIM_DIR_BINARY"
 ./arch.fim fim-config-set home '"$(dirname "$FIM_FILE_BINARY")"/arch.home'
 ```
 
@@ -168,10 +171,26 @@ Besides the environment variable `FIM_BACKEND`, it is possible to use the
 always takes precedence if defined.
 
 ```bash
-# Uses bwrap as the backend (default)
+ # Uses bwrap as the backend (default)
 ./arch.fim fim-config-set backend "bwrap"
-# Uses proot as the backend
+ # Uses proot as the backend
 ./arch.fim fim-config-set backend "proot"
+```
+
+### Overlayfs
+
+You can use overlayfs on top of the `dwarfs` filesystems, e.g.:
+
+```bash
+ # Compress
+./arch.fim fim-compress
+ # Configure overlayfs paths
+./arch.fim fim-config-set overlay.usr "My /usr overlay"
+./arch.fim fim-config-set overlay.usr.host '"$FIM_PATH_FILE_BINARY".overlay'
+./arch.fim fim-config-set overlay.usr.cont '/usr'
+ # Verify
+./arch.fim
+(flatimage@arch) → ls -l / | grep "usr ->"
 ```
 
 # Use cases

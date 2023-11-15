@@ -173,20 +173,23 @@ function _die()
 
   # Unmount overlayfs
   for i in "${FIM_MOUNTS_OVERLAYFS[@]}"; do
-    local pid="$(pgrep -f "$i")"
-    # Send unmount signal to dwarfs mountpoint
-    fusermount -zu "$i" &> "$FIM_STREAM"
-    # Wait and kill if it takes too long
-    _wait_kill "Wait for unmount of overlayfs in $i" "$pid"
+    # Iterate on parent and child pids
+    for pid in $(pgrep -f "$i"); do
+      # Send unmount signal to dwarfs mountpoint
+      fusermount -zu "$i" &> "$FIM_STREAM"
+      # Wait and kill if it takes too long
+      _wait_kill "Wait for unmount of overlayfs in $i" "$pid"
+    done
   done
 
   # Unmount dwarfs
   for i in "${FIM_MOUNTS_DWARFS[@]}"; do
-    local pid="$(pgrep -f "$i")"
-    # Send unmount signal to dwarfs mountpoint
-    fusermount -zu "$i" &> "$FIM_STREAM"
-    # Wait and kill if it takes too long
-    _wait_kill "Wait for unmount of dwarfs in $i" "$pid"
+    for pid in $(pgrep -f "$i"); do
+      # Send unmount signal to dwarfs mountpoint
+      fusermount -zu "$i" &> "$FIM_STREAM"
+      # Wait and kill if it takes too long
+      _wait_kill "Wait for unmount of dwarfs in $i" "$pid"
+    done
   done
 
   # Unmount image

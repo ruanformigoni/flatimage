@@ -53,7 +53,7 @@ export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 
 # Give static tools priority in PATH
-export PATH="$FIM_DIR_STATIC:$FIM_DIR_GLOBAL_BIN:$PATH"
+export PATH="$FIM_DIR_GLOBAL_BIN:$FIM_DIR_STATIC:$PATH"
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"

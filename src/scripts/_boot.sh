@@ -53,7 +53,7 @@ export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 
 # Give static tools priority in PATH
-export PATH="$FIM_DIR_STATIC:$PATH"
+export PATH="$FIM_DIR_STATIC:$FIM_DIR_GLOBAL_BIN:$PATH"
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
@@ -273,6 +273,11 @@ function _help()
   :- fim-exec: Execute an arbitrary command.
   :- fim-cmd: Set the default command to execute when no argument is passed.
   :- fim-resize: Resize the filesystem.
+  :    - # Resizes the filesytem to 1G
+  :    - E.g.: ./focal.fim fim-resize-free 1G
+  :- fim-resize-free: Resize the filesystem to have the provided free space.
+  :    - # Makes sure the filesystem has 100M of free space
+  :    - E.g.: ./focal.fim fim-resize-free 100M
   :- fim-mount: Mount the filesystem in a specified directory
   :    - E.g.: ./focal.fim fim-mount ./mountpoint
   :- fim-xdg: Same as the 'fim-mount' command, however it opens the
@@ -330,13 +335,19 @@ function _match_free_space()
   target="$((target / 1024))"
   [[ "$target" =~ ^[0-9]+$ ]] || _die "target is NaN"
 
+  # Optional offset
+  declare -i offset
+  if [[ $# -eq 3 ]]; then
+    offset="$3"
+  fi
+
   while :; do
     # Get current free size
-    "$FIM_DIR_GLOBAL_BIN"/fuse2fs "$file_filesystem" "$mount"
+    "$FIM_DIR_GLOBAL_BIN/fuse2fs" "${file_filesystem}" ${offset:+"-ooffset=$offset"} "$mount"
     ## Wait for mount
     sleep 1
     ## Grep free size
-    declare -i curr_free="$(df -B1 -P | grep -i "$mount" | awk '{print $4}')"
+    declare -i curr_free="$(df -B1 --output=avail "$mount" | tail -n1)"
     ## Wait for mount process termination
     fusermount -u "$mount"
     for pid in $(pgrep -f "fuse2fs.*$file_filesystem"); do
@@ -366,15 +377,35 @@ function _match_free_space()
     if [[ "$new_size" -gt "10000000" ]];  then _die "Too large filesystem resize attempt"; fi
 
     # Resize
-    "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$file_filesystem" &> "$FIM_STREAM" || true
-    "$FIM_DIR_GLOBAL_BIN"/resize2fs "$file_filesystem" "${new_size}K" &> "$FIM_STREAM"
-    "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$file_filesystem" &> "$FIM_STREAM" || true
+    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
+    "$FIM_DIR_GLOBAL_BIN/resize2fs" "${file_filesystem}${offset:+"?offset=$offset"}" "${new_size}K" &> "$FIM_STREAM"
+    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
 
     _msg "Target of $target"
     _msg "Resize from $curr_total to $new_size"
   done
 
   rmdir "$mount"
+}
+# }}}
+
+# _resize_free_space() {{{
+# Resizes filesystem to have the target free space
+# $1 New size for free space
+function _resize_free_space()
+{
+  # Unmount
+  _unmount
+
+  local size_new="$1"
+
+  # Match free space
+  declare -i size_bytes
+  size_bytes="$(numfmt --from=iec "$1")"
+  _match_free_space "$FIM_PATH_FILE_BINARY" "$size_bytes" "$FIM_OFFSET"
+
+  # Mount
+  _mount
 }
 # }}}
 
@@ -963,6 +994,7 @@ function main()
       "exec") shift; _exec "$@" ;;
       "cmd") _config_set "cmd" "${@:2}" ;;
       "resize") _resize "$2" ;;
+      "resize-free") _resize_free_space "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
       "config-list") shift; _config_fetch "$*" ;;

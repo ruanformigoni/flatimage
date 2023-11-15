@@ -64,6 +64,9 @@ export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 export FIM_STREAM="${FIM_DEBUG:+/dev/stdout}"
 export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
+# Overlayfs filesystems mounts
+declare -a FIM_MOUNTS_OVERLAYFS
+
 # shopt
 shopt -s nullglob
 
@@ -167,6 +170,15 @@ function _die()
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
 
+  # Unmount overlayfs
+  for i in "${FIM_MOUNTS_OVERLAYFS[@]}"; do
+    local pid="$(pgrep -f "$i")"
+    # Send unmount signal to dwarfs mountpoint
+    fusermount -zu "$i" &> "$FIM_STREAM"
+    # Wait and kill if it takes too long
+    _wait_kill "Wait for unmount of overlayfs in $i" "$pid"
+  done
+
   # Unmount dwarfs
   local sha="$(_config_fetch --value --single "sha")"
   if [ -n "$sha" ]; then
@@ -178,7 +190,7 @@ function _die()
         # Get mount of dwarfs
         local mountpoint="$FIM_DIR_GLOBAL"/dwarfs/"$sha"/"$(basename "$i")"
         # Send unmount signal to dwarfs mountpoint
-        fusermount -zu "$mountpoint" &> "$FIM_STREAM" || true
+        fusermount -zu "$mountpoint" &> "$FIM_STREAM"
         # Wait and kill if it takes too long
         _wait_kill "Wait for unmount of dwarfs in $mountpoint" "$pid"
       fi
@@ -459,6 +471,70 @@ function _exec()
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done
+
+  # Mount overlayfs
+  ## Move back all directories with .overlayfs_lower
+  for i in "$FIM_DIR_MOUNT"/*.overlayfs_lower; do
+    rm -f "${i%*.overlayfs_lower}"
+    mv "$i" "${i%*.overlayfs_lower}"
+  done
+  ## Read overlays
+  while read -r overlay; do
+    # Fetch paths
+    local bind_host="$(_config_fetch --single --value "${overlay}.host")"
+    local bind_cont="$(_config_fetch --single --value "${overlay}.cont")"
+    # Check empty string
+    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "You must set bind_host for $overlay"; break; }
+    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "You must set bind_cont for $overlay"; break; }
+    # Expand
+    bind_host="$(eval echo "$bind_host")" 
+    bind_cont="$(eval echo "$bind_cont")"
+    # Adjust path to relative from inside the container
+    bind_cont="$FIM_DIR_MOUNT/$bind_cont"
+    # Test if target exists
+    if ! test -e "$bind_cont"; then
+      _msg "Target of overlay '$overlay', $bind_cont, does not exist"
+    fi
+    # Define host-sided paths
+    local workdir="$bind_host"/workdir
+    local upperdir="$bind_host"/upperdir
+    local mount="$bind_host"/mount
+    # Create host-sided paths
+    mkdir -pv "$bind_host"/{workdir,upperdir,mount} &> "$FIM_STREAM"
+    # If target is symlink
+    # # Update bind_cont with resolved path
+    # # Replace symlink to point to mount
+    if test -L "$bind_cont"; then
+      local symm="$bind_cont"
+      bind_cont="$(readlink -f "$bind_cont")"
+      ln -T -sfn "$mount" "$symm"
+    # Else if target is dir
+    # Try to move if is not a symlink
+    # So one can be created in its place
+    elif test -d "$bind_cont"; then
+      # Disable until symlink issues have been fixed
+      FIM_DEBUG=1 _msg "Overlays currently only work for dwarfs symlinks"
+      break
+      # mv "$bind_cont" "${bind_cont}.overlayfs_lower"
+      # ln -T -sfn "$mount" "$bind_cont"
+      # bind_cont="${bind_cont}.overlayfs_lower"
+    fi
+    # The resolved symlink must be a directory
+    if ! test -d "$bind_cont"; then
+      FIM_DEBUG=1 _msg "Overlay contaner mount '$bind_cont' is neither a symlink nor a directory"
+      break
+    fi
+    # Define lowerdir
+    local lowerdir="$bind_cont"
+    # Erase target if is symlink
+    if test -L "$bind_cont"; then
+      rm -f "$bind_cont"
+    fi
+    # Mount
+    overlayfs -o lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
+    # Save mountpoint
+    FIM_MOUNTS_OVERLAYFS+=("$mount")
+  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+ =")
 
   # Export variables to container
   export TERM="xterm"

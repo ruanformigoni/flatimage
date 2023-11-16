@@ -294,6 +294,9 @@ function _help()
   :    - E.g.: ./focal.fim fim-config-list "overlay.*"          # List ones that match regex
   :    - E.g.: ./focal.fim fim-config-list --single "overlay.*" # Stop on first match
   :    - E.g.: ./focal.fim fim-config-list --value  "overlay.*" # Print only the value
+  :- fim-include-path: Includes a path inside the image, automatically resizing it in the process
+  :    - E.g.: ./focal.fim fim-include-path ../my-dir /opt/new-folder1/new-folder2
+  :    - E.g.: ./focal.fim fim-include-path ../my-file.tar /fim/tarballs
   :- fim-help: Print this message.
 	EOF
 }
@@ -450,6 +453,39 @@ function _resize_free_space()
 
   # Re-mount
   _mount
+}
+# }}}
+
+# _include_path {{{ 
+# $1 Path to the file/directory to include
+# $2 Path to the directory to include it into
+function _include_path()
+{
+  # Input file/dir
+  local path_target="$1"
+
+  # Verify
+  if ! [[ -d "$path_target" ]] && ! [[ -f "$path_target" ]]; then
+    _die "File '$path_target' does not exist or is invalid"
+  fi
+  if df --output=target "$path_target" 2>/dev/null | grep -i "$FIM_DIR_MOUNT" &>/dev/null; then
+    _die "Target cannot not be inside the guest filesystem"
+  fi
+
+  # Create dir inside image
+  local dir_guest="$FIM_DIR_MOUNT/$2"
+  mkdir -p "$dir_guest"
+
+  # Get size of target to include
+  local size_target="$(du -sb "$path_target" | awk '{print $1}')"
+  [[ "$size_target" =~ ^[0-9]+$ ]] || _die "size_target is NaN: '$size_target'"
+
+  # Get currently free size
+  local size_free="$(_get_free_space "$FIM_DIR_MOUNT")"
+  _resize_free_space "$((size_free+size_target))"
+
+  FIM_DEBUG=1 _msg "Include target '$path_target' in '$dir_guest'"
+  cp -r "$path_target" "$dir_guest"
 }
 # }}}
 
@@ -1060,6 +1096,7 @@ function main()
       "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
+      "include-path") _include_path "$2" "$3" ;;
       "help") _help;;
       *) _help; _die "Unknown fim command" ;;
     esac

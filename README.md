@@ -126,6 +126,9 @@ Avaliable options:
     - E.g.: ./focal.fim fim-config-list "overlay.*"          # List ones that match regex
     - E.g.: ./focal.fim fim-config-list --single "overlay.*" # Stop on first match
     - E.g.: ./focal.fim fim-config-list --value  "overlay.*" # Print only the value
+- fim-include-path: Includes a path inside the image, automatically resizing it in the process
+    - E.g.: ./focal.fim fim-include-path ../my-dir /opt/new-folder1/new-folder2
+    - E.g.: ./focal.fim fim-include-path ../my-file.tar /fim/tarballs
 - fim-help: Print this message.
 ```
 

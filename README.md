@@ -61,6 +61,7 @@ software compatibility challenges. FlatImage addresses these issues by:
 | No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
 | **Overlayfs** (allows to install programs even after compression)             | x             |                            |
 | No installation necessary (click and use)                                 | x             | Requires docker on the host| x
+| Requires building on an old system to minimize glibc issues               |               | N/A                        | x
 | Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
 | Runs without mounting the filesystem                                      |               |                            | x
 | Straightforward build process                                             | x             | x                          |

@@ -57,7 +57,7 @@ export PATH="$FIM_DIR_GLOBAL_BIN:$FIM_DIR_STATIC:$PATH"
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
-export FIM_COMPRESSION_SLACK="${FIM_COMPRESSION_SLACK:-50000000}" # 50MB
+export FIM_SLACK_MINIMUM="${FIM_SLACK_MINIMUM:-50000000}" # 50MB
 export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 
 # Output stream
@@ -317,47 +317,93 @@ function _resize()
 }
 # }}}
 
+# _is_mounted {{{
+# $1 Mountpoint
+# Check if there is a mounted filesystem in mount point
+function _is_mounted()
+{
+  df --output=target 2>/dev/null | grep -i "$1" &>/dev/null
+}
+# }}}
+
+# _wait_for_mount {{{
+function _wait_for_mount()
+{
+  declare -i i=0
+  declare -i limit=50
+  declare sec_sleep=0.1
+  local mountpoint="$1"
+
+  while ! _is_mounted "$mountpoint"; do
+    _msg "Waiting for mount $mountpoint"
+    sleep "$sec_sleep"
+    i+=1
+    if [[ "$i" -gt "$limit" ]]; then
+      _die "Time limit reached for wait mount $mountpoint"
+    fi
+  done
+}
+# }}}
+
+# _get_free_space {{{
+# $1 Mountpoint of a mounted filesystem
+# Returns the value in bytes
+function _get_free_space()
+{
+  local mountpoint="$1"
+  if ! _is_mounted "$mountpoint"; then
+    _die "No filesystem mounted in '$mountpoint'"
+  fi
+  df -B1 --output=avail "$mountpoint" 2>/dev/null | tail -n1
+}
+# }}}
+
 # _match_free_space() {{{
 # The size of a filesystem and the free size of a filesystem differ
 # This makes the free space on the filesystem match the target size
 # $1 filesystem file
-# $2 target size
+# $2 mountpoint
+# $3 target size
+# $4 filesystem offset
 function _match_free_space()
 {
   # Get filesystem file
   local file_filesystem="$1"
-  local mount="$FIM_DIR_BINARY/${FIM_FILE_BINARY}.mount"
 
-  mkdir -p "$mount"
+  # Get mountpoint
+  local mountpoint="$2"
+  mkdir -p "$mountpoint"
 
   # Get target size
-  declare -i target="$2"
-  target="$((target / 1024))"
+  declare -i target="$(numfmt --from=iec "$3")"
   [[ "$target" =~ ^[0-9]+$ ]] || _die "target is NaN"
 
   # Optional offset
   declare -i offset
-  if [[ $# -eq 3 ]]; then
-    offset="$3"
+  if [[ $# -eq 4 ]]; then
+    offset="$4"
+  fi
+
+  # Un-mount if mounted
+  if _is_mounted "$mountpoint"; then
+    _die "filesystem should not be mounted for _match_free_space"
   fi
 
   while :; do
-    # Get current free size
-    "$FIM_DIR_GLOBAL_BIN/fuse2fs" "${file_filesystem}" ${offset:+"-ooffset=$offset"} "$mount"
+    ## Get current free size
+    "$FIM_DIR_GLOBAL_BIN/fuse2fs" "${file_filesystem}" ${offset:+"-ooffset=$offset"} "$mountpoint"
     ## Wait for mount
-    sleep 1
+    _wait_for_mount "$mountpoint"
     ## Grep free size
-    declare -i curr_free="$(df -B1 --output=avail "$mount" | tail -n1)"
+    declare -i curr_free="$(_get_free_space "$mountpoint")"
     ## Wait for mount process termination
-    fusermount -u "$mount"
+    fusermount -u "$mountpoint"
     for pid in $(pgrep -f "fuse2fs.*$file_filesystem"); do
-      _wait_kill "Wait for unmount of fuse2fs in $mount" "$pid"
+      _wait_kill "Wait for unmount of fuse2fs in $mountpoint" "$pid"
     done
     ## Check if got an integral number
     [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
-    ## Convert from bytes to kibibytes
-    curr_free="$((curr_free / 1024))"
-    _msg "Free space $curr_free"
+    _msg "Free space $(numfmt --to=iec "$curr_free")"
 
     # Check if has reached desired size
     if [[ "$curr_free" -gt "$target" ]]; then break; fi
@@ -365,53 +411,51 @@ function _match_free_space()
     # Get the curr total
     declare -i curr_total="$(du -sb "$file_filesystem" | awk '{print $1}')"
     [[ "$curr_total" =~ ^[0-9]+$ ]] || _die "curr_total is NaN"
-    curr_total="$((curr_total / 1024))"
 
     # Increase on step
-    declare -i step="50000"
+    declare -i step="$FIM_SLACK_MINIMUM"
 
     # Calculate new size
     declare -i new_size="$((curr_total+step))"
 
     # Include size limit
-    if [[ "$new_size" -gt "10000000" ]];  then _die "Too large filesystem resize attempt"; fi
+    if [[ "$new_size" -gt "$(numfmt --from=iec "10G")" ]];  then _die "Too large filesystem resize attempt"; fi
 
     # Resize
-    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
-    "$FIM_DIR_GLOBAL_BIN/resize2fs" "${file_filesystem}${offset:+"?offset=$offset"}" "${new_size}K" &> "$FIM_STREAM"
-    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
+    _msg "Target of $(numfmt --from=iec --to-unit=1M "$target")M"
+    _msg "Resize from $(numfmt --from=iec --to-unit=1M "$curr_total")M to $(numfmt --from=iec --to-unit=1M "$new_size")M"
 
-    _msg "Target of $target"
-    _msg "Resize from $curr_total to $new_size"
+    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
+    "$FIM_DIR_GLOBAL_BIN/resize2fs" "${file_filesystem}${offset:+"?offset=$offset"}" \
+      "$(numfmt --from=iec --to-unit=1Mi "${new_size}")M" &> "$FIM_STREAM"
+    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
   done
-
-  rmdir "$mount"
 }
 # }}}
 
 # _resize_free_space() {{{
-# Resizes filesystem to have the target free space
+# Resizes filesystem to have at least the target free space
+# If the input is less than the current free space, does nothing
 # $1 New size for free space
 function _resize_free_space()
 {
-  # Unmount
+  # Normalize to bytes
+  declare -i size_bytes="$(numfmt --from=iec "$1")"
+
+  # Un-mount
   _unmount
 
-  local size_new="$1"
-
   # Match free space
-  declare -i size_bytes
-  size_bytes="$(numfmt --from=iec "$1")"
-  _match_free_space "$FIM_PATH_FILE_BINARY" "$size_bytes" "$FIM_OFFSET"
+  _match_free_space "$FIM_PATH_FILE_BINARY" "$FIM_DIR_MOUNT" "$size_bytes" "$FIM_OFFSET"
 
-  # Mount
+  # Re-mount
   _mount
 }
 # }}}
 
 # _rebuild() {{{
 # Re-create the filesystem with new data
-# $1 New size
+# $1 New size in bytes
 # $2 Dir to create image from
 function _rebuild()
 {
@@ -444,7 +488,7 @@ function _rebuild()
   "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
 
   # Make sure enough free space is available
-  _match_free_space "$file_image" "$size_image"
+  _match_free_space "$file_image" "$FIM_DIR_BINARY/${FIM_FILE_BINARY}.mount" "$size_image"
 
   # Re-format and include files
   "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
@@ -855,7 +899,7 @@ function _compress()
 
   # Resize to fit files size + slack
   local size_files="$(du -sb "$dir_compressed" | awk '{print $1}')"
-  local size_slack="$FIM_COMPRESSION_SLACK";
+  local size_slack="$FIM_SLACK_MINIMUM";
   local size_new="$((size_files+size_slack))"
 
   _msg "Size files        : $size_files"
@@ -976,6 +1020,9 @@ function main()
 
   # Mount filesystem
   _mount
+
+  # Resize by offset if space is less than minimum
+  _resize_free_space "$FIM_SLACK_MINIMUM"
 
   # Check if config exists, else try to touch if mounted as RW
   [ -f "$FIM_FILE_CONFIG" ] || { [ -n "$FIM_RO" ] || touch "$FIM_FILE_CONFIG"; }

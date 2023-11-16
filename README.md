@@ -135,8 +135,9 @@ Avaliable options:
 
 * `FIM_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `FIM_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
-* `FIM_COMPRESSION_SLACK`: Extra space after filesystem is resized on
-compression, default is 50000 (50MB).
+* `FIM_SLACK_MINIMUM`: Free space always available on the filesystem startup,
+    automatically grows it gets past it in the previous execution, default is
+    50000000 bytes (50MB).
 * `FIM_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
 * `FIM_DEBUG`: If defined to 1, print debug messages.
 

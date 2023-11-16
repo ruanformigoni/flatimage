@@ -422,7 +422,7 @@ function _match_free_space()
     declare -i new_size="$((curr_total+step))"
 
     # Include size limit
-    if [[ "$new_size" -gt "$(numfmt --from=iec "10G")" ]];  then _die "Too large filesystem resize attempt"; fi
+    if [[ "$new_size" -gt "$(numfmt --from=iec "500G")" ]];  then _die "Too large filesystem resize attempt"; fi
 
     # Resize
     _msg "Target of $(numfmt --from=iec --to-unit=1M "$target")M"

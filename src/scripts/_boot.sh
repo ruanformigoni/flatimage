@@ -392,6 +392,7 @@ function _match_free_space()
     _die "filesystem should not be mounted for _match_free_space"
   fi
 
+  declare -i i=0
   while :; do
     ## Get current free size
     "$FIM_DIR_GLOBAL_BIN/fuse2fs" "${file_filesystem}" ${offset:+"-ooffset=$offset"} "$mountpoint"
@@ -419,7 +420,14 @@ function _match_free_space()
     declare -i step="$FIM_SLACK_MINIMUM"
 
     # Calculate new size
-    declare -i new_size="$((curr_total+step))"
+    declare -i new_size
+
+    if [[ "$i" -eq 0 ]]; then
+      i+=1
+      new_size="$((curr_total + (target - curr_free) ))"
+    else
+      new_size="$((curr_total+step))"
+    fi
 
     # Include size limit
     if [[ "$new_size" -gt "$(numfmt --from=iec "500G")" ]];  then _die "Too large filesystem resize attempt"; fi

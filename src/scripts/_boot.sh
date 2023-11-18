@@ -482,7 +482,11 @@ function _include_path()
 
   # Create dir inside image
   local dir_guest="$FIM_DIR_MOUNT/$2"
-  mkdir -p "$dir_guest"
+  if [[ -e "$dir_guest" ]]; then
+    _die "Directory '$2' already exists inside the flatimage (or is a file), remove it beforehand"
+  fi
+
+  mkdir "$dir_guest"
 
   # Get size of target to include
   local size_target="$(du -sb "$path_target" | awk '{print $1}')"
@@ -580,8 +584,8 @@ function _exec()
     local fs="$FIM_DIR_MOUNT/$i"
     local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"
     mkdir -p "$mp"
-    # Symlink
-    ln -T -sfn "$mp" "${fs%.dwarfs}"
+    # Symlink, skip if directory exists
+    ln -T -sfn "$mp" "${fs%.dwarfs}" || continue
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
     # Save mountpoint
@@ -637,7 +641,7 @@ function _exec()
     fi
     # The resolved symlink must be a directory
     if ! test -d "$bind_cont"; then
-      FIM_DEBUG=1 _msg "Overlay contaner mount '$bind_cont' is neither a symlink nor a directory"
+      FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' is neither a symlink nor a directory"
       break
     fi
     # Define lowerdir

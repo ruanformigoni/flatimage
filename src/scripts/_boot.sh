@@ -480,13 +480,11 @@ function _include_path()
     _die "Target cannot not be inside the guest filesystem"
   fi
 
-  # Create dir inside image
+  # Check if exists
   local dir_guest="$FIM_DIR_MOUNT/$2"
   if [[ -e "$dir_guest" ]]; then
     _die "Directory '$2' already exists inside the flatimage (or is a file), remove it beforehand"
   fi
-
-  mkdir "$dir_guest"
 
   # Get size of target to include
   local size_target="$(du -sb "$path_target" | awk '{print $1}')"

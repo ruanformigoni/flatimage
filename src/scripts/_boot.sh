@@ -817,14 +817,32 @@ function _exec()
       nvidia_binds+=(/usr/lib/*nvcuvid*)
       nvidia_binds+=(/usr/lib/*nvoptix*)
       nvidia_binds+=(/usr/lib/*vdpau*)
+      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvidia*)
+      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*cuda*)
+      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvcuvid*)
+      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvoptix*)
+      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*vdpau*)
+      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvidia*)
+      nvidia_binds+=(/usr/lib/i386-linux-gnu/*cuda*)
+      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvcuvid*)
+      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvoptix*)
+      nvidia_binds+=(/usr/lib/i386-linux-gnu/*vdpau*)
       nvidia_binds+=(/usr/bin/*nvidia*)
       nvidia_binds+=(/usr/share/*nvidia*)
       nvidia_binds+=(/usr/share/vulkan/icd.d/*nvidia*)
       nvidia_binds+=(/usr/lib32/*nvidia*)
       nvidia_binds+=(/usr/lib32/*cuda*)
       nvidia_binds+=(/usr/lib32/*vdpau*)
+
+      ### Set library search paths
+      export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:$LD_LIBRARY_PATH"
+
+      ### Find actual root location if it a dwarfs or overlayfs symlink
+      local dir_usr="$(readlink -f "$FIM_DIR_MOUNT/usr")"
+
+      ### Bind
       for i in "${nvidia_binds[@]}"; do
-        _cmd_bwrap+=("--bind \"$i\" \"$i\"")
+        _cmd_bwrap+=("--bind \"$i\" \"${dir_usr}/${i#/usr}\"")
         _cmd_proot+=("-b \"$i\"")
         _msg "NVIDIA bind '$i'"
       done &>"$FIM_STREAM" || true

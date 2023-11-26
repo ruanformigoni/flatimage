@@ -649,7 +649,7 @@ function _exec()
       rm -f "$bind_cont"
     fi
     # Mount
-    overlayfs -o lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
+    overlayfs -o squash_to_uid=1000,lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
     # Save mountpoint
     FIM_MOUNTS_OVERLAYFS+=("$mount")
   done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+ =")

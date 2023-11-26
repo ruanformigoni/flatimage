@@ -691,7 +691,7 @@ function _exec()
   for i in "/media" "/run/media" "/mnt"; do
     if [ -d "$i" ]; then
       _msg "BIND: $i"
-      _cmd_bwrap+=("--bind \"$i\" \"$i\"")
+      _cmd_bwrap+=("--ro-bind \"$i\" \"$i\"")
       _cmd_proot+=("-b \"$i\"")
     fi
   done

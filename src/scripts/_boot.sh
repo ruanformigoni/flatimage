@@ -708,6 +708,9 @@ function _exec()
   _cmd_proot+=("-b /tmp")
   _cmd_proot+=("-b /sys")
 
+  # Create HOME if not exists
+  mkdir -p "$HOME"
+
   # Set home binding
   if [ "$HOME" != "/home/$(whoami)" ] && [ "$(id -u)" != "0" ]; then
     _msg "HOME_BIND: Nested"

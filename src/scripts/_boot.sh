@@ -194,6 +194,11 @@ function _die()
   # Unmount image
   _unmount &> "$FIM_STREAM"
 
+  # Wait for processes using $FIM_FILE_BINARY
+  while read -r i; do
+    _wait_kill "Wait for process '$i' to stop using '$FIM_FILE_BINARY', timeout 60s" "$i" 600
+  done < <(lsof -t "$FIM_PATH_FILE_BINARY")
+
   # Exit
   kill -s SIGTERM "$PID"
 }

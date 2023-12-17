@@ -1,16 +1,23 @@
 FROM alpine:latest
 
+# Enable community repo
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/main/ > /etc/apk/repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
+
 # Install deps
 RUN apk update && apk upgrade
-RUN apk add --no-cache build-base git libbsd-dev py3-pip git patchelf cmake gcc \
+RUN apk add --no-cache build-base git libbsd-dev py3-pip pipx git patchelf cmake gcc \
   bash e2fsprogs xz curl zstd gawk debootstrap
 
-# Temporary fix for bug in pip dependencies
-RUN echo "Cython<3" > cython_constraint.txt
-ENV PIP_CONSTRAINT=cython_constraint.txt
-
 # Install conan
-RUN pip3 install conan==1.59.0
+RUN pipx install conan
+
+# Update PATH
+ENV PATH="/root/.local/bin:$PATH"
+
+# Setup
+RUN conan profile detect --force
 
 # RUN git clone "https://gitlab.com/formigoni/fim.git"
 RUN mkdir /fim
@@ -24,9 +31,9 @@ RUN sed -i "s/FIM_DIST=.*/FIM_DIST=$FIM_DIST/" ./src/scripts/_boot.sh
 
 # Compile
 WORKDIR /fim/src/elf
-RUN mkdir -p build && cd build && conan install .. --build=missing -s compiler.libcxx=libstdc++11
-RUN cmake -H. -Bbuild
-RUN cmake --build build
+RUN conan install . --build=missing -g CMakeDeps -g CMakeToolchain --output-folder=build
+RUN cmake --preset conan-release
+RUN cmake --build --preset conan-release
 
 # Move to dist dir
 WORKDIR /fim

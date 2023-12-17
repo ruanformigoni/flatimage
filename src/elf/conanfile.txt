@@ -1,7 +1,6 @@
 [requires]
-fmt/9.1.0
-range-v3/0.12.0
+fmt/10.1.1
 
 [generators]
-cmake
-cmake_find_package
+CMakeDeps
+CMakeToolchain

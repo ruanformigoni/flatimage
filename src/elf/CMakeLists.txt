@@ -8,9 +8,6 @@ cmake_minimum_required(VERSION 3.1)
 
 project(Fim DESCRIPTION "Application Chroot Subsystem" LANGUAGES CXX)
 
-# Conan
-set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
-
 # Compiler
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
 add_definitions("--std=c++17 -Wall -Wextra")
@@ -42,13 +39,7 @@ add_custom_command(
 )
 
 # External libraries
-if(NOT fmt_FOUND)
-  find_package(fmt REQUIRED)
-endif()
-
-if(NOT range-v3_FOUND)
-  find_package(range-v3 REQUIRED)
-endif()
+find_package(fmt REQUIRED)
 
 # Definitions
 ## Timestamp
@@ -68,4 +59,4 @@ message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
 # Main executable
 add_executable(main main.cpp boot.h)
 target_link_libraries(main PRIVATE fmt::fmt)
-target_link_libraries(main PRIVATE range-v3::range-v3)
+target_include_directories(main PRIVATE ${fmt_INCLUDE_DIRS})

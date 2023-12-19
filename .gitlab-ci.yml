@@ -30,6 +30,25 @@ fetch-coreutils:
     reports:
       dotenv: build.env
 
+fetch-lsof:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget tar xz-utils
+    - echo JOB_ID_FETCH_LSOF=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p ./bin
+      wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/e1a88fb/lsof-x86_64"
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 fetch-e2fsprogs:
   image: "ubuntu:focal"
   stage: fetch
@@ -202,6 +221,7 @@ package-ubuntu:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
     - job: fetch-overlayfs
@@ -231,6 +251,7 @@ package-arch:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
     - job: fetch-overlayfs
@@ -260,6 +281,7 @@ package-alpine:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
     - job: fetch-overlayfs

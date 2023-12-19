@@ -1085,7 +1085,7 @@ function main()
     "rmdir" "runcon" "seq" "sha1sum" "sha224sum" "sha256sum" "sha384sum" "sha512sum" "shred" "shuf"
     "sleep" "sort" "split" "stat" "stty" "sum" "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr"
     "true" "truncate" "tsort" "uname" "unexpand" "uniq" "unlink" "uptime" "users" "vdir" "wc" "who"
-    "whoami" "yes" "resize2fs" "mke2fs"
+    "whoami" "yes" "resize2fs" "mke2fs" "lsof"
   )
 
   _copy_tools "${ext_tools[@]}"

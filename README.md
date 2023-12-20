@@ -185,6 +185,8 @@ always takes precedence if defined.
 ./arch.fim fim-config-set backend "bwrap"
  # Uses proot as the backend
 ./arch.fim fim-config-set backend "proot"
+ # Run command on host using a static bash binary
+./arch.fim fim-config-set backend "host"
 ```
 
 ### Overlayfs

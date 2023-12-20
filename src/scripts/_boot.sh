@@ -917,6 +917,9 @@ function _exec()
   elif [[ "$FIM_BACKEND" = "proot" ]]; then
     _msg "Using proot"
     eval "${_cmd_proot[*]}"
+  # Run outside container
+  elif [[ "$FIM_BACKEND" = "host" ]]; then
+    "$FIM_FILE_BASH" -c "${cmd[*]}"
   else
     _die "Invalid backend $FIM_BACKEND"
   fi

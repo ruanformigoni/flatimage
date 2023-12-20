@@ -139,6 +139,12 @@ int main(int argc, char** argv)
     // contained inside of it.
 
     //
+    // Disable FIM_MAIN_LAUNCH in case of backend=host and execute a FIM image
+    // from it
+    //
+    unsetenv("FIM_MAIN_LAUNCH");
+
+    //
     // Get base dir
     //
     char* cstr_dir_base = getenv("FIM_DIR_GLOBAL");

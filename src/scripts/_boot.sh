@@ -64,6 +64,15 @@ export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 export FIM_STREAM="${FIM_DEBUG:+/dev/stdout}"
 export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
+# Check for stdout/stderr
+if ! test -t 1 || ! test 2; then
+  notify-send "Detected launch from GUI" || true
+fi
+
+# Log execution
+exec 1> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log"; done)
+exec 2> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log" >&2; done)
+
 # Overlayfs filesystems mounts
 declare -a FIM_MOUNTS_OVERLAYFS
 declare -a FIM_MOUNTS_DWARFS
@@ -362,7 +371,7 @@ function _get_free_space()
   if ! _is_mounted "$mountpoint"; then
     _die "No filesystem mounted in '$mountpoint'"
   fi
-  df -B1 --output=avail "$mountpoint" 2>/dev/null | tail -n1
+  { df -B1 --output=avail "$mountpoint" 2>/dev/null || _die "df failed"; } | tail -n1 
 }
 # }}}
 

@@ -67,11 +67,9 @@ export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 # Check for stdout/stderr
 if ! test -t 1 || ! test 2; then
   notify-send "Detected launch from GUI" || true
+  exec 1> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log"; done)
+  exec 2> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log" >&2; done)
 fi
-
-# Log execution
-exec 1> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log"; done)
-exec 2> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log" >&2; done)
 
 # Overlayfs filesystems mounts
 declare -a FIM_MOUNTS_OVERLAYFS

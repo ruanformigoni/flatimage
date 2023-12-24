@@ -25,11 +25,15 @@ function _msg()
 # Wait for a pid to finish execution, similar to 'wait'
 # but also works for non-child pids
 # Kills on timeout
-# $1: pid
+# $1: message
+# $2: pid
+# $3: timeout
 function _wait_kill()
 {
   # Get pid
+  declare msg="$1"
   declare -i pid="$2"
+  declare -i limit="${3:-50}"
 
   # Ignore pid 0, this might happen if pgrep
   # was done after process exit
@@ -37,10 +41,8 @@ function _wait_kill()
     _msg "Pid $pid ignore..."
   fi
 
-  # Wait message
-  _msg "[ $pid ] : $*"
-  # Get time limit
-  declare -i limit="${3:-50}"
+  # Print message
+  _msg "[ $pid ] : $msg"
 
   # Wait for process to finish
   # ...or kill on timeout
@@ -133,6 +135,10 @@ function main()
   [ -v FIM_PATH_FILE_BINARY ] || _msg "FIM_PATH_FILE_BINARY is not defined"
 
   while kill -0 "$PID" 2>/dev/null; do
+    if [ -f "${FIM_DIR_MOUNT}.killer.kill" ]; then
+      _msg "Killed by signal"
+      break
+    fi
     sleep 1
   done
 }

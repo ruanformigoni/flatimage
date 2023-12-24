@@ -92,11 +92,15 @@ function _msg()
 # Wait for a pid to finish execution, similar to 'wait'
 # but also works for non-child pids
 # Kills on timeout
-# $1: pid
+# $1: message
+# $2: pid
+# $3: timeout
 function _wait_kill()
 {
   # Get pid
+  declare msg="$1"
   declare -i pid="$2"
+  declare -i limit="${3:-50}"
 
   # Ignore pid 0, this might happen if pgrep
   # was done after process exit
@@ -104,10 +108,8 @@ function _wait_kill()
     _msg "Pid $pid ignore..."
   fi
 
-  # Wait message
-  _msg "[ $pid ] : $*"
-  # Get time limit
-  declare -i limit="${3:-50}"
+  # Print message
+  _msg "[ $pid ] : $msg"
 
   # Wait for process to finish
   # ...or kill on timeout
@@ -173,8 +175,10 @@ function _die()
 {
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
-  # Exit
-  kill -s SIGKILL "$PID"
+  # Signal exit to killer
+  echo 1 > "${FIM_DIR_MOUNT}.killer.kill"
+  # Wait_kill self
+  _wait_kill "Wait for self to finish" "$PID" 600
 }
 trap _die SIGINT EXIT
 # }}}
@@ -645,10 +649,6 @@ function _setup_filesystems()
   export DWARFS_SHA="$(_config_fetch --value --single "sha")"
   _msg "DWARFS_SHA: $DWARFS_SHA"
 
-  ## Copy dwarfs binary
-  [ -f "$FIM_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/dwarfs" "$FIM_DIR_GLOBAL_BIN"/dwarfs
-  chmod +x "$FIM_DIR_GLOBAL_BIN/dwarfs"
-
   # Find mountpoints
   _find_dwarfs
   _find_overlayfs
@@ -963,10 +963,6 @@ function _compress()
   [ -n "$FIM_RW" ] || _die "Set FIM_RW to 1 before compression"
   [ -z "$(_config_fetch --value --single "sha")" ] || _die "sha is set (already compressed?)"
 
-  # Copy compressor to binary dir
-  [ -f "$FIM_DIR_GLOBAL_BIN/mkdwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/mkdwarfs" "$FIM_DIR_GLOBAL_BIN"/mkdwarfs
-  chmod +x "$FIM_DIR_GLOBAL_BIN/mkdwarfs"
-
   # Remove apt lists and cache
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
@@ -1110,14 +1106,14 @@ function main()
   # Copy tools
   declare -a ext_tools=(
     "[" "b2sum" "base32" "base64" "basename" "cat" "chcon" "chgrp" "chmod" "chown" "chroot" "cksum"
-    "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du" "echo" "env"
-    "expand" "expr" "factor" "false" "fmt" "fold" "groups" "head" "hostid" "id" "join" "kill" "link"
-    "ln" "logname" "ls" "md5sum" "mkdir" "mkfifo" "mknod" "mktemp" "mv" "nice" "nl" "nohup" "nproc"
-    "numfmt" "od" "paste" "pathchk" "pr" "printenv" "printf" "ptx" "pwd" "readlink" "realpath" "rm"
-    "rmdir" "runcon" "seq" "sha1sum" "sha224sum" "sha256sum" "sha384sum" "sha512sum" "shred" "shuf"
-    "sleep" "sort" "split" "stat" "stty" "sum" "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr"
-    "true" "truncate" "tsort" "uname" "unexpand" "uniq" "unlink" "uptime" "users" "vdir" "wc" "who"
-    "whoami" "yes" "resize2fs" "mke2fs" "lsof"
+    "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du" "dwarfs"
+    "echo" "env" "expand" "expr" "factor" "false" "fmt" "fold" "groups" "head" "hostid" "id" "join"
+    "kill" "link" "ln" "logname" "ls" "md5sum" "mkdir" "mkdwarfs" "mkfifo" "mknod" "mktemp" "mv"
+    "nice" "nl" "nohup" "nproc" "numfmt" "od" "paste" "pathchk" "pr" "printenv" "printf" "ptx" "pwd"
+    "readlink" "realpath" "rm" "rmdir" "runcon" "seq" "sha1sum" "sha224sum" "sha256sum" "sha384sum"
+    "sha512sum" "shred" "shuf" "sleep" "sort" "split" "stat" "stty" "sum" "sync" "tac" "tail" "tee"
+    "test" "timeout" "touch" "tr" "true" "truncate" "tsort" "uname" "unexpand" "uniq" "unlink"
+    "uptime" "users" "vdir" "wc" "who" "whoami" "yes" "resize2fs" "mke2fs" "lsof"
   )
 
   # Setup daemon to unmount filesystems on exit

@@ -84,7 +84,7 @@ shopt -s nullglob
 # $n message
 function _msg()
 {
-  [ -z "$FIM_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[\033[32m*\033[m] ${*: -1}" >&2;
+  [ -z "$FIM_DEBUG" ] || echo -e "${@:1:${#@}-1}" "[*] ${*: -1}" >&2;
 }
 # }}}
 

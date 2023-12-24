@@ -12,9 +12,9 @@
 
 set "${FIM_DEBUG_SET_ARGS:-"-e"}"
 
-PID="$$"
+export PID="$$"
 
-export FIM_DIST="TRUNK"
+export FIM_DIST=ARCH
 
 # Rootless tool
 export FIM_BACKEND
@@ -53,7 +53,7 @@ export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 
 # Give static tools priority in PATH
-export PATH="$FIM_DIR_GLOBAL_BIN:$FIM_DIR_STATIC:$PATH"
+export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
@@ -72,8 +72,8 @@ if ! test -t 1 || ! test 2; then
 fi
 
 # Overlayfs filesystems mounts
-declare -a FIM_MOUNTS_OVERLAYFS
-declare -a FIM_MOUNTS_DWARFS
+declare -A FIM_MOUNTS_OVERLAYFS
+declare -A FIM_MOUNTS_DWARFS
 
 # shopt
 shopt -s nullglob
@@ -118,7 +118,7 @@ function _wait_kill()
     iterations+=1
     sleep "$ms_sleep"
     if test "$iterations" -gt "$limit"; then
-      kill -s SIGTERM "$pid"
+      kill -s SIGKILL "$pid"
       _msg "Pid $pid killed..."
       break
     fi
@@ -171,43 +171,10 @@ function _re_mount()
 # $* = Termination message
 function _die()
 {
-  # In case of failure continue cleaning up
-  set +e
-
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
-
-  # Unmount overlayfs
-  for i in "${FIM_MOUNTS_OVERLAYFS[@]}"; do
-    # Iterate on parent and child pids
-    for pid in $(pgrep -f "$i"); do
-      # Send unmount signal to dwarfs mountpoint
-      fusermount -zu "$i" &> "$FIM_STREAM"
-      # Wait and kill if it takes too long
-      _wait_kill "Wait for unmount of overlayfs in $i" "$pid"
-    done
-  done
-
-  # Unmount dwarfs
-  for i in "${FIM_MOUNTS_DWARFS[@]}"; do
-    for pid in $(pgrep -f "$i"); do
-      # Send unmount signal to dwarfs mountpoint
-      fusermount -zu "$i" &> "$FIM_STREAM"
-      # Wait and kill if it takes too long
-      _wait_kill "Wait for unmount of dwarfs in $i" "$pid"
-    done
-  done
-
-  # Unmount image
-  _unmount &> "$FIM_STREAM"
-
-  # Wait for processes using $FIM_FILE_BINARY
-  while read -r i; do
-    _wait_kill "Wait for process '$i' to stop using '$FIM_FILE_BINARY', timeout 60s" "$i" 600
-  done < <(lsof -t "$FIM_PATH_FILE_BINARY")
-
   # Exit
-  kill -s SIGTERM "$PID"
+  kill -s SIGKILL "$PID"
 }
 trap _die SIGINT EXIT
 # }}}
@@ -562,22 +529,117 @@ function _rebuild()
 }
 # }}}
 
-# _exec() {{{
-# Chroots into the filesystem
-# $* Command and args
-function _exec()
+# _find_dwarfs() {{{
+# Finds the mountpoints for the dwarfs filesystems
+# Populates FIM_MOUNTS_DWARFS (filesystem file -> mountpoint)
+function _find_dwarfs()
 {
-  # Check for empty string
-  [ -n "$*" ] || FIM_DEBUG=1 _msg "Empty arguments for exec"
+  while read -r i; do
+    local filesystem_file="$i"
+    # Define mountpoint
+    local mountpoint="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/$(basename "$i")"
+    mountpoint="${mountpoint%.dwarfs}"
+    # Log
+    _msg "DWARFS FS: $filesystem_file"
+    _msg "DWARFS MP: $mountpoint"
+    # Save
+    FIM_MOUNTS_DWARFS["$filesystem_file"]="$mountpoint"
+  done < <(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs")
+}
+# }}}
 
-  # Fetch CMD
-  declare -a cmd
-  for i; do
-    [ -z "$i" ] || cmd+=("\"$i\"")
+# _find_overlayfs() {{{
+# Finds the mountpoints for the overlayfs filesystems
+# Populates FIM_MOUNTS_OVERLAYFS (src dir -> target dir)
+function _find_overlayfs()
+{
+  while read -r overlay; do
+    # Fetch paths
+    local bind_cont="$(_config_fetch --single --value "${overlay}.cont")"
+    local bind_host="$(_config_fetch --single --value "${overlay}.host")"
+    # Check empty string
+    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "You must set bind_cont for $overlay"; break; }
+    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "You must set bind_host for $overlay"; break; }
+    # Expand
+    bind_cont="$(eval echo "$bind_cont")"
+    bind_host="$(eval echo "$bind_host")" 
+    # Adjust path to relative from inside the container
+    bind_cont="$FIM_DIR_MOUNT/$bind_cont"
+    # Log
+    _msg "OVERLAYFS SRC: ${bind_cont}"
+    _msg "OVERLAYFS DST: ${bind_host}"
+    # Save
+    FIM_MOUNTS_OVERLAYFS["$bind_cont"]="$bind_host"
+  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+ =")
+}
+# }}}
+
+# _mount_dwarfs() {{{
+# # Mount dwarfs filesystems defined in FIM_MOUNTS_DWARFS
+function _mount_dwarfs()
+{
+  ## Mount dwarfs files if exist
+  # shellcheck disable=2044
+  for i in "${!FIM_MOUNTS_DWARFS[@]}"; do
+    local fs="$i"
+    local mp="${FIM_MOUNTS_DWARFS["$i"]}"
+    # Create mountpoint
+    mkdir -p "$mp"
+    # Symlink, skip if directory exists
+    ln -T -sfn "$mp" "${fs%.dwarfs}" || continue
+    # Mount
+    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
   done
+}
+# }}}
 
-  _msg "cmd: ${cmd[*]}"
+# _mount_overlayfs() {{{
+# # Mount overlayfs filesystems defined in FIM_MOUNTS_OVERLAYFS
+function _mount_overlayfs()
+{
+  # Mount overlayfs
+  ## Read overlays
+  for i in "${!FIM_MOUNTS_OVERLAYFS[@]}"; do
+    # Fetch paths
+    local bind_cont="$i"
+    local bind_host="${FIM_MOUNTS_OVERLAYFS[$i]}"
+    # Test if target exists
+    if ! test -e "$bind_cont"; then
+      _msg "Target of overlay '$overlay', $bind_cont, does not exist"
+    fi
+    # Define host-sided paths
+    local workdir="$bind_host"/workdir
+    local upperdir="$bind_host"/upperdir
+    local mount="$bind_host"/mount
+    _msg "OVERLAYFS workdir: $workdir"
+    _msg "OVERLAYFS upperdir: $upperdir"
+    _msg "OVERLAYFS mount: $mount"
+    # Create host-sided paths
+    mkdir -pv "$bind_host"/{workdir,upperdir,mount} &> "$FIM_STREAM"
+    # If is a symlink from inside the container that points to a directory in the host
+    # # Update bind_cont with resolved path (might be a symlink created by dwarfs)
+    # # Replace symlink to point to mount to overlayfs
+    if test -L "$bind_cont"; then
+      local symm="$bind_cont"
+      _msg "OVERLAYFS unresolved: $symm"
+      bind_cont="$(readlink -f "$bind_cont")"
+      _msg "OVERLAYFS lowerdir: $bind_cont"
+      ln -T -sfn "$mount" "$symm"
+    else
+      FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' not a symlink"
+      break
+    fi
+    # Define lowerdir
+    local lowerdir="$bind_cont"
+    # Mount
+    overlayfs -o squash_to_uid=1000,lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
+  done
+}
+# }}}
 
+# _setup_filesystems() {{{
+function _setup_filesystems()
+{
   # Mount dwarfs files
   ## Fetch SHA
   export DWARFS_SHA="$(_config_fetch --value --single "sha")"
@@ -587,84 +649,44 @@ function _exec()
   [ -f "$FIM_DIR_GLOBAL_BIN/dwarfs" ]  || cp "$FIM_DIR_MOUNT/fim/static/dwarfs" "$FIM_DIR_GLOBAL_BIN"/dwarfs
   chmod +x "$FIM_DIR_GLOBAL_BIN/dwarfs"
 
-  ## Mount dwarfs files if exist
-  # shellcheck disable=2044
-  for i in $(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs"); do
-    i="$(basename "$i")"
-    local fs="$FIM_DIR_MOUNT/$i"
-    local mp="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/${i%.dwarfs}"
-    mkdir -p "$mp"
-    # Symlink, skip if directory exists
-    ln -T -sfn "$mp" "${fs%.dwarfs}" || continue
-    # Mount
-    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
-    # Save mountpoint
-    FIM_MOUNTS_DWARFS+=("$mp")
+  # Find mountpoints
+  _find_dwarfs
+  _find_overlayfs
+
+  # Save dwarfs mountpoints
+  for i in "${FIM_MOUNTS_DWARFS[@]}"; do
+    echo "$i" >> "${FIM_DIR_MOUNT}.dwarfs.dst"
   done
 
-  # Mount overlayfs
-  ## Move back all directories with .overlayfs_lower
-  for i in "$FIM_DIR_MOUNT"/*.overlayfs_lower; do
-    rm -f "${i%*.overlayfs_lower}"
-    mv "$i" "${i%*.overlayfs_lower}"
+  # Save overlayfs mountpoints
+  for i in "${FIM_MOUNTS_OVERLAYFS[@]}"; do
+    echo "$i" >> "${FIM_DIR_MOUNT}.overlayfs.dst"
   done
-  ## Read overlays
-  while read -r overlay; do
-    # Fetch paths
-    local bind_host="$(_config_fetch --single --value "${overlay}.host")"
-    local bind_cont="$(_config_fetch --single --value "${overlay}.cont")"
-    # Check empty string
-    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "You must set bind_host for $overlay"; break; }
-    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "You must set bind_cont for $overlay"; break; }
-    # Expand
-    bind_host="$(eval echo "$bind_host")" 
-    bind_cont="$(eval echo "$bind_cont")"
-    # Adjust path to relative from inside the container
-    bind_cont="$FIM_DIR_MOUNT/$bind_cont"
-    # Test if target exists
-    if ! test -e "$bind_cont"; then
-      _msg "Target of overlay '$overlay', $bind_cont, does not exist"
-    fi
-    # Define host-sided paths
-    local workdir="$bind_host"/workdir
-    local upperdir="$bind_host"/upperdir
-    local mount="$bind_host"/mount
-    # Create host-sided paths
-    mkdir -pv "$bind_host"/{workdir,upperdir,mount} &> "$FIM_STREAM"
-    # If target is symlink
-    # # Update bind_cont with resolved path
-    # # Replace symlink to point to mount
-    if test -L "$bind_cont"; then
-      local symm="$bind_cont"
-      bind_cont="$(readlink -f "$bind_cont")"
-      ln -T -sfn "$mount" "$symm"
-    # Else if target is dir
-    # Try to move if is not a symlink
-    # So one can be created in its place
-    elif test -d "$bind_cont"; then
-      # Disable until symlink issues have been fixed
-      FIM_DEBUG=1 _msg "Overlays currently only work for dwarfs symlinks"
-      break
-      # mv "$bind_cont" "${bind_cont}.overlayfs_lower"
-      # ln -T -sfn "$mount" "$bind_cont"
-      # bind_cont="${bind_cont}.overlayfs_lower"
-    fi
-    # The resolved symlink must be a directory
-    if ! test -d "$bind_cont"; then
-      FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' is neither a symlink nor a directory"
-      break
-    fi
-    # Define lowerdir
-    local lowerdir="$bind_cont"
-    # Erase target if is symlink
-    if test -L "$bind_cont"; then
-      rm -f "$bind_cont"
-    fi
-    # Mount
-    overlayfs -o squash_to_uid=1000,lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
-    # Save mountpoint
-    FIM_MOUNTS_OVERLAYFS+=("$mount")
-  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+ =")
+
+  # Mount filesystems
+  _mount_dwarfs
+  _mount_overlayfs
+}
+# }}}
+
+# _exec() {{{
+# Chroots into the filesystem
+# $* Command and args
+function _exec()
+{
+  # Check for empty string
+  [ -n "$*" ] || FIM_DEBUG=1 _msg "Empty arguments for exec"
+
+  # Mount overlayfs and dwarfs
+  _setup_filesystems
+
+  # Fetch CMD
+  declare -a cmd
+  for i; do
+    [ -z "$i" ] || cmd+=("\"$i\"")
+  done
+
+  _msg "cmd: ${cmd[*]}"
 
   # Export variables to container
   export TERM="xterm"
@@ -1098,6 +1120,11 @@ function main()
     "whoami" "yes" "resize2fs" "mke2fs" "lsof"
   )
 
+  # Setup daemon to unmount filesystems on exit
+  chmod +x "$FIM_FPATH_KILLER"
+  nohup "$FIM_FPATH_KILLER" &>/dev/null & disown
+
+  # Copy static binaries
   _copy_tools "${ext_tools[@]}"
 
   # Mount filesystem

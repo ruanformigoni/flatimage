@@ -28,13 +28,23 @@ if(NOT GIT_COMMAND)
   message(FATAL_ERROR "git command not found")
 endif()
 
-# Define the command to generate script.h from script.sh
+# Define the command to generate boot.h from _boot.sh
 add_custom_command(
   OUTPUT boot.h
   COMMAND ${XXD_COMMAND} -i "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_boot.sh" > "${CMAKE_CURRENT_SOURCE_DIR}/boot.h"
   COMMAND sed -Ei "s|unsigned char.*=|unsigned char _script_boot\[\] =|g" "${CMAKE_CURRENT_SOURCE_DIR}/boot.h"
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_boot.sh"
   COMMENT "Generating boot.h from _boot.sh"
+  VERBATIM
+)
+
+# Define the command to generate killer.h from _killer.sh
+add_custom_command(
+  OUTPUT killer.h
+  COMMAND ${XXD_COMMAND} -i "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_killer.sh" > "${CMAKE_CURRENT_SOURCE_DIR}/killer.h"
+  COMMAND sed -Ei "s|unsigned char.*=|unsigned char _script_killer\[\] =|g" "${CMAKE_CURRENT_SOURCE_DIR}/killer.h"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/_killer.sh"
+  COMMENT "Generating killer.h from _killer.sh"
   VERBATIM
 )
 
@@ -57,6 +67,6 @@ add_definitions("-DCOMMIT=\"${GIT_COMMIT_HASH}\"")
 message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
 
 # Main executable
-add_executable(main main.cpp boot.h)
+add_executable(main main.cpp boot.h killer.h)
 target_link_libraries(main PRIVATE fmt::fmt)
 target_include_directories(main PRIVATE ${fmt_INCLUDE_DIRS})

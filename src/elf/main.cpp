@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "boot.h" // boot script
+#include "killer.h" // boot script
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
@@ -163,16 +164,43 @@ int main(int argc, char** argv)
     std::string str_dir_mount = create_temp_dir(str_dir_mount_prefix);
 
     //
-    // Write boot script
+    // Set extract path for helper scripts (boot,killer)
     //
-    if ( std::string str_boot_file = "{}/boot"_fmt(cstr_dir_temp); ! fs::exists(str_boot_file) )
+    std::string str_boot_file = "{}.boot"_fmt(str_dir_mount);
+    std::string str_killer_file = "{}.killer"_fmt(str_dir_mount);
+    // Change to global directory if debug flag is enabled
+    if ( getenv("FIM_DEBUG") )
+    {
+      str_boot_file = "{}/boot"_fmt(cstr_dir_temp);
+      str_killer_file = "{}/killer"_fmt(cstr_dir_temp);
+    }
+    // Update env
+    setenv("FIM_FPATH_BOOT", str_boot_file.c_str(), 1);
+    setenv("FIM_FPATH_KILLER", str_killer_file.c_str(), 1);
+
+    //
+    // Set boot script
+    //
+    if ( ! fs::exists(str_boot_file) )
     {
       std::ofstream script_boot(str_boot_file, std::ios::binary);
       fs::permissions(str_boot_file, fs::perms::all);
       // -1 to exclude the trailing null byte
       script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
       script_boot.close();
-    } // if
+    }
+
+    //
+    // Set killer daemon script
+    //
+    if ( ! fs::exists(str_killer_file) )
+    {
+      std::ofstream script_killer(str_killer_file, std::ios::binary);
+      fs::permissions(str_killer_file, fs::perms::all);
+      // -1 to exclude the trailing null byte
+      script_killer.write(reinterpret_cast<const char*>(_script_killer), sizeof(_script_killer) - 1);
+      script_killer.close();
+    }
 
     //
     // Set environment
@@ -183,7 +211,7 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    std::string cmd = "{}/boot {}"_fmt(cstr_dir_temp, str_args);
+    std::string cmd = "{} {}"_fmt(str_boot_file, str_args);
     system(cmd.c_str());
   } // }}}
   

@@ -709,6 +709,10 @@ function _exec()
   # shellcheck disable=1090
   source "$FIM_FILE_PERMS"
 
+  # Set env for the container
+  # shellcheck disable=2016
+  _cmd_bwrap+=('env PATH="$FIM_DIR_STATIC:$PATH"')
+
   # Main binary
   _cmd_bwrap+=("$FIM_DIR_STATIC/bwrap")
   _cmd_proot+=("$FIM_DIR_STATIC/proot")

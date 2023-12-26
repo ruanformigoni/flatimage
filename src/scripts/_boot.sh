@@ -14,7 +14,7 @@ set "${FIM_DEBUG_SET_ARGS:-"-e"}"
 
 export PID="$$"
 
-export FIM_DIST=ARCH
+export FIM_DIST="TRUNK"
 
 # Rootless tool
 export FIM_BACKEND

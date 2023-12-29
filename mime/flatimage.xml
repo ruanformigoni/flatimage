@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/flatimage">
+    <comment>FlatImage Application</comment>
+    <glob pattern="*.flatimage"/>
+    <glob pattern="*.fim"/>
+    <sub-class-of type="application/x-executable"/>
+    <generic-icon name="application-x-executable"/>
+  </mime-type>
+</mime-info>
+
+<!-- ln -sf %:p ~/.local/share/mime/packages/flatimage.xml -->

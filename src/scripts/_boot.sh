@@ -447,6 +447,73 @@ function _resize_free_space()
 }
 # }}}
 
+# _desktop_integration {{{
+function _desktop_integration()
+{
+  local name="${FIM_NAME:?"FIM_NAME is not defined"}"
+  local src_icon="${FIM_ICON:?"FIM_ICON is not defined"}"
+
+  # Icon
+  if [ ! -f "$src_icon" ]; then
+    _msg "Icon not found in '$src_icon'"
+    return
+  else
+    _msg "Icon found in '$src_icon'"
+  fi
+  ## If type is svg, copy to scalable
+  if [[ "$src_icon" =~ ^.*\.svg$ ]]; then
+    _msg "Icon type is 'svg'"
+    mkdir -p "$HOME/.local/share/icons/hicolor/scalable/mimetypes"
+    local dest_icon_mime="$HOME/.local/share/icons/hicolor/scalable/mimetypes/application-flatimage_$name.svg"
+    local dest_icon_app="$HOME/.local/share/icons/hicolor/scalable/apps/application-flatimage_$name.svg"
+    if [ ! -f "$dest_icon_mime" ] || [ ! -f "$dest_icon_app" ]; then
+      cp "$src_icon" "$dest_icon_mime"
+      cp "$dest_icon_mime" "$dest_icon_app"
+    fi
+  ## Copy to varying sizes
+  elif [[ "$src_icon" =~ ^.*(\.jpg|\.jpeg|\.png)$ ]]; then
+    _msg "Icon type is '${src_icon##*.}'"
+    for i in "16" "22" "24" "32" "48" "64" "96" "128" "256"; do
+      mkdir -p "$HOME/.local/share/icons/hicolor/${i}x${i}/mimetypes"
+      mkdir -p "$HOME/.local/share/icons/hicolor/${i}x${i}/apps"
+      local dest_icon_mime="$HOME/.local/share/icons/hicolor/${i}x${i}/mimetypes/application-flatimage_$name.png"
+      local dest_icon_app="$HOME/.local/share/icons/hicolor/${i}x${i}/apps/application-flatimage_$name.png"
+      if [ ! -f "$dest_icon_mime" ] || [ ! -f "$dest_icon_app" ]; then
+        magick "$src_icon" "$dest_icon_mime"
+        cp "$dest_icon_mime" "$dest_icon_app"
+      fi
+    done
+  else
+    _msg "Unsupported icon format '${src_icon##*.}'"
+  fi
+  
+  # Mimetype
+  local mime="$HOME/.local/share/mime/packages/flatimage-$name.xml"
+  mkdir -p "$HOME/.local/share/mime/packages"
+  cp "$FIM_DIR_MOUNT/fim/desktop/flatimage.xml" "$mime"
+  sed -i "s|application/flatimage|application/flatimage_$name|" "$mime"
+  sed -i "s|pattern=\".*flatimage\"|pattern=\"$FIM_FILE_BINARY\"|" "$mime"
+  update-mime-database "$HOME/.local/share/mime"
+
+  local categories="$(_config_fetch --value --single "categories")"
+
+  # Desktop entry
+  mkdir -p "$HOME/.local/share/applications"
+  local entry="$HOME/.local/share/applications/flatimage-${name}.desktop"
+  { sed -E 's/^\s+://' | tee "$entry" | sed 's/^/-- /' &>"$FIM_STREAM"; } <<-END
+  :[Desktop Entry]
+  :Name=$name
+  :Type=Application
+  :Comment=FlatImage distribution of "$name"
+  :TryExec=$FIM_PATH_FILE_BINARY
+  :Exec=$FIM_PATH_FILE_BINARY %F
+  :Icon=application-flatimage_$name
+  :MimeType=application/flatimage_$name
+  :Categories=$categories
+	END
+}
+# }}}
+
 # _include_path {{{ 
 # $1 Path to the file/directory to include
 # $2 Path to the directory to include it into
@@ -1055,12 +1122,17 @@ function _config_fetch()
   # List ones that match regex
   while read -r i; do
     if [[ -z "$i" ]]; then continue; fi
-    if [[ "$i" =~ $regex ]]; then
-      # Print value or entire expression
+    if [[ "$i" =~ ^([^=]*)=(.*) ]]; then
+      # Get Entry
+      local match_key="${BASH_REMATCH[1]}"
+      local match_value="${BASH_REMATCH[2]}"
+      # Check match
+      if ! [[ "$match_key" =~ $regex ]]; then continue; fi
+      # Return match
       if [[ "$value" -eq 1 ]]; then
-        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[2]}" | xargs
+        echo "$match_value" | xargs
       elif [[ "$key" -eq 1 ]]; then
-        [[ "$i" =~ ([^=]*)=(.*) ]] && echo "${BASH_REMATCH[1]}" | xargs
+        echo "$match_key" | xargs
       else
         echo "$i" | xargs
       fi
@@ -1143,6 +1215,30 @@ function main()
   # # Set & show on debug mode
   [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
   _msg "FIM_HOME        : $HOME"
+
+  # Check if custom package name is set
+  export FIM_NAME="$(_config_fetch --value --single "name")"
+  # # Expand
+  FIM_NAME="$(eval echo "$FIM_NAME")"
+  # # Set default
+  FIM_NAME="${FIM_NAME:-"${FIM_DIST,,}"}"
+  _msg "FIM_NAME        : $FIM_NAME"
+
+  # Check for custom icon
+  export FIM_ICON="$(_config_fetch --value --single "icon")"
+  # # Expand
+  FIM_ICON="$(eval echo "$FIM_ICON")"
+  # # Set default
+  if [ ! -f "$FIM_ICON" ]; then
+    FIM_ICON="$FIM_DIR_MOUNT/fim/desktop/icon.svg"
+  fi
+  _msg "FIM_ICON        : $FIM_ICON"
+
+  # Setup desktop integration
+  local fim_desktop="$(_config_fetch --value --single "desktop")"
+  if [ "$fim_desktop" = "1" ]; then
+    set +e; _desktop_integration set -e
+  fi
 
   # If FIM_BACKEND is not defined check the config
   # or set it to bwrap

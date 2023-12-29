@@ -381,6 +381,11 @@ function _create_subsystem_arch()
   chown -R "$(id -u)":users "./arch"
   chmod 755 -R "./arch"
 
+  # MIME
+  mkdir -p ./arch/fim/desktop
+  cp ./mime/icon.svg      ./arch/fim/desktop
+  cp ./mime/flatimage.xml ./arch/fim/desktop
+
   # Create image
   _create_image  "./arch" "arch.img"
 

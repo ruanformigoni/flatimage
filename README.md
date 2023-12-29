@@ -12,6 +12,7 @@
     - [Configure](#configure)
         - [HOME directory](#home-directory)
         - [Backend](#backend)
+        - [Desktop Integration](#desktop-integration)
         - [Overlayfs](#overlayfs)
 - [Use cases](#use-cases)
     - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
@@ -65,7 +66,7 @@ software compatibility challenges. FlatImage addresses these issues by:
 | Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
 | Runs without mounting the filesystem                                      |               |                            | x
 | Straightforward build process                                             | x             | x                          |
-| Desktop integration                                                       |               |                            | x
+| Desktop integration                                                       | x             |                            | x
 | Extract the contents                                                      | x             | x                          | x
 | Supports reconfiguration without rebuild                                  | x             | x (layers)                 |
 | No host libraries used (Filesystem Isolation)                             | x             | x                          |
@@ -136,6 +137,7 @@ Avaliable options:
 
 ### Configurable
 
+* `FIM_NAME`: Name of the package, useful for desktop integration (default is flatimage-$FIM_DIST)
 * `FIM_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `FIM_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `FIM_SLACK_MINIMUM`: Free space always available on the filesystem startup,
@@ -146,6 +148,7 @@ Avaliable options:
 
 ### Read-Only
 
+* `FIM_DIST`: The linux distribution name (alpine, arch, ubuntu)
 * `FIM_PATH_FILE_BINARY`: Full path to the executed binary file
 * `FIM_FILE_BINARY`: Basename of the executed binary file.
 * `FIM_DIR_BINARY`: The path to the directory of the executed binary file.
@@ -187,6 +190,47 @@ always takes precedence if defined.
 ./arch.fim fim-config-set backend "proot"
  # Run command on host using a static bash binary
 ./arch.fim fim-config-set backend "host"
+```
+
+### Desktop Integration
+
+Flatimage supports desktop integration, the icon and menu entry should appear
+after the first execution. Make sure to have this line in your `~/.bashrc`
+file:
+
+```bash
+export XDG_DATA_DIRS=$HOME/.local/share/applications/:$XDG_DATA_DIRS
+```
+
+After including it, log out and log in again (or reboot) for the changes apply.
+Here's how to configure flatimage desktop integration:
+
+```bash
+ # Set the name of your application
+./arch.fim fim-config-set name "MyApp"
+ # Set the icon, supported image types are '.svg,.png,.jpg'
+./arch.fim fim-config-set icon '"$FIM_DIR_MOUNT"/fim/desktop/icon.png'
+ # Copy icon to inside the container
+./arch.fim fim-root cp ./my-image.png /fim/desktop/icon.png
+ # Set the categories of your application
+ # Avaliable categories found here: https://specifications.freedesktop.org/menu-spec/latest/apa.html
+ ./arch.fim fim-config-set categories "Game"
+ # Enable desktop integration
+./arch.fim fim-config-set desktop 1
+```
+
+You can also disable desktop integration with:
+
+```bash
+ # Disable desktop integration
+./arch.fim fim-config-set desktop 0
+```
+
+To erase all desktop entries and icons created by flatimage, you can use the
+command:
+
+```bash
+find ~/.local/share -iname "*flatimage*" -exec rm -v "{}" \;
 ```
 
 ### Overlayfs

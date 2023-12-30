@@ -419,7 +419,11 @@ function _get_space_free()
 function _desktop_integration()
 {
   local name="${FIM_NAME:?"FIM_NAME is not defined"}"
+  local name="${name//-/_}"
+  local name="${name// /_}"
+  local name="${name,,}"
   local src_icon="${FIM_ICON:?"FIM_ICON is not defined"}"
+  local home="/home/$(whoami)"
 
   # Icon
   if [ ! -f "$src_icon" ]; then
@@ -431,10 +435,10 @@ function _desktop_integration()
   ## If type is svg, copy to scalable
   if [[ "$src_icon" =~ ^.*\.svg$ ]]; then
     _msg "Icon type is 'svg'"
-    mkdir -p "$HOME/.local/share/icons/hicolor/scalable/mimetypes"
-    mkdir -p "$HOME/.local/share/icons/hicolor/apps/mimetypes"
-    local dest_icon_mime="$HOME/.local/share/icons/hicolor/scalable/mimetypes/application-flatimage_$name.svg"
-    local dest_icon_app="$HOME/.local/share/icons/hicolor/scalable/apps/application-flatimage_$name.svg"
+    mkdir -p "$home/.local/share/icons/hicolor/scalable/mimetypes"
+    mkdir -p "$home/.local/share/icons/hicolor/apps/mimetypes"
+    local dest_icon_mime="$home/.local/share/icons/hicolor/scalable/mimetypes/application-flatimage_$name.svg"
+    local dest_icon_app="$home/.local/share/icons/hicolor/scalable/apps/application-flatimage_$name.svg"
     if [ ! -f "$dest_icon_mime" ] || [ ! -f "$dest_icon_app" ]; then
       cp "$src_icon" "$dest_icon_mime"
       cp "$dest_icon_mime" "$dest_icon_app"
@@ -443,10 +447,10 @@ function _desktop_integration()
   elif [[ "$src_icon" =~ ^.*(\.jpg|\.jpeg|\.png)$ ]]; then
     _msg "Icon type is '${src_icon##*.}'"
     for i in "16" "22" "24" "32" "48" "64" "96" "128" "256"; do
-      mkdir -p "$HOME/.local/share/icons/hicolor/${i}x${i}/mimetypes"
-      mkdir -p "$HOME/.local/share/icons/hicolor/${i}x${i}/apps"
-      local dest_icon_mime="$HOME/.local/share/icons/hicolor/${i}x${i}/mimetypes/application-flatimage_$name.png"
-      local dest_icon_app="$HOME/.local/share/icons/hicolor/${i}x${i}/apps/application-flatimage_$name.png"
+      mkdir -p "$home/.local/share/icons/hicolor/${i}x${i}/mimetypes"
+      mkdir -p "$home/.local/share/icons/hicolor/${i}x${i}/apps"
+      local dest_icon_mime="$home/.local/share/icons/hicolor/${i}x${i}/mimetypes/application-flatimage_$name.png"
+      local dest_icon_app="$home/.local/share/icons/hicolor/${i}x${i}/apps/application-flatimage_$name.png"
       if [ ! -f "$dest_icon_mime" ] || [ ! -f "$dest_icon_app" ]; then
         magick "$src_icon" "$dest_icon_mime"
         cp "$dest_icon_mime" "$dest_icon_app"
@@ -458,18 +462,18 @@ function _desktop_integration()
   fi
   
   # Mimetype
-  local mime="$HOME/.local/share/mime/packages/flatimage-$name.xml"
-  mkdir -p "$HOME/.local/share/mime/packages"
+  local mime="$home/.local/share/mime/packages/flatimage-$name.xml"
+  mkdir -p "$home/.local/share/mime/packages"
   cp "$FIM_DIR_MOUNT/fim/desktop/flatimage.xml" "$mime"
   sed -i "s|application/flatimage|application/flatimage_$name|" "$mime"
   sed -i "s|pattern=\".*flatimage\"|pattern=\"$FIM_FILE_BINARY\"|" "$mime"
-  update-mime-database "$HOME/.local/share/mime"
+  update-mime-database "$home/.local/share/mime"
 
   local categories="$(_config_fetch --value --single "categories")"
 
   # Desktop entry
-  mkdir -p "$HOME/.local/share/applications"
-  local entry="$HOME/.local/share/applications/flatimage-${name}.desktop"
+  mkdir -p "$home/.local/share/applications"
+  local entry="$home/.local/share/applications/flatimage-${name}.desktop"
   { sed -E 's/^\s+://' | tee "$entry" | sed 's/^/-- /' &>"$FIM_STREAM"; } <<-END
   :[Desktop Entry]
   :Name=$name

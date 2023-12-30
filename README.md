@@ -105,12 +105,11 @@ Avaliable options:
 - fim-root: Execute an arbitrary command as root.
 - fim-exec: Execute an arbitrary command.
 - fim-cmd: Set the default command to execute when no argument is passed.
-- fim-resize: Resize the filesystem.
-    - # Resizes the filesytem to 1G
-    - E.g.: ./focal.fim fim-resize-free 1G
-- fim-resize-free: Resize the filesystem to have the provided free space.
-    - # Makes sure the filesystem has 100M of free space
-    - E.g.: ./focal.fim fim-resize-free 100M
+- fim-resize: Resizes the filesystem.
+    - # Resizes the filesytem to have 1G of size
+    - E.g.: ./focal.fim fim-resize 1G
+    - # Resizes the filesystem by current size plus 1G
+    - E.g.: ./focal.fim fim-resize +1G
 - fim-mount: Mount the filesystem in a specified directory
     - E.g.: ./focal.fim fim-mount ./mountpoint
 - fim-xdg: Same as the 'fim-mount' command, however it opens the

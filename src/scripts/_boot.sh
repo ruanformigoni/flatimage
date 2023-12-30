@@ -255,12 +255,11 @@ function _help()
   :- fim-root: Execute an arbitrary command as root.
   :- fim-exec: Execute an arbitrary command.
   :- fim-cmd: Set the default command to execute when no argument is passed.
-  :- fim-resize: Resize the filesystem.
-  :    - # Resizes the filesytem to 1G
-  :    - E.g.: ./focal.fim fim-resize-free 1G
-  :- fim-resize-free: Resize the filesystem to have the provided free space.
-  :    - # Makes sure the filesystem has 100M of free space
-  :    - E.g.: ./focal.fim fim-resize-free 100M
+  :- fim-resize: Resizes the filesystem.
+  :    - # Resizes the filesytem to have 1G of size
+  :    - E.g.: ./focal.fim fim-resize 1G
+  :    - # Resizes the filesystem by current size plus 1G
+  :    - E.g.: ./focal.fim fim-resize +1G
   :- fim-mount: Mount the filesystem in a specified directory
   :    - E.g.: ./focal.fim fim-mount ./mountpoint
   :- fim-xdg: Same as the 'fim-mount' command, however it opens the
@@ -285,21 +284,80 @@ function _help()
 }
 # }}}
 
+# _match_free_space() {{{
+# $1 Desired free space within the filesystem
+# Returns the size of which the filesystem must be resized into,
+# to have this maximum amount of free space when empty
+function _match_free_space()
+{
+  declare size_new="$1"
+
+  _msg "Target $size_new"
+
+  # We want the to resize the free space, the current solution is to use a function
+  # which is an upper bound to the growth of the free space in relation to the actual
+  # filesystem size, more information is found in the spreadsheet on /doc/ext2-analysis.ods
+  size_new=$(( size_new + 4*(size_new/50+2) ))
+
+  _msg "Approx $size_new"
+
+  echo "${size_new}"
+}
+# }}}
+
 # _resize() {{{
 # Changes the filesystem size
 # $1 New size
 function _resize()
 {
+  local size_new="$1"
+  local size_total="$(_get_space_total "$FIM_DIR_MOUNT")"
+
+  # When used as "+2G", to increment the current size by 2G
+  if [[ "$size_new" =~ ^\+([0-9]+(K|M|G)?)$ ]]; then
+    ## Adjust new size, convert to bytes
+    size_new="$(numfmt --from=iec "${BASH_REMATCH[1]}")"
+    ## Sum with bytes size of filesystem
+    size_new="$((size_total + size_new))"
+  # When used as "2G"
+  elif [[ "$size_new" =~ ^([0-9]+(K|M|G)?)$ ]]; then
+    size_new="$(numfmt --from=iec "${BASH_REMATCH[1]}")"
+  else
+    _die "Invalid size specifier '$1'"
+  fi
+
+  # Resize the maximum free space, not the filesystem size
+  size_new="$(_match_free_space "$size_new")"
+
+  # Convert to use in resize2fs
+  size_new="$(numfmt --from=iec --to-unit=1Ki "$size_new")K"
+
   # Unmount
   _unmount
 
   # Resize
   "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
-  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" "$1"
+  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" "${size_new}"
   "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
 
   # Mount
   _mount
+}
+# }}}
+
+# _resize_by_offset() {{{
+function _resize_by_offset()
+{
+  # Get free space of current image
+  local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
+  # Convert to M
+  size_free="$(numfmt --from=iec --to-unit=1M "$size_free")"
+  # Get the minimum amount of free space allowed
+  local size_slack="$(numfmt --from=iec --to-unit=1M "$FIM_SLACK_MINIMUM")"
+  # Resize by minimum allowed if less than minimum allowed
+  if [[ "$size_free" -lt "$size_slack" ]]; then
+    _resize "+${FIM_SLACK_MINIMUM}"
+  fi
 }
 # }}}
 
@@ -331,119 +389,29 @@ function _wait_for_mount()
 }
 # }}}
 
-# _get_free_space {{{
+# _get_space_total {{{
 # $1 Mountpoint of a mounted filesystem
-# Returns the value in bytes
-function _get_free_space()
+# Returns the value in bytes of the total size
+function _get_space_total()
+{
+  local mountpoint="$1"
+  if ! _is_mounted "$mountpoint"; then
+    _die "No filesystem mounted in '$mountpoint'"
+  fi
+  { df -B1 --output=size "$mountpoint" 2>/dev/null || _die "df failed"; } | tail -n1 
+}
+# }}}
+
+# _get_space_free {{{
+# $1 Mountpoint of a mounted filesystem
+# Returns the value in bytes of the free space
+function _get_space_free()
 {
   local mountpoint="$1"
   if ! _is_mounted "$mountpoint"; then
     _die "No filesystem mounted in '$mountpoint'"
   fi
   { df -B1 --output=avail "$mountpoint" 2>/dev/null || _die "df failed"; } | tail -n1 
-}
-# }}}
-
-# _match_free_space() {{{
-# The size of a filesystem and the free size of a filesystem differ
-# This makes the free space on the filesystem match the target size
-# $1 filesystem file
-# $2 mountpoint
-# $3 target size
-# $4 filesystem offset
-function _match_free_space()
-{
-  # Get filesystem file
-  local file_filesystem="$1"
-
-  # Get mountpoint
-  local mountpoint="$2"
-  mkdir -p "$mountpoint"
-
-  # Get target size
-  declare -i target="$(numfmt --from=iec "$3")"
-  [[ "$target" =~ ^[0-9]+$ ]] || _die "target is NaN"
-
-  # Optional offset
-  declare -i offset
-  if [[ $# -eq 4 ]]; then
-    offset="$4"
-  fi
-
-  # Un-mount if mounted
-  if _is_mounted "$mountpoint"; then
-    _die "filesystem should not be mounted for _match_free_space"
-  fi
-
-  declare -i i=0
-  while :; do
-    ## Get current free size
-    "$FIM_DIR_GLOBAL_BIN/fuse2fs" "${file_filesystem}" ${offset:+"-ooffset=$offset"} "$mountpoint"
-    ## Wait for mount
-    _wait_for_mount "$mountpoint"
-    ## Grep free size
-    declare -i curr_free="$(_get_free_space "$mountpoint")"
-    ## Wait for mount process termination
-    fusermount -u "$mountpoint"
-    for pid in $(pgrep -f "fuse2fs.*$file_filesystem"); do
-      _wait_kill "Wait for unmount of fuse2fs in $mountpoint" "$pid"
-    done
-    ## Check if got an integral number
-    [[ "$curr_free" =~ ^[0-9]+$ ]] || _die "curr_free is NaN"
-    _msg "Free space $(numfmt --to=iec "$curr_free")"
-
-    # Check if has reached desired size
-    if [[ "$curr_free" -gt "$target" ]]; then break; fi
-
-    # Get the curr total
-    declare -i curr_total="$(du -sb "$file_filesystem" | awk '{print $1}')"
-    [[ "$curr_total" =~ ^[0-9]+$ ]] || _die "curr_total is NaN"
-
-    # Increase on step
-    declare -i step="$FIM_SLACK_MINIMUM"
-
-    # Calculate new size
-    declare -i new_size
-
-    if [[ "$i" -eq 0 ]]; then
-      i+=1
-      new_size="$((curr_total + (target - curr_free) ))"
-    else
-      new_size="$((curr_total+step))"
-    fi
-
-    # Include size limit
-    if [[ "$new_size" -gt "$(numfmt --from=iec "500G")" ]];  then _die "Too large filesystem resize attempt"; fi
-
-    # Resize
-    _msg "Target of $(numfmt --from=iec --to-unit=1M "$target")M"
-    _msg "Resize from $(numfmt --from=iec --to-unit=1M "$curr_total")M to $(numfmt --from=iec --to-unit=1M "$new_size")M"
-
-    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
-    "$FIM_DIR_GLOBAL_BIN/resize2fs" "${file_filesystem}${offset:+"?offset=$offset"}" \
-      "$(numfmt --from=iec --to-unit=1Mi "${new_size}")M" &> "$FIM_STREAM"
-    "$FIM_DIR_GLOBAL_BIN/e2fsck" -fy "${file_filesystem}"${offset:+"?offset=$offset"} &> "$FIM_STREAM" || true
-  done
-}
-# }}}
-
-# _resize_free_space() {{{
-# Resizes filesystem to have at least the target free space
-# If the input is less than the current free space, does nothing
-# $1 New size for free space
-function _resize_free_space()
-{
-  # Normalize to bytes
-  declare -i size_bytes="$(numfmt --from=iec "$1")"
-
-  # Un-mount
-  _unmount
-
-  # Match free space
-  _match_free_space "$FIM_PATH_FILE_BINARY" "$FIM_DIR_MOUNT" "$size_bytes" "$FIM_OFFSET"
-
-  # Re-mount
-  _mount
 }
 # }}}
 
@@ -542,9 +510,11 @@ function _include_path()
   local size_target="$(du -sb "$path_target" | awk '{print $1}')"
   [[ "$size_target" =~ ^[0-9]+$ ]] || _die "size_target is NaN: '$size_target'"
 
-  # Get currently free size
-  local size_free="$(_get_free_space "$FIM_DIR_MOUNT")"
-  _resize_free_space "$((size_free+size_target))"
+  # Get current free space
+  local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
+
+  # Resize by the amount required to fit
+  _resize "+$((size_target - size_free))"
 
   FIM_DEBUG=1 _msg "Include target '$path_target' in '$dir_guest'"
   cp -r "$path_target" "$dir_guest"
@@ -575,6 +545,9 @@ function _rebuild()
   # Update offset
   FIM_OFFSET="$(du -sb "$FIM_PATH_FILE_BINARY" | awk '{print $1}')"
 
+  # Adjust free space
+  size_image="$(_match_free_space "$size_image")"
+
   # Create filesystem
   truncate -s "$size_image" "$file_image"
 
@@ -584,9 +557,6 @@ function _rebuild()
 
   # Format as ext2
   "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
-
-  # Make sure enough free space is available
-  _match_free_space "$file_image" "$FIM_DIR_BINARY/${FIM_FILE_BINARY}.mount" "$size_image"
 
   # Re-format and include files
   "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
@@ -1165,6 +1135,7 @@ function main()
   _msg "FIM_RO               : $FIM_RO"
   _msg "FIM_RW               : $FIM_RW"
   _msg "FIM_STREAM           : $FIM_STREAM"
+  _msg "FIM_SLACK_MINIMUM    : $FIM_SLACK_MINIMUM"
   _msg "FIM_ROOT             : $FIM_ROOT"
   _msg "FIM_NORM             : $FIM_NORM"
   _msg "FIM_DEBUG            : $FIM_DEBUG"
@@ -1205,7 +1176,7 @@ function main()
   _mount
 
   # Resize by offset if space is less than minimum
-  _resize_free_space "$FIM_SLACK_MINIMUM"
+  _resize_by_offset
 
   # Check if config exists, else try to touch if mounted as RW
   [ -f "$FIM_FILE_CONFIG" ] || { [ -n "$FIM_RO" ] || touch "$FIM_FILE_CONFIG"; }
@@ -1260,7 +1231,6 @@ function main()
       "exec") shift; _exec "$@" ;;
       "cmd") _config_set "cmd" "${@:2}" ;;
       "resize") _resize "$2" ;;
-      "resize-free") _resize_free_space "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
       "mount") _re_mount "$2"; read -r ;;
       "config-list") shift; _config_fetch "$*" ;;

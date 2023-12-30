@@ -30,6 +30,27 @@ fetch-coreutils:
     reports:
       dotenv: build.env
 
+fetch-magick:
+  image: "ubuntu:focal"
+  stage: fetch
+  when: manual
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update && apt -y upgrade
+    - apt install -y wget tar xz-utils
+    - echo JOB_ID_FETCH_MAGICK=$CI_JOB_ID > build.env
+  script:
+    - |
+      mkdir -p bin
+      wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/cc3f21c/magick-x86_64"
+      wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
+      chmod +x bin/magick
+  artifacts:
+    paths:
+      - ./bin
+    reports:
+      dotenv: build.env
+
 fetch-lsof:
   image: "ubuntu:focal"
   stage: fetch
@@ -221,6 +242,7 @@ package-ubuntu:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-magick
     - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
@@ -251,6 +273,7 @@ package-arch:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-magick
     - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap
@@ -281,6 +304,7 @@ package-alpine:
   needs:
     - job: build-elf
     - job: fetch-coreutils
+    - job: fetch-magick
     - job: fetch-lsof
     - job: fetch-e2fsprogs
     - job: fetch-bwrap

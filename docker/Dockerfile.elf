@@ -8,7 +8,7 @@ RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/reposit
 # Install deps
 RUN apk update && apk upgrade
 RUN apk add --no-cache build-base git libbsd-dev py3-pip pipx git patchelf cmake gcc \
-  bash e2fsprogs xz curl zstd gawk debootstrap upx
+  bash e2fsprogs xz curl zstd gawk debootstrap
 
 # Install conan
 RUN pipx install conan
@@ -38,9 +38,8 @@ RUN cmake --build --preset conan-release
 # Move to dist dir
 WORKDIR /fim
 RUN mkdir -p dist
-## Compress & release
-RUN upx --best --no-lzma /fim/src/elf/build/main -o dist/main
 ## Patch magic bytes
+RUN cp /fim/src/elf/build/main dist/main
 RUN /fim/src/elf/build/magic dist/main
 
 # Build image

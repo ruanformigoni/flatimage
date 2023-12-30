@@ -32,7 +32,7 @@ RUN sed -i "s/FIM_DIST=.*/FIM_DIST=$FIM_DIST/" ./src/scripts/_boot.sh
 # Compile
 WORKDIR /fim/src/elf
 RUN conan install . --build=missing -g CMakeDeps -g CMakeToolchain --output-folder=build
-RUN cmake --preset conan-release
+RUN cmake --preset conan-release -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build --preset conan-release
 
 # Move to dist dir

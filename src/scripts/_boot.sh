@@ -514,7 +514,7 @@ function _include_path()
   local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
 
   # Resize by the amount required to fit
-  _resize "+$((size_target - size_free))"
+  _resize "+${size_target}"
 
   FIM_DEBUG=1 _msg "Include target '$path_target' in '$dir_guest'"
   cp -r "$path_target" "$dir_guest"

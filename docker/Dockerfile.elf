@@ -38,7 +38,10 @@ RUN cmake --build --preset conan-release
 # Move to dist dir
 WORKDIR /fim
 RUN mkdir -p dist
+## Compress & release
 RUN upx --best --no-lzma /fim/src/elf/build/main -o dist/main
+## Patch magic bytes
+RUN /fim/src/elf/build/magic dist/main
 
 # Build image
 # RUN cp dist/main bin/elf

@@ -70,3 +70,6 @@ message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
 add_executable(main main.cpp boot.h killer.h)
 target_link_libraries(main PRIVATE fmt::fmt)
 target_include_directories(main PRIVATE ${fmt_INCLUDE_DIRS})
+
+# Magic patcher
+add_executable(magic magic.cpp)

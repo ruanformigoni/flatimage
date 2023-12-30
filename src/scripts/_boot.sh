@@ -1128,8 +1128,8 @@ function _config_set()
 }
 # }}}
 
-# main() {{{
-function main()
+# _main() {{{
+function _main()
 {
   _msg "FIM_OFFSET           : $FIM_OFFSET"
   _msg "FIM_RO               : $FIM_RO"
@@ -1249,6 +1249,6 @@ function main()
 }
 # }}}
 
-main "$@"
+_main "$@"
 
 #  vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :

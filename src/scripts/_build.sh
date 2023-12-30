@@ -179,6 +179,11 @@ function _create_subsystem_debootstrap()
   chown -R "$(id -u)":users "/tmp/$dist"
   chmod 777 -R "/tmp/$dist"
 
+  # MIME
+  mkdir -p "/tmp/$dist/fim/desktop"
+  cp ./mime/icon.svg      "/tmp/$dist/fim/desktop"
+  cp ./mime/flatimage.xml "/tmp/$dist/fim/desktop"
+
   # Create image
   _create_image  "/tmp/$dist" "$dist.img"
 
@@ -253,6 +258,11 @@ function _create_subsystem_alpine()
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
   chmod 777 -R "/tmp/$dist"
+
+  # MIME
+  mkdir -p "/tmp/$dist/fim/desktop"
+  cp ./mime/icon.svg      "/tmp/$dist/fim/desktop"
+  cp ./mime/flatimage.xml "/tmp/$dist/fim/desktop"
 
   # Create image
   _create_image  "/tmp/$dist" "$dist.img"

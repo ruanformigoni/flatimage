@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "boot.h" // boot script
-#include "killer.h" // boot script
+#include "killer.h" // cleanup script
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type

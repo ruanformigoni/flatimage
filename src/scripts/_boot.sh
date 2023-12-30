@@ -464,6 +464,7 @@ function _desktop_integration()
   if [[ "$src_icon" =~ ^.*\.svg$ ]]; then
     _msg "Icon type is 'svg'"
     mkdir -p "$HOME/.local/share/icons/hicolor/scalable/mimetypes"
+    mkdir -p "$HOME/.local/share/icons/hicolor/apps/mimetypes"
     local dest_icon_mime="$HOME/.local/share/icons/hicolor/scalable/mimetypes/application-flatimage_$name.svg"
     local dest_icon_app="$HOME/.local/share/icons/hicolor/scalable/apps/application-flatimage_$name.svg"
     if [ ! -f "$dest_icon_mime" ] || [ ! -f "$dest_icon_app" ]; then
@@ -485,6 +486,7 @@ function _desktop_integration()
     done
   else
     _msg "Unsupported icon format '${src_icon##*.}'"
+    return
   fi
   
   # Mimetype

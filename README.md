@@ -138,6 +138,7 @@ Avaliable options:
 ### Configurable
 
 * `FIM_NAME`: Name of the package, useful for desktop integration (default is flatimage-$FIM_DIST)
+* `FIM_ICON`: Path to the application icon, default is '"$FIM_DIR_MOUNT"/fim/desktop/icon.svg'
 * `FIM_BACKEND`: Back-end to use, default is `bwrap`, `proot` is also supported.
 * `FIM_COMPRESSION_LEVEL`: Compression level of dwarfs (0-9), default is 6
 * `FIM_SLACK_MINIMUM`: Free space always available on the filesystem startup,

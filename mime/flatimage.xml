@@ -2,8 +2,16 @@
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/flatimage">
     <comment>FlatImage Application</comment>
+    <magic>
+      <match value="ELF" type="string" offset="1">
+        <match value="0x46" type="byte" offset="8">
+          <match value="0x49" type="byte" offset="9">
+            <match value="0x01" type="byte" offset="10"/>
+          </match>
+        </match>
+      </match>
+    </magic>
     <glob pattern="*.flatimage"/>
-    <glob pattern="*.fim"/>
     <sub-class-of type="application/x-executable"/>
     <generic-icon name="application-x-executable"/>
   </mime-type>

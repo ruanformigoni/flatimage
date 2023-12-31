@@ -418,12 +418,16 @@ function _get_space_free()
 # _desktop_integration {{{
 function _desktop_integration()
 {
+  # Name of the application as only characters delimited by _
   local name="${FIM_NAME:?"FIM_NAME is not defined"}"
-  local name="${name//-/_}"
-  local name="${name// /_}"
-  local name="${name,,}"
+  name="$(echo "$name" | tr -c '[:alnum:][=\n=]' "_")"
+  name="${name,,}"
+
+  # Icon to be integrated to the system
   local src_icon="${FIM_ICON:?"FIM_ICON is not defined"}"
-  local home="/home/$(whoami)"
+
+  # Actual home directory
+  local home="/home/$(whoami)/"
 
   # Icon
   if [ ! -f "$src_icon" ]; then
@@ -1121,11 +1125,17 @@ function _config_fetch()
 # _config_set() {{{
 function _config_set()
 {
-  local opt="$1"; shift
-  local entry="$opt = $*"
+  local key="$1"; shift
+  local val="$*"
 
-  if grep "$opt =" "$FIM_FILE_CONFIG" &>"$FIM_STREAM"; then
-    sed -i "s|$opt =.*|$entry|" "$FIM_FILE_CONFIG"
+  # Sanitize
+  key="$(echo "$key" | tr -d -c '[:alnum:][=-=][=_=][=.=][=$=][="=][=/=]' | xargs)"
+  val="$(echo "$val" | tr -d -c '[:alnum:][:space:][=-=][=_=][=.=][=$=][="=][=/=]' | xargs)"
+
+  local entry="$key = $val"
+
+  if grep "$key =" "$FIM_FILE_CONFIG" &>"$FIM_STREAM"; then
+    sed -i "s|$key =.*|$entry|" "$FIM_FILE_CONFIG"
   else
     echo "$entry" >> "$FIM_FILE_CONFIG"
   fi

@@ -474,7 +474,7 @@ function _desktop_integration()
   # Desktop entry
   mkdir -p "$home/.local/share/applications"
   local entry="$home/.local/share/applications/flatimage-${name}.desktop"
-  { sed -E 's/^\s+://' | tee "$entry" | sed 's/^/-- /' &>"$FIM_STREAM"; } <<-END
+  { sed -E 's/^\s+://' | tee "$entry" | sed 's/^/-- /'; } <<-END
   :[Desktop Entry]
   :Name=$name
   :Type=Application
@@ -1215,7 +1215,7 @@ function _main()
   # Setup desktop integration
   local fim_desktop="$(_config_fetch --value --single "desktop")"
   if [ "$fim_desktop" = "1" ]; then
-    set +e; _desktop_integration set -e
+    set +e; _desktop_integration &>"$FIM_STREAM"; set -e
   fi
 
   # If FIM_BACKEND is not defined check the config

@@ -199,7 +199,7 @@ after the first execution. Make sure to have this line in your `~/.bashrc`
 file:
 
 ```bash
-export XDG_DATA_DIRS=$HOME/.local/share/applications/:$XDG_DATA_DIRS
+export XDG_DATA_DIRS=$HOME/.local/share:$XDG_DATA_DIRS
 ```
 
 After including it, log out and log in again (or reboot) for the changes apply.

@@ -617,7 +617,7 @@ function _find_overlayfs()
     _msg "OVERLAYFS DST: ${bind_host}"
     # Save
     FIM_MOUNTS_OVERLAYFS["$bind_cont"]="$bind_host"
-  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+ =")
+  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+$")
 }
 # }}}
 
@@ -1100,8 +1100,8 @@ function _config_fetch()
     if [[ -z "$i" ]]; then continue; fi
     if [[ "$i" =~ ^([^=]*)=(.*) ]]; then
       # Get Entry
-      local match_key="${BASH_REMATCH[1]}"
-      local match_value="${BASH_REMATCH[2]}"
+      local match_key="$(echo "${BASH_REMATCH[1]}" | xargs)"
+      local match_value="$(echo "${BASH_REMATCH[2]}" | xargs)"
       # Check match
       if ! [[ "$match_key" =~ $regex ]]; then continue; fi
       # Return match

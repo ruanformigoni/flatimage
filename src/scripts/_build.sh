@@ -190,6 +190,10 @@ function _create_subsystem_debootstrap()
   # Create elf
   _create_elf "$dist.img" "$dist.flatimage"
 
+  # Create sha256sum
+  sha256sum "$dist.flatimage" > "$dist.flatimage.sha256sum"
+  mv "$dist.flatimage.sha256sum" dist/
+
   tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
 
@@ -269,6 +273,10 @@ function _create_subsystem_alpine()
 
   # Create elf
   _create_elf "$dist.img" "$dist.flatimage"
+
+  # Create sha256sum
+  sha256sum "$dist.flatimage" > "$dist.flatimage.sha256sum"
+  mv "$dist.flatimage.sha256sum" dist/
 
   tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
@@ -401,6 +409,10 @@ function _create_subsystem_arch()
 
   # Create elf
   _create_elf "arch.img" "arch.flatimage"
+
+  # Create sha256sum
+  sha256sum arch.flatimage > "arch.flatimage.sha256sum"
+  mv "arch.flatimage.sha256sum" dist/
 
   tar -cf arch.tar arch.flatimage
   xz -3zv arch.tar

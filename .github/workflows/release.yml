@@ -80,7 +80,7 @@ jobs:
       # Install required tools
       - name: Install tools
         run: |
-          sudo env DEBIAN_FRONTEND=noninteractive apt install -y tar xz-utils debootstrap
+          sudo env DEBIAN_FRONTEND=noninteractive apt install -y tar xz-utils debootstrap coreutils
       # Download source from repository
       - uses: actions/checkout@v4
       # Download Artifacts from the fetch job

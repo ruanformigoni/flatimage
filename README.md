@@ -87,7 +87,7 @@ software compatibility challenges. FlatImage addresses these issues by:
 
 # Get FlatImage
 
-You can get the latest release [here](https://github.com/ruanformigoni/flatimage/releases).
+You can get the latest release [here](https://github.com/ruanformigoni/flatimage/releases), and extract the compressed archive with your file manager or with `tar -xf some-file.tar.xz`. To verify the image integrity, you can use the `sha256sum` file that accompanies each release, like so: `sha256sum -c some-file.flatimage.sha256sum`.
 
 # Usage
 
@@ -95,6 +95,11 @@ You can enter the container simply by executing the downloaded image, e.g.,
 `./arch.fim`, which should give you a prompt like this `(flatimage@arch) →`.
 Remember to resize the image as shown in the examples before installing programs
 on it, else there won't be enough space for it.
+
+To enter the container as root (to install software) use:
+```
+./arch.fim fim-root bash
+```
 
 ## Options
 

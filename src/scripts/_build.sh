@@ -188,9 +188,9 @@ function _create_subsystem_debootstrap()
   _create_image  "/tmp/$dist" "$dist.img"
 
   # Create elf
-  _create_elf "$dist.img" "$dist.fim"
+  _create_elf "$dist.img" "$dist.flatimage"
 
-  tar -cf "$dist.tar" "$dist.fim"
+  tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
 
   mv "$dist.tar.xz" dist/
@@ -268,9 +268,9 @@ function _create_subsystem_alpine()
   _create_image  "/tmp/$dist" "$dist.img"
 
   # Create elf
-  _create_elf "$dist.img" "$dist.fim"
+  _create_elf "$dist.img" "$dist.flatimage"
 
-  tar -cf "$dist.tar" "$dist.fim"
+  tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
 
   mv "$dist.tar.xz" dist/
@@ -400,9 +400,9 @@ function _create_subsystem_arch()
   _create_image  "./arch" "arch.img"
 
   # Create elf
-  _create_elf "arch.img" "arch.fim"
+  _create_elf "arch.img" "arch.flatimage"
 
-  tar -cf arch.tar arch.fim
+  tar -cf arch.tar arch.flatimage
   xz -3zv arch.tar
 
   mv "arch.tar.xz" dist/

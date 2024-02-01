@@ -51,6 +51,7 @@ export FIM_DIR_BINARY="$(dirname "$FIM_PATH_FILE_BINARY")"
 export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
 export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
+export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
 
 # Give static tools priority in PATH
 export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
@@ -257,28 +258,28 @@ function _help()
   :- fim-cmd: Set the default command to execute when no argument is passed.
   :- fim-resize: Resizes the filesystem.
   :    - # Resizes the filesytem to have 1G of size
-  :    - E.g.: ./focal.fim fim-resize 1G
+  :    - E.g.: ./arch.fim fim-resize 1G
   :    - # Resizes the filesystem by current size plus 1G
-  :    - E.g.: ./focal.fim fim-resize +1G
+  :    - E.g.: ./arch.fim fim-resize +1G
   :- fim-mount: Mount the filesystem in a specified directory
-  :    - E.g.: ./focal.fim fim-mount ./mountpoint
+  :    - E.g.: ./arch.fim fim-mount ./mountpoint
   :- fim-xdg: Same as the 'fim-mount' command, however it opens the
   :    mount directory with xdg-open
   :- fim-perms-set: Set the permission for the container, available options are:
   :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-  :    - E.g.: ./focal.fim fim-perms pulseaudio,wayland,x11
+  :    - E.g.: ./arch.fim fim-perms pulseaudio,wayland,x11
   :- fim-perms-list: List the current permissions for the container
   :- fim-config-set: Sets a configuration that persists inside the image
-  :    - E.g.: ./focal.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.focal'
-  :    - E.g.: ./focal.fim fim-config-set backend "proot"
+  :    - E.g.: ./arch.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.arch'
+  :    - E.g.: ./arch.fim fim-config-set backend "proot"
   :- fim-config-list: List the current configurations for the container
-  :    - E.g.: ./focal.fim fim-config-list                      # List all
-  :    - E.g.: ./focal.fim fim-config-list "overlay.*"          # List ones that match regex
-  :    - E.g.: ./focal.fim fim-config-list --single "overlay.*" # Stop on first match
-  :    - E.g.: ./focal.fim fim-config-list --value  "overlay.*" # Print only the value
-  :- fim-include-path: Includes a path inside the image, automatically resizing it in the process
-  :    - E.g.: ./focal.fim fim-include-path ../my-dir /opt/new-folder1/new-folder2
-  :    - E.g.: ./focal.fim fim-include-path ../my-file.tar /fim/tarballs
+  :    - E.g.: ./arch.fim fim-config-list                      # List all
+  :    - E.g.: ./arch.fim fim-config-list "overlay.*"          # List ones that match regex
+  :    - E.g.: ./arch.fim fim-config-list --single "overlay.*" # Stop on first match
+  :    - E.g.: ./arch.fim fim-config-list --value  "overlay.*" # Print only the value
+  :- fim-dwarfs-add: Includes a dwarfs file inside the image, it is
+  :                      automatically mounted on startup to the specified mount point
+  :    - E.g.: ./arch.fim fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
   :- fim-help: Print this message.
 	EOF
 }
@@ -492,31 +493,63 @@ function _desktop_integration()
 }
 # }}}
 
-# _include_path {{{ 
-# $1 Path to the file/directory to include
-# $2 Path to the directory to include it into
-function _include_path()
+# _dwarfs_include {{{ 
+# $1 Path to the file to include
+# $2 Mountpoint
+function _dwarfs_include()
 {
-  # Input file/dir
-  local path_target="$1"
+  # Default directory for dwarfs files
+  local path_dir_dwarfs="$FIM_DIR_MOUNT/fim/dwarfs/"
+  mkdir -p "$path_dir_dwarfs"
 
-  # Verify
-  if ! [[ -d "$path_target" ]] && ! [[ -f "$path_target" ]]; then
-    _die "File '$path_target' does not exist or is invalid"
+  # Input file
+  local path_file_host="$(readlink -f "$1")"
+  FIM_DEBUG=1 _msg "Input file: $path_file_host"
+
+  # Basename
+  local basename_file_host="$(basename "$path_file_host")"
+  # # Normalize
+  basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=]' | xargs)"
+  basename_file_host="$(echo "$basename_file_host" | tr ' ' '-')"
+
+  # Save as
+  local path_file_guest="$path_dir_dwarfs/$basename_file_host"
+  FIM_DEBUG=1 _msg "Save as: $path_file_guest"
+
+  # Target
+  if [[ -z "$2" ]]; then
+    _die "Mountpoint must not be empty"
   fi
-  if df --output=target "$path_target" 2>/dev/null | grep -i "$FIM_DIR_MOUNT" &>/dev/null; then
+  local path_rel_mountpoint="/$2"
+  local path_abs_mountpoint="$FIM_DIR_MOUNT/$2"
+
+  # Verify if the input file exists and is a regular file
+  if [[ ! -f "$path_file_host" ]]; then
+    _die "File '$path_file_host' does not exist or is not a regular file"
+  fi
+  if df --output=target "$path_file_host" 2>/dev/null | grep -i "$FIM_DIR_MOUNT" &>/dev/null; then
     _die "Target cannot not be inside the guest filesystem"
   fi
 
-  # Check if exists
-  local dir_guest="$FIM_DIR_MOUNT/$2"
-  if [[ -e "$dir_guest" ]]; then
-    _die "Directory '$2' already exists inside the flatimage (or is a file), remove it beforehand"
+  # Check if the dwarfs file is already in the container
+  if [[ -f "$path_file_guest" ]]; then
+    FIM_DEBUG=1 _msg "File '$path_file_guest' already exists overwriting..."
+  elif [[ -e "$path_file_guest" ]]; then
+    _die "File '$path_file_guest' already exists and is not a regular file"
   fi
 
+  # Check if mountpoint exists and is not a symlink
+  if [[ -e "$path_abs_mountpoint" ]] && [[ ! -h "$path_abs_mountpoint" ]]; then
+    _die "Mountpoint '$path_abs_mountpoint' exists and is not symbolic link"
+  fi
+
+  # Replace if exists
+  rm -fv "$path_file_guest"
+
   # Get size of target to include
-  local size_target="$(du -sb "$path_target" | awk '{print $1}')"
+  local size_target="$(du -sb "$path_file_host" | awk '{print $1}')"
   [[ "$size_target" =~ ^[0-9]+$ ]] || _die "size_target is NaN: '$size_target'"
+  FIM_DEBUG=1 _msg "Size of file to include is of '$(numfmt --from=iec --to-unit=1M "${size_target}")M'"
 
   # Get current free space
   local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
@@ -524,8 +557,12 @@ function _include_path()
   # Resize by the amount required to fit
   _resize "+${size_target}"
 
-  FIM_DEBUG=1 _msg "Include target '$path_target' in '$dir_guest'"
-  cp -r "$path_target" "$dir_guest"
+  # Include dwarfs inside container
+  FIM_DEBUG=1 _msg "Include target '$path_file_host' in '$path_file_guest'"
+  cp -f "$path_file_host" "$path_file_guest"
+
+  # Update dwarfs filesystem table
+  _config_set "dwarfs.$basename_file_host" "$path_rel_mountpoint"
 }
 # }}}
 
@@ -595,7 +632,7 @@ function _find_dwarfs()
     _msg "DWARFS MP: $mountpoint"
     # Save
     FIM_MOUNTS_DWARFS["$filesystem_file"]="$mountpoint"
-  done < <(find "$FIM_DIR_MOUNT" -maxdepth 1 -iname "*.dwarfs")
+  done < <(find "$FIM_DIR_DWARFS" -maxdepth 1 -iname "*.dwarfs")
 }
 # }}}
 
@@ -636,10 +673,15 @@ function _mount_dwarfs()
     local mp="${FIM_MOUNTS_DWARFS["$i"]}"
     # Create mountpoint
     mkdir -p "$mp"
+    # Get path to symlink to
+    local symlink_target="$(_config_fetch --single --value "dwarfs.$(basename "$i")")"
+    symlink_target="$FIM_DIR_MOUNT/$symlink_target"
+    mkdir -p "$(dirname "$symlink_target")"
+    _msg "DWARFS SYMLINK: $symlink_target"
     # Symlink, skip if directory exists
-    ln -T -sfn "$mp" "${fs%.dwarfs}" || continue
+    ln -T -sfnv "$mp" "$symlink_target" &>"$FIM_STREAM" || continue
     # Mount
-    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM"
+    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM" || continue
   done
 }
 # }}}
@@ -1252,7 +1294,7 @@ function _main()
       "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
-      "include-path") _include_path "$2" "$3" ;;
+      "dwarfs-add") _dwarfs_include "$2" "$3" ;;
       "help") _help;;
       *) _help; _die "Unknown fim command" ;;
     esac

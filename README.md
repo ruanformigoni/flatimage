@@ -104,7 +104,7 @@ To enter the container as root (to install software) use:
 ## Options
 
 ```
- # FlatImage
+# FlatImage, $FIM_DIST
 Avaliable options:
 - fim-compress: Compress the filesystem to a read-only format.
 - fim-root: Execute an arbitrary command as root.
@@ -112,28 +112,28 @@ Avaliable options:
 - fim-cmd: Set the default command to execute when no argument is passed.
 - fim-resize: Resizes the filesystem.
     - # Resizes the filesytem to have 1G of size
-    - E.g.: ./focal.fim fim-resize 1G
+    - E.g.: ./arch.fim fim-resize 1G
     - # Resizes the filesystem by current size plus 1G
-    - E.g.: ./focal.fim fim-resize +1G
+    - E.g.: ./arch.fim fim-resize +1G
 - fim-mount: Mount the filesystem in a specified directory
-    - E.g.: ./focal.fim fim-mount ./mountpoint
+    - E.g.: ./arch.fim fim-mount ./mountpoint
 - fim-xdg: Same as the 'fim-mount' command, however it opens the
     mount directory with xdg-open
 - fim-perms-set: Set the permission for the container, available options are:
     pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-    - E.g.: ./focal.fim fim-perms pulseaudio,wayland,x11
+    - E.g.: ./arch.fim fim-perms pulseaudio,wayland,x11
 - fim-perms-list: List the current permissions for the container
 - fim-config-set: Sets a configuration that persists inside the image
-    - E.g.: ./focal.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.focal'
-    - E.g.: ./focal.fim fim-config-set backend "proot"
+    - E.g.: ./arch.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.arch'
+    - E.g.: ./arch.fim fim-config-set backend "proot"
 - fim-config-list: List the current configurations for the container
-    - E.g.: ./focal.fim fim-config-list                      # List all
-    - E.g.: ./focal.fim fim-config-list "overlay.*"          # List ones that match regex
-    - E.g.: ./focal.fim fim-config-list --single "overlay.*" # Stop on first match
-    - E.g.: ./focal.fim fim-config-list --value  "overlay.*" # Print only the value
-- fim-include-path: Includes a path inside the image, automatically resizing it in the process
-    - E.g.: ./focal.fim fim-include-path ../my-dir /opt/new-folder1/new-folder2
-    - E.g.: ./focal.fim fim-include-path ../my-file.tar /fim/tarballs
+    - E.g.: ./arch.fim fim-config-list                      # List all
+    - E.g.: ./arch.fim fim-config-list "overlay.*"          # List ones that match regex
+    - E.g.: ./arch.fim fim-config-list --single "overlay.*" # Stop on first match
+    - E.g.: ./arch.fim fim-config-list --value  "overlay.*" # Print only the value
+- fim-dwarfs-add: Includes a dwarfs file inside the image, it is
+                      automatically mounted on startup to the specified mount point
+    - E.g.: ./arch.fim fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
 - fim-help: Print this message.
 ```
 

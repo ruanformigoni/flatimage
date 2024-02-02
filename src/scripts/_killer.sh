@@ -104,7 +104,7 @@ function _die()
   done
 
   # Unmount fuse2fs
-  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY.*$FIM_DIR_MOUNT"); do
+  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY.*$FIM_DIR_MOUNT"); do
     # Ignore self
     if [ "$pid" = "$$" ]; then continue; fi
     # Send unmount signal to fuse2fs mountpoint
@@ -121,7 +121,7 @@ function _die()
     if [ "$i" = "$$" ]; then continue; fi
     # Process PID
     _wait_kill "Wait for process '$i' to stop using '$FIM_FILE_BINARY', timeout 6s" "$i" 60
-  done < <(lsof -t "$FIM_PATH_FILE_BINARY")
+  done < <(lsof -t "$FIM_FILE_BINARY")
 
   # Exit
   kill -s SIGKILL "$PID"
@@ -134,7 +134,7 @@ function main()
 {
   [ -v PID ] || _msg "PID is not defined"
   [ -v FIM_DIR_MOUNT ] || _msg "FIM_DIR_MOUNT is not defined"
-  [ -v FIM_PATH_FILE_BINARY ] || _msg "FIM_PATH_FILE_BINARY is not defined"
+  [ -v FIM_FILE_BINARY ] || _msg "FIM_FILE_BINARY is not defined"
 
   while kill -0 "$PID" 2>/dev/null; do
     if [ -f "${FIM_DIR_MOUNT}.killer.kill" ]; then

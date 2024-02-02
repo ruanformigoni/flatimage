@@ -315,7 +315,7 @@ int main(int argc, char** argv)
     setenv("FIM_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("FIM_DIR_GLOBAL", str_dir_base.c_str(), 1);
     setenv("FIM_DIR_GLOBAL_BIN", str_dir_bin.c_str(), 1);
-    setenv("FIM_PATH_FILE_BINARY", path_absolute.c_str(), 1);
+    setenv("FIM_FILE_BINARY", path_absolute.c_str(), 1);
     setenv("FIM_DIR_TEMP", str_dir_temp.c_str(), 1);
 
     //

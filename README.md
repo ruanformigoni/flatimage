@@ -124,7 +124,7 @@ Avaliable options:
     - E.g.: ./arch.flatimage fim-perms pulseaudio,wayland,x11
 - fim-perms-list: List the current permissions for the container
 - fim-config-set: Sets a configuration that persists inside the image
-    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_PATH_FILE_BINARY".home
+    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_FILE_BINARY".home
     - E.g.: ./arch.flatimage fim-config-set backend "proot"
 - fim-config-list: List the current configurations for the container
     - E.g.: ./arch.flatimage fim-config-list                      # List all
@@ -135,7 +135,7 @@ Avaliable options:
 - fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
     - E.g.: ./arch.flatimage fim-dwarfs-list
 - fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
 - fim-help: Print this message.
 ```
 
@@ -156,8 +156,8 @@ Avaliable options:
 ### Read-Only
 
 * `FIM_DIST`: The linux distribution name (alpine, arch, ubuntu)
-* `FIM_PATH_FILE_BINARY`: Full path to the executed binary file
-* `FIM_FILE_BINARY`: Basename of the executed binary file.
+* `FIM_FILE_BINARY`: Full path to the executed binary file
+* `FIM_BASENAME_BINARY`: Basename of the executed binary file.
 * `FIM_DIR_BINARY`: The path to the directory of the executed binary file.
 * `FIM_DIR_TEMP`: Location of the temporary runtime directory.
 * `FIM_DIR_MOUNT`: Location of the runtime fim mountpoint.
@@ -176,12 +176,8 @@ e.g.:
 ```bash
  # Default, uses the host's home directory
 $ ./arch.flatimage fim-config-set home '$HOME'
- # Use the directory where the fim binary is located / arch.home, if called from
- # $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
-$ ./arch.flatimage fim-config-set home '"$FIM_DIR_BINARY"/arch.home'
- # You can use subshells to compute the path, in this case it computes the
- # directory where the fim binary is in, same as "$FIM_DIR_BINARY"
-$ ./arch.flatimage fim-config-set home '"$(dirname "$FIM_FILE_BINARY")"/arch.home'
+ # The name of the flatimage binary plus an appended ".home"
+$ ./arch.flatimage fim-config-set home '"$FIM_FILE_BINARY".home'
 ```
 
 ### Backend
@@ -250,7 +246,7 @@ $ ./arch.flatimage fim-dwarfs-list
 usr
 opt
  # Suppose you want to make "usr" writteable again, use
-$ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+$ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
 ```
 
 ### Hooks

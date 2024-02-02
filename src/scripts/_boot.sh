@@ -45,9 +45,9 @@ export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
 export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
 export FIM_FILE_CONFIG="$FIM_DIR_MOUNT/fim/config"
 export FIM_DIR_TEMP="${FIM_DIR_TEMP:?FIM_DIR_TEMP is unset or null}"
-export FIM_PATH_FILE_BINARY="${FIM_PATH_FILE_BINARY:?FIM_PATH_FILE_BINARY is unset or null}"
-export FIM_FILE_BINARY="$(basename "$FIM_PATH_FILE_BINARY")"
-export FIM_DIR_BINARY="$(dirname "$FIM_PATH_FILE_BINARY")"
+export FIM_FILE_BINARY="${FIM_FILE_BINARY:?FIM_FILE_BINARY is unset or null}"
+export FIM_BASENAME_BINARY="$(basename "$FIM_FILE_BINARY")"
+export FIM_DIR_BINARY="$(dirname "$FIM_FILE_BINARY")"
 export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
 export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
@@ -137,10 +137,10 @@ function _mount()
 {
   local mode="${FIM_RW:-ro,}"
   local mode="${mode#1}"
-  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_PATH_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
+  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
 
   if ! mount 2>&1 | grep "$FIM_DIR_MOUNT" &>/dev/null ; then
-    echo "Could not mount main filesystem '$FIM_PATH_FILE_BINARY' to '$FIM_DIR_MOUNT'"
+    echo "Could not mount main filesystem '$FIM_FILE_BINARY' to '$FIM_DIR_MOUNT'"
     kill "$PID"
   fi
 }
@@ -152,7 +152,7 @@ function _unmount()
 {
   fusermount -zu "$FIM_DIR_MOUNT"
 
-  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY.*$FIM_DIR_MOUNT"); do
+  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY.*$FIM_DIR_MOUNT"); do
     _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$pid"
   done
 }
@@ -272,7 +272,7 @@ function _help()
   :    - E.g.: ./arch.flatimage fim-perms pulseaudio,wayland,x11
   :- fim-perms-list: List the current permissions for the container
   :- fim-config-set: Sets a configuration that persists inside the image
-  :    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_PATH_FILE_BINARY".home
+  :    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_FILE_BINARY".home
   :    - E.g.: ./arch.flatimage fim-config-set backend "proot"
   :- fim-config-list: List the current configurations for the container
   :    - E.g.: ./arch.flatimage fim-config-list                      # List all
@@ -283,7 +283,7 @@ function _help()
   :- fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
   :    - E.g.: ./arch.flatimage fim-dwarfs-list
   :- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-  :    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+  :    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
   :- fim-help: Print this message.
 	EOF
 }
@@ -341,9 +341,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
-  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" "${size_new}"
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" "${size_new}"
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
 
   # Mount
   _mount
@@ -475,7 +475,7 @@ function _desktop_integration()
   mkdir -p "$home/.local/share/mime/packages"
   cp "$FIM_DIR_MOUNT/fim/desktop/flatimage.xml" "$mime"
   sed -i "s|application/flatimage|application/flatimage_$name|" "$mime"
-  sed -i "s|pattern=\".*flatimage\"|pattern=\"$FIM_FILE_BINARY\"|" "$mime"
+  sed -i "s|pattern=\".*flatimage\"|pattern=\"$FIM_BASENAME_BINARY\"|" "$mime"
   update-mime-database "$home/.local/share/mime"
 
   local categories="$(_config_fetch --value --single "categories")"
@@ -488,8 +488,8 @@ function _desktop_integration()
   :Name=$name
   :Type=Application
   :Comment=FlatImage distribution of "$name"
-  :TryExec=$FIM_PATH_FILE_BINARY
-  :Exec="$FIM_PATH_FILE_BINARY" %F
+  :TryExec=$FIM_FILE_BINARY
+  :Exec="$FIM_FILE_BINARY" %F
   :Icon=application-flatimage_$name
   :MimeType=application/flatimage_$name
   :Categories=$categories
@@ -617,16 +617,16 @@ function _rebuild()
   local file_image="$FIM_DIR_BINARY/image.fim"
 
   # Erase current file
-  rm "$FIM_PATH_FILE_BINARY"
+  rm "$FIM_FILE_BINARY"
 
   # Copy startup binary
-  cp "$FIM_DIR_TEMP/main" "$FIM_PATH_FILE_BINARY"
+  cp "$FIM_DIR_TEMP/main" "$FIM_FILE_BINARY"
 
   # Append tools
-  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_PATH_FILE_BINARY"
+  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_FILE_BINARY"
 
   # Update offset
-  FIM_OFFSET="$(du -sb "$FIM_PATH_FILE_BINARY" | awk '{print $1}')"
+  FIM_OFFSET="$(du -sb "$FIM_FILE_BINARY" | awk '{print $1}')"
 
   # Adjust free space
   size_image="$(_match_free_space "$size_image")"
@@ -645,7 +645,7 @@ function _rebuild()
   "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
 
   # Append filesystem to binary
-  cat "$file_image" >> "$FIM_PATH_FILE_BINARY"
+  cat "$file_image" >> "$FIM_FILE_BINARY"
 
   # Remove filesystem
   rm "$file_image"
@@ -1114,7 +1114,7 @@ function _compress()
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_rebuild="$FIM_DIR_BINARY/$FIM_FILE_BINARY.tmp"
+  local dir_rebuild="$FIM_DIR_BINARY/$FIM_BASENAME_BINARY.tmp"
   rm -rf "$dir_rebuild"
   mkdir -p "$dir_rebuild"
 
@@ -1269,13 +1269,13 @@ function _main()
   _msg "FIM_DIR_GLOBAL_BIN   : $FIM_DIR_GLOBAL_BIN"
   _msg "FIM_DIR_MOUNT        : $FIM_DIR_MOUNT"
   _msg "FIM_DIR_TEMP         : $FIM_DIR_TEMP"
-  _msg "FIM_PATH_FILE_BINARY : $FIM_PATH_FILE_BINARY"
   _msg "FIM_FILE_BINARY      : $FIM_FILE_BINARY"
+  _msg "FIM_BASENAME_BINARY  : $FIM_BASENAME_BINARY"
   _msg "FIM_DIR_BINARY       : $FIM_DIR_BINARY"
   _msg '$*                   : '"$*"
 
   # Check filesystem
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_PATH_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   declare -a ext_tools=(

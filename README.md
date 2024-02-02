@@ -92,13 +92,13 @@ You can get the latest release [here](https://github.com/ruanformigoni/flatimage
 # Usage
 
 You can enter the container simply by executing the downloaded image, e.g.,
-`./arch.fim`, which should give you a prompt like this `(flatimage@arch) →`.
+`./arch.flatimage`, which should give you a prompt like this `(flatimage@arch) →`.
 Remember to resize the image as shown in the examples before installing programs
 on it, else there won't be enough space for it.
 
 To enter the container as root (to install software) use:
 ```
-./arch.fim fim-root bash
+./arch.flatimage fim-root bash
 ```
 
 ## Options
@@ -112,32 +112,32 @@ Avaliable options:
 - fim-cmd: Set the default command to execute when no argument is passed.
 - fim-resize: Resizes the filesystem.
     - # Resizes the filesytem to have 1G of size
-    - E.g.: ./arch.fim fim-resize 1G
+    - E.g.: ./arch.flatimage fim-resize 1G
     - # Resizes the filesystem by current size plus 1G
-    - E.g.: ./arch.fim fim-resize +1G
+    - E.g.: ./arch.flatimage fim-resize +1G
 - fim-mount: Mount the filesystem in a specified directory
-    - E.g.: ./arch.fim fim-mount ./mountpoint
+    - E.g.: ./arch.flatimage fim-mount ./mountpoint
 - fim-xdg: Same as the 'fim-mount' command, however it opens the
     mount directory with xdg-open
 - fim-perms-set: Set the permission for the container, available options are:
     pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-    - E.g.: ./arch.fim fim-perms pulseaudio,wayland,x11
+    - E.g.: ./arch.flatimage fim-perms pulseaudio,wayland,x11
 - fim-perms-list: List the current permissions for the container
 - fim-config-set: Sets a configuration that persists inside the image
-    - E.g.: ./arch.fim fim-config-set home '"$FIM_PATH_FILE_BINARY".home
-    - E.g.: ./arch.fim fim-config-set backend "proot"
+    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_PATH_FILE_BINARY".home
+    - E.g.: ./arch.flatimage fim-config-set backend "proot"
 - fim-config-list: List the current configurations for the container
-    - E.g.: ./arch.fim fim-config-list                      # List all
-    - E.g.: ./arch.fim fim-config-list "overlay.*"          # List ones that match regex
-    - E.g.: ./arch.fim fim-config-list --single "overlay.*" # Stop on first match
-    - E.g.: ./arch.fim fim-config-list --value  "overlay.*" # Print only the value
+    - E.g.: ./arch.flatimage fim-config-list                      # List all
+    - E.g.: ./arch.flatimage fim-config-list "overlay.*"          # List ones that match regex
+    - E.g.: ./arch.flatimage fim-config-list --single "overlay.*" # Stop on first match
+    - E.g.: ./arch.flatimage fim-config-list --value  "overlay.*" # Print only the value
 - fim-dwarfs-add: Includes a dwarfs file inside the image, it is
                       automatically mounted on startup to the specified mount point
-    - E.g.: ./arch.fim fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
+    - E.g.: ./arch.flatimage fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
 - fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
-    - E.g.: ./arch.fim fim-dwarfs-list
+    - E.g.: ./arch.flatimage fim-dwarfs-list
 - fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-    - E.g.: ./arch.fim fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
 - fim-help: Print this message.
 ```
 
@@ -177,13 +177,13 @@ e.g.:
 
 ```bash
  # Default, uses the host's home directory
-$ ./arch.fim fim-config-set home '$HOME'
+$ ./arch.flatimage fim-config-set home '$HOME'
  # Use the directory where the fim binary is located / arch.home, if called from
  # $HOME/Downloads, the home directory would be $HOME/Downloads/arch.home.
-$ ./arch.fim fim-config-set home '"$FIM_DIR_BINARY"/arch.home'
+$ ./arch.flatimage fim-config-set home '"$FIM_DIR_BINARY"/arch.home'
  # You can use subshells to compute the path, in this case it computes the
  # directory where the fim binary is in, same as "$FIM_DIR_BINARY"
-$ ./arch.fim fim-config-set home '"$(dirname "$FIM_FILE_BINARY")"/arch.home'
+$ ./arch.flatimage fim-config-set home '"$(dirname "$FIM_FILE_BINARY")"/arch.home'
 ```
 
 ### Backend
@@ -194,11 +194,11 @@ always takes precedence if defined.
 
 ```bash
  # Uses bwrap as the backend (default)
-$ ./arch.fim fim-config-set backend "bwrap"
+$ ./arch.flatimage fim-config-set backend "bwrap"
  # Uses proot as the backend
-$ ./arch.fim fim-config-set backend "proot"
+$ ./arch.flatimage fim-config-set backend "proot"
  # Run command on host using a static bash binary
-$ ./arch.fim fim-config-set backend "host"
+$ ./arch.flatimage fim-config-set backend "host"
 ```
 
 ### Desktop Integration
@@ -216,23 +216,23 @@ Here's how to configure flatimage desktop integration:
 
 ```bash
  # Set the name of your application
-$ ./arch.fim fim-config-set name "MyApp"
+$ ./arch.flatimage fim-config-set name "MyApp"
  # Set the icon, supported image types are '.svg,.png,.jpg'
-$ ./arch.fim fim-config-set icon '"$FIM_DIR_MOUNT"/fim/desktop/icon.png'
+$ ./arch.flatimage fim-config-set icon '"$FIM_DIR_MOUNT"/fim/desktop/icon.png'
  # Copy icon to inside the container
-$ ./arch.fim fim-root cp ./my-image.png /fim/desktop/icon.png
+$ ./arch.flatimage fim-root cp ./my-image.png /fim/desktop/icon.png
  # Set the categories of your application
  # Avaliable categories found here: https://specifications.freedesktop.org/menu-spec/latest/apa.html
-$ ./arch.fim fim-config-set categories "Game"
+$ ./arch.flatimage fim-config-set categories "Game"
  # Enable desktop integration
-$ ./arch.fim fim-config-set desktop 1
+$ ./arch.flatimage fim-config-set desktop 1
 ```
 
 You can also disable desktop integration with:
 
 ```bash
  # Disable desktop integration
-$ ./arch.fim fim-config-set desktop 0
+$ ./arch.flatimage fim-config-set desktop 0
 ```
 
 To erase all desktop entries and icons created by flatimage, you can use the
@@ -248,11 +248,11 @@ You can use overlayfs on top of the `dwarfs` filesystems, e.g.:
 
 ```bash
  # List dwarfs filesystems
-$ ./arch.fim fim-dwarfs-list
+$ ./arch.flatimage fim-dwarfs-list
 usr
 opt
  # Suppose you want to make "usr" writteable again, use
-$ ./arch.fim fim-dwarfs-overlay usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+$ ./arch.flatimage fim-dwarfs-overlay usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
 ```
 
 # Use cases
@@ -265,20 +265,20 @@ as shown in the following examples.
 ## Use pacman packages on non-arch systems
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./arch.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
+$ ./arch.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install the desired application in the ubuntu subsystem
-$ ./arch.fim fim-root fakechroot pacman -S firefox --noconfirm
+$ ./arch.flatimage fim-root fakechroot pacman -S firefox --noconfirm
  # Test the application
-$ ./arch.fim fim-exec firefox
+$ ./arch.flatimage fim-exec firefox
  # Set the default startup command
-$ ./arch.fim fim-cmd firefox
+$ ./arch.flatimage fim-cmd firefox
  # (optional) Compress the package filesystem
-$ ./arch.fim fim-compress
+$ ./arch.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-mv arch.fim firefox
+mv arch.flatimage firefox
  # Run the application (you can also click on it in your file manager)
 $ ./firefox
 ```
@@ -286,20 +286,20 @@ $ ./firefox
 ## Use apt packages in non-debian systems
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./focal.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
+$ ./focal.flatimage fim-resize 4G
  # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./focal.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
+$ ./focal.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install the desired application in the ubuntu subsystem
-$ ./focal.fim fim-root apt install -y firefox
+$ ./focal.flatimage fim-root apt install -y firefox
  # Test the application
-$ ./focal.fim fim-exec firefox
+$ ./focal.flatimage fim-exec firefox
  # Set the default startup command
-$ ./focal.fim fim-cmd firefox
+$ ./focal.flatimage fim-cmd firefox
  # (optional) Compress the package filesystem
-$ ./focal.fim fim-compress
+$ ./focal.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv focal.fim firefox
+$ mv focal.flatimage firefox
  # Run the application (you can also click on it in your file manager)
 $ ./firefox
 ```
@@ -307,20 +307,20 @@ $ ./firefox
 ## Use alpine (apk) packages
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./alpine.fim fim-resize 2G
+ # Set the maximum filesystem size (use du -sh ./alpine.flatimage to see actual size)
+$ ./alpine.flatimage fim-resize 2G
  # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./alpine.fim fim-perms-set wayland,pulseaudio,gpu,session_bus
+$ ./alpine.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
  # Install firefox with apk
-$ ./alpine.fim fim-root apk add firefox font-noto
+$ ./alpine.flatimage fim-root apk add firefox font-noto
  # Test the application
-$ ./alpine.fim fim-exec firefox
+$ ./alpine.flatimage fim-exec firefox
  # Set the default startup command
-$ ./alpine.fim fim-cmd firefox
+$ ./alpine.flatimage fim-cmd firefox
  # (optional) Compress the package filesystem
-$ ./alpine.fim fim-compress
+$ ./alpine.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv alpine.fim firefox
+$ mv alpine.flatimage firefox
  # Run the application (you can also click on it in your file manager)
 $ ./firefox
 ```
@@ -330,22 +330,22 @@ $ ./firefox
 __Archlinux__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./arch.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Install python-pipx
-$ ./arch.fim fim-root fakechroot pacman -S python-pipx ffmpeg
+$ ./arch.flatimage fim-root fakechroot pacman -S python-pipx ffmpeg
  # Install the pip application inside the image
  export PIPX_HOME=/opt/pipx
  export PIPX_BIN_DIR=/usr/local/bin
-$ ./arch.fim fim-root fakechroot pipx install yt-dlp
+$ ./arch.flatimage fim-root fakechroot pipx install yt-dlp
  # Test the application
-$ ./arch.fim fim-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
+$ ./arch.flatimage fim-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
  # Set the default startup command
-$ ./arch.fim fim-cmd yt-dlp
+$ ./arch.flatimage fim-cmd yt-dlp
  # (optional) Compress the package filesystem
-$ ./arch.fim fim-compress
+$ ./arch.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv arch.fim yt-dlp
+$ mv arch.flatimage yt-dlp
  # Use the application (download youtube video)
 $ ./yt-dlp -f 'bestvideo+bestaudio' 'https://www.youtube.com/watch?v=srnyVw-OR0g'
 ```
@@ -353,22 +353,22 @@ $ ./yt-dlp -f 'bestvideo+bestaudio' 'https://www.youtube.com/watch?v=srnyVw-OR0g
 __Ubuntu__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./focal.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
+$ ./focal.flatimage fim-resize 4G
  # Install python-pip
-$ ./focal.fim fim-root apt install -y python3-pip ffmpeg
+$ ./focal.flatimage fim-root apt install -y python3-pip ffmpeg
  # Install the pip application inside the image
-$ ./focal.fim fim-root pip3 install yt-dlp
+$ ./focal.flatimage fim-root pip3 install yt-dlp
  # Test the application
-$ ./focal.fim fim-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
+$ ./focal.flatimage fim-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
  # Set the default startup command
-$ ./focal.fim fim-cmd yt-dlp
+$ ./focal.flatimage fim-cmd yt-dlp
  # (optional) Compress the package filesystem
-$ ./focal.fim fim-compress
+$ ./focal.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv focal.fim yt-dlp.fim
+$ mv focal.flatimage yt-dlp.flatimage
  # Use the application (download youtube video)
-$ ./yt-dlp.fim -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
+$ ./yt-dlp.flatimage -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
 ```
 
 ## Use an npm package without installing npm
@@ -378,24 +378,24 @@ $ ./yt-dlp.fim -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-O
 __Archlinux__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-$ ./arch.fim fim-perms-set x11,pulseaudio
+$ ./arch.flatimage fim-perms-set x11,pulseaudio
  # Install npm/nodejs into the image
-$ ./arch.fim fim-root fakechroot pacman -S nodejs npm vlc
+$ ./arch.flatimage fim-root fakechroot pacman -S nodejs npm vlc
  # Configure prefix to the root of the image
-$ ./arch.fim fim-exec npm config set prefix -g '/usr/local/'
+$ ./arch.flatimage fim-exec npm config set prefix -g '/usr/local/'
  # Install the npm application inside the image
-$ ./arch.fim fim-root fakechroot npm install -g webtorrent-cli
+$ ./arch.flatimage fim-root fakechroot npm install -g webtorrent-cli
  # Test the application
-$ ./arch.fim fim-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
+$ ./arch.flatimage fim-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
  # Set the default startup command
-$ ./arch.fim fim-cmd webtorrent
+$ ./arch.flatimage fim-cmd webtorrent
  # (optional) Compress the package filesystem
-$ ./arch.fim fim-compress
+$ ./arch.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv arch.fim webtorrent
+$ mv arch.flatimage webtorrent
  # Use the application (stream legal torrent video)
 $ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
 ```
@@ -403,28 +403,28 @@ $ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --
 __Ubuntu__
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./focal.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
+$ ./focal.flatimage fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-$ ./focal.fim fim-perms-set x11,pulseaudio
+$ ./focal.flatimage fim-perms-set x11,pulseaudio
  # Install npm/nodejs into the image
-$ ./focal.fim fim-root apt install -y curl
-$ ./focal.fim fim-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
-$ ./focal.fim fim-root apt-get install -y nodejs mpv
+$ ./focal.flatimage fim-root apt install -y curl
+$ ./focal.flatimage fim-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
+$ ./focal.flatimage fim-root apt-get install -y nodejs mpv
  # Configure prefix to the root of the image
-$ ./focal.fim fim-root npm config set prefix -g /usr/local
+$ ./focal.flatimage fim-root npm config set prefix -g /usr/local
  # Install the npm application inside the image
-$ ./focal.fim fim-root npm install -g webtorrent-cli
+$ ./focal.flatimage fim-root npm install -g webtorrent-cli
  # Test the application
-$ ./focal.fim fim-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
+$ ./focal.flatimage fim-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
  # Set the default startup command
-$ ./focal.fim fim-cmd webtorrent
+$ ./focal.flatimage fim-cmd webtorrent
  # (optional) Compress the package filesystem
-$ ./focal.fim fim-compress
+$ ./focal.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv focal.fim webtorrent.fim
+$ mv focal.flatimage webtorrent.flatimage
  # Use the application (stream legal torrent video)
-$ ./webtorrent.fim magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
+$ ./webtorrent.flatimage magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
 ```
 
 Note that vlc/mpv was installed inside the image, it is required since the image
@@ -433,12 +433,12 @@ has no access to the host filesystem/applications.
 ### Inside the container
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Set the desired permissions (so vlc can play from inside the container)
-$ ./arch.fim fim-perms-set x11,pulseaudio
+$ ./arch.flatimage fim-perms-set x11,pulseaudio
  # Enter the container as root
-$ FIM_ROOT=1 ./arch.fim
+$ FIM_ROOT=1 ./arch.flatimage
  # Install npm/nodejs into the image
 (fim@arch) → fakechroot pacman -S nodejs npm vlc
  # Configure prefix to the root of the image
@@ -447,16 +447,16 @@ $ FIM_ROOT=1 ./arch.fim
 (fim@arch) → fakechroot npm install -g webtorrent-cli
  # Press CTRL+D or type exit to quit the container
  # Enter the container as an unprivileged user
-$ ./arch.fim
+$ ./arch.flatimage
  # Test the application
 (fim@arch) → webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
  # Press CTRL+D or type exit to quit the container
  # Set the default startup command
-$ ./arch.fim fim-cmd webtorrent
+$ ./arch.flatimage fim-cmd webtorrent
  # (optional) Compress the package filesystem
-$ ./arch.fim fim-compress
+$ ./arch.flatimage fim-compress
  # (optional) Rename the binary to the main application name
-$ mv arch.fim webtorrent
+$ mv arch.flatimage webtorrent
  # Use the application (stream legal torrent video)
 $ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
 ```
@@ -466,17 +466,17 @@ $ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --
 ### Outside the container
 
 ```sh
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Fetch the application
 $ git clone https://github.com/htop-dev/htop.git
  # Install the required build dependencies
-$ ./arch.fim fim-root fakechroot pacman -S ncurses automake autoconf gcc make
+$ ./arch.flatimage fim-root fakechroot pacman -S ncurses automake autoconf gcc make
  # Compile the application
 cd htop
-$ ../arch.fim fim-exec './autogen.sh'
-$ ../arch.fim fim-exec './configure'
-$ ../arch.fim fim-exec 'make'
+$ ../arch.flatimage fim-exec './autogen.sh'
+$ ../arch.flatimage fim-exec './configure'
+$ ../arch.flatimage fim-exec 'make'
  # Run the compiled application
 $ ./htop
 ```
@@ -484,12 +484,12 @@ $ ./htop
 ### Inside the container
 
 ```bash
- # Set the maximum filesystem size (use du -sh ./focal.fim to see actual size)
-$ ./arch.fim fim-resize 4G
+ # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
+$ ./arch.flatimage fim-resize 4G
  # Fetch the application
 $ git clone https://github.com/htop-dev/htop.git
  # Enter the container as root
-$ FIM_ROOT=1 ./arch.fim
+$ FIM_ROOT=1 ./arch.flatimage
  # Install the required build dependencies
  (fim@arch) → fakechroot pacman -S ncurses automake autoconf gcc make
  # Compile
@@ -501,7 +501,7 @@ $ FIM_ROOT=1 ./arch.fim
  (fim@arch) → ./htop
 ```
 
-In this case `arch.fim` is now a portable building environment for htop.
+In this case `arch.flatimage` is now a portable building environment for htop.
 
 # Samples
 
@@ -512,12 +512,12 @@ In this case `arch.fim` is now a portable building environment for htop.
 # Usage Inside Docker
 
 Currently to run a flatimage inside docker, the `--privileged` flag is required.
-Assuming that the current directory contains the image `alpine.fim`:
+Assuming that the current directory contains the image `alpine.flatimage`:
 
 ```
 docker run --privileged -it --rm -v "$(pwd):/workdir" ubuntu:focal /bin/bash
 cd workdir
-./alpine.fim
+./alpine.flatimage
 ```
 
 # Further Considerations
@@ -569,5 +569,7 @@ the packaging process of applications.
 - [https://github.com/Intoli/exodus](https://github.com/Intoli/exodus)
 - [https://statifier.sourceforge.net/](https://statifier.sourceforge.net/)
 - [https://github.com/matthewbauer/nix-bundle](https://github.com/matthewbauer/nix-bundle)
+- [https://github.com/containers/bubblewrap](https://github.com/containers/bubblewrap)
+- [https://github.com/proot-me/proot](https://github.com/proot-me/proot)
 
 <!-- // cmd: !./doc/toc.sh

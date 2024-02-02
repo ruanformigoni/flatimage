@@ -259,32 +259,32 @@ function _help()
   :- fim-cmd: Set the default command to execute when no argument is passed.
   :- fim-resize: Resizes the filesystem.
   :    - # Resizes the filesytem to have 1G of size
-  :    - E.g.: ./arch.fim fim-resize 1G
+  :    - E.g.: ./arch.flatimage fim-resize 1G
   :    - # Resizes the filesystem by current size plus 1G
-  :    - E.g.: ./arch.fim fim-resize +1G
+  :    - E.g.: ./arch.flatimage fim-resize +1G
   :- fim-mount: Mount the filesystem in a specified directory
-  :    - E.g.: ./arch.fim fim-mount ./mountpoint
+  :    - E.g.: ./arch.flatimage fim-mount ./mountpoint
   :- fim-xdg: Same as the 'fim-mount' command, however it opens the
   :    mount directory with xdg-open
   :- fim-perms-set: Set the permission for the container, available options are:
   :    pulseaudio, wayland, x11, session_bus, system_bus, gpu, input, usb
-  :    - E.g.: ./arch.fim fim-perms pulseaudio,wayland,x11
+  :    - E.g.: ./arch.flatimage fim-perms pulseaudio,wayland,x11
   :- fim-perms-list: List the current permissions for the container
   :- fim-config-set: Sets a configuration that persists inside the image
-  :    - E.g.: ./arch.fim fim-config-set home '"$FIM_PATH_FILE_BINARY".home
-  :    - E.g.: ./arch.fim fim-config-set backend "proot"
+  :    - E.g.: ./arch.flatimage fim-config-set home '"$FIM_PATH_FILE_BINARY".home
+  :    - E.g.: ./arch.flatimage fim-config-set backend "proot"
   :- fim-config-list: List the current configurations for the container
-  :    - E.g.: ./arch.fim fim-config-list                      # List all
-  :    - E.g.: ./arch.fim fim-config-list "overlay.*"          # List ones that match regex
-  :    - E.g.: ./arch.fim fim-config-list --single "overlay.*" # Stop on first match
-  :    - E.g.: ./arch.fim fim-config-list --value  "overlay.*" # Print only the value
+  :    - E.g.: ./arch.flatimage fim-config-list                      # List all
+  :    - E.g.: ./arch.flatimage fim-config-list "overlay.*"          # List ones that match regex
+  :    - E.g.: ./arch.flatimage fim-config-list --single "overlay.*" # Stop on first match
+  :    - E.g.: ./arch.flatimage fim-config-list --value  "overlay.*" # Print only the value
   :- fim-dwarfs-add: Includes a dwarfs file inside the image, it is
   :                      automatically mounted on startup to the specified mount point
-  :    - E.g.: ./arch.fim fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
+  :    - E.g.: ./arch.flatimage fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
   :- fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
-  :    - E.g.: ./arch.fim fim-dwarfs-list
+  :    - E.g.: ./arch.flatimage fim-dwarfs-list
   :- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-  :    - E.g.: ./arch.fim fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+  :    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
   :- fim-help: Print this message.
 	EOF
 }

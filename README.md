@@ -14,6 +14,7 @@
         - [Backend](#backend)
         - [Desktop Integration](#desktop-integration)
         - [Overlayfs](#overlayfs)
+        - [Hooks](#hooks)
 - [Use cases](#use-cases)
     - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
     - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
@@ -250,6 +251,42 @@ usr
 opt
  # Suppose you want to make "usr" writteable again, use
 $ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+```
+
+### Hooks
+
+You can include `bash` hooks to execute code before and after your program:
+
+```bash
+ # Create hook dir
+$ ./arch.flatimage fim-exec mkdir -p /fim/hooks/pre
+ # Include hook
+$ ./arch.flatimage fim-exec cp ./my-pre-hook /fim/hooks/pre
+```
+
+This is an example of a pre-hook file:
+```bash
+export MY_VAR="hello there, I'm defined inside flatimage!"
+
+echo "Starting my cool program"
+
+if [[ -v MY_OPTION ]]; then
+  echo "You passed the option: ${MY_OPTION}!" 
+fi
+```
+
+To remove the hook, just use:
+```bash
+./arch.flatimage fim-exec rm /fim/hooks/pre/my-pre-hook
+```
+... or enter the container, `cd /fim/hooks/pre` and erase the files.
+
+To insert a post hook, just use the directory `post` instead.
+```bash
+ # Create hook dir
+$ ./arch.flatimage fim-exec mkdir -p /fim/hooks/post
+ # Include hook
+$ ./arch.flatimage fim-exec cp ./my-post-hook /fim/hooks/post
 ```
 
 # Use cases

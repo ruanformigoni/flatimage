@@ -52,6 +52,7 @@ export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
 export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
+export FIM_DIR_HOOKS="$FIM_DIR_MOUNT/fim/hooks"
 
 # Give static tools priority in PATH
 export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
@@ -1071,6 +1072,14 @@ function _exec()
   _cmd_bwrap+=("$FIM_FILE_BASH -c '${cmd[*]}'")
   _cmd_proot+=("$FIM_FILE_BASH -c '${cmd[*]}'")
 
+  # Load pre hooks, allow to fail
+  set +e
+  for hook in "$FIM_DIR_HOOKS"/pre/*; do
+    #shellcheck disable=1090
+    . "$hook"
+  done
+  set -e
+
   # Run in contained environment
   if [[ "$FIM_BACKEND" = "bwrap" ]]; then
     _msg "Using bubblewrap"
@@ -1085,6 +1094,13 @@ function _exec()
     _die "Invalid backend $FIM_BACKEND"
   fi
 
+  # Load post hooks, allow to fail
+  set +e
+  for hook in "$FIM_DIR_HOOKS"/post/*; do
+    #shellcheck disable=1090
+    . "$hook"
+  done
+  set -e
 }
 # }}}
 

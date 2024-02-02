@@ -1098,15 +1098,15 @@ function _compress()
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
 
   # Create temporary directory to fit-resize fs
-  local dir_compressed="$FIM_DIR_BINARY/$FIM_FILE_BINARY.tmp"
-  rm -rf "$dir_compressed"
-  mkdir -p "$dir_compressed"
+  local dir_rebuild="$FIM_DIR_BINARY/$FIM_FILE_BINARY.tmp"
+  rm -rf "$dir_rebuild"
+  mkdir -p "$dir_rebuild"
 
   # Copy flatimage dir
-  cp -r "$FIM_DIR_MOUNT/fim" "$dir_compressed"
+  cp -r "$FIM_DIR_MOUNT/fim" "$dir_rebuild"
 
   # Create dwarfs dir if not already exists
-  mkdir -p "$dir_compressed/fim/dwarfs"
+  mkdir -p "$dir_rebuild/fim/dwarfs"
 
   # Compress selected directories
   for i in ${FIM_COMPRESSION_DIRS}; do
@@ -1118,7 +1118,7 @@ function _compress()
     "$FIM_DIR_GLOBAL_BIN/mkdwarfs" \
       -f \
       -i "$path_dir_target" \
-      -o "$dir_compressed/fim/dwarfs/$basename_target.dwarfs" \
+      -o "$dir_rebuild/fim/dwarfs/$basename_target.dwarfs" \
       -l "$FIM_COMPRESSION_LEVEL"
     # Set mountpoint as the basename
     _config_set "dwarfs.${basename_target}" "/$i"
@@ -1127,21 +1127,21 @@ function _compress()
   done
 
   # Copy config file with update dwarfs mount points
-  cp "$FIM_FILE_CONFIG" "$dir_compressed/fim/$(basename "$FIM_FILE_CONFIG")"
+  cp "$FIM_FILE_CONFIG" "$dir_rebuild/fim/$(basename "$FIM_FILE_CONFIG")"
 
   # Remove remaining files from dev to avoid binding issues
   rm -rf "${FIM_DIR_MOUNT:?"Empty FIM_DIR_MOUNT"}"/dev
 
   # Move files to temporary directory
   for i in "$FIM_DIR_MOUNT"/{bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
-    { mv "$i" "$dir_compressed" || true; } &>"$FIM_STREAM"
+    { mv "$i" "$dir_rebuild" || true; } &>"$FIM_STREAM"
   done
 
   # Update permissions
-  chmod -R +rw "$dir_compressed"
+  chmod -R +rw "$dir_rebuild"
 
   # Resize to fit files size + slack
-  local size_files="$(du -sb "$dir_compressed" | awk '{print $1}')"
+  local size_files="$(du -sb "$dir_rebuild" | awk '{print $1}')"
   local size_slack="$FIM_SLACK_MINIMUM";
   local size_new="$((size_files+size_slack))"
 
@@ -1150,10 +1150,13 @@ function _compress()
   _msg "Size sum          : $size_new"
 
   # Resize
-  _rebuild "$size_new" "$dir_compressed"
+  _rebuild "$size_new" "$dir_rebuild"
 
   # Remove mount dirs
   rm -rf "${FIM_DIR_MOUNT:?"Empty mount var"}"/{tmp,proc,sys,dev,run}
+
+  # Remove temporary rebuild dir
+  rm -rf "$dir_rebuild"
 
   # Create required mount points if not exists
   mkdir -p "$FIM_DIR_MOUNT"/{tmp,proc,sys,dev,run,home}

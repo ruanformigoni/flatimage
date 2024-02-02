@@ -249,8 +249,9 @@ function _perms_set()
 # _help() {{{
 function _help()
 {
-  sed -E 's/^\s+://' <<-EOF
-  :# FlatImage, $FIM_DIST
+  echo "FlatImage, $FIM_DIST"
+
+  sed -E 's/^\s+://' <<-"EOF"
   :Avaliable options:
   :- fim-compress: Compress the filesystem to a read-only format.
   :- fim-root: Execute an arbitrary command as root.
@@ -270,7 +271,7 @@ function _help()
   :    - E.g.: ./arch.fim fim-perms pulseaudio,wayland,x11
   :- fim-perms-list: List the current permissions for the container
   :- fim-config-set: Sets a configuration that persists inside the image
-  :    - E.g.: ./arch.fim fim-config-set home '"\$FIM_DIR_BINARY"/home.arch'
+  :    - E.g.: ./arch.fim fim-config-set home '"$FIM_PATH_FILE_BINARY".home
   :    - E.g.: ./arch.fim fim-config-set backend "proot"
   :- fim-config-list: List the current configurations for the container
   :    - E.g.: ./arch.fim fim-config-list                      # List all
@@ -280,6 +281,10 @@ function _help()
   :- fim-dwarfs-add: Includes a dwarfs file inside the image, it is
   :                      automatically mounted on startup to the specified mount point
   :    - E.g.: ./arch.fim fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
+  :- fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
+  :    - E.g.: ./arch.fim fim-dwarfs-list
+  :- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
+  :    - E.g.: ./arch.fim fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
   :- fim-help: Print this message.
 	EOF
 }
@@ -506,8 +511,8 @@ function _dwarfs_include()
   local path_file_host="$(readlink -f "$1")"
   FIM_DEBUG=1 _msg "Input file: $path_file_host"
 
-  # Basename
-  local basename_file_host="$(basename "$path_file_host")"
+  # Basename, only leave stem
+  local basename_file_host="$(basename -s .dwarfs "$path_file_host")"
   # # Normalize
   basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=]' | xargs)"
   basename_file_host="$(echo "$basename_file_host" | tr ' ' '-')"
@@ -563,6 +568,40 @@ function _dwarfs_include()
 
   # Update dwarfs filesystem table
   _config_set "dwarfs.$basename_file_host" "$path_rel_mountpoint"
+}
+# }}}
+
+# _dwarfs_list {{{ 
+function _dwarfs_list()
+{
+  for i in "$FIM_DIR_DWARFS"/*; do
+    basename -s .dwarfs "$i"
+  done
+}
+# }}}
+
+# _dwarfs_overlay {{{ 
+# $1 Dwarfs filesystem to overlay
+# $2 Mountpoint
+function _dwarfs_overlay()
+{
+  # Create full path to filesystem
+  local path_file_dwarfs="$FIM_DIR_DWARFS/$1.dwarfs"
+
+  # Check if exists
+  if [[ ! -f "$path_file_dwarfs" ]]; then
+    _die "Filesystem '$path_file_dwarfs' not found for overlayfs setup"
+  fi
+
+  # Check if mountpoint is not empty string
+  local mountpoint="$2"
+  if [[ -z "$mountpoint" ]]; then
+    _die "Empty mountpoint argument"
+  fi
+
+  # Create overlayfs configuration
+  local basename_file_dwarfs="$(basename -s .dwarfs "$path_file_dwarfs")"
+  _config_set "dwarfs.overlay.$basename_file_dwarfs" "$mountpoint"
 }
 # }}}
 
@@ -625,8 +664,7 @@ function _find_dwarfs()
   while read -r i; do
     local filesystem_file="$i"
     # Define mountpoint
-    local mountpoint="$FIM_DIR_GLOBAL/dwarfs/$DWARFS_SHA/$(basename "$i")"
-    mountpoint="${mountpoint%.dwarfs}"
+    local mountpoint="${FIM_DIR_MOUNT}.mount.dwarfs.$(basename -s .dwarfs "$i")"
     # Log
     _msg "DWARFS FS: $filesystem_file"
     _msg "DWARFS MP: $mountpoint"
@@ -642,12 +680,24 @@ function _find_dwarfs()
 function _find_overlayfs()
 {
   while read -r overlay; do
+    # Filesystem
+    local basename_filesystem="${overlay##dwarfs.overlay.}"
+    # Filesystem path
+    local path_dwarfs_filesystem="$FIM_DIR_DWARFS/${basename_filesystem}.dwarfs"
+    # Check if exists
+    if [[ ! -f "$path_dwarfs_filesystem" ]]; then
+      FIM_DEBUG=1 _msg "Dwarfs filesystem not found in '$path_dwarfs_filesystem'"
+      return
+    fi
+    _msg "OVERLAYFS FS: $path_dwarfs_filesystem"
     # Fetch paths
-    local bind_cont="$(_config_fetch --single --value "${overlay}.cont")"
-    local bind_host="$(_config_fetch --single --value "${overlay}.host")"
+    # # This is the dwarfs mount point
+    local bind_cont="$(_config_fetch --single --value "dwarfs.$basename_filesystem")"
+    # # This is the overlayfs mount point, it will overlay the dwarfs mount point
+    local bind_host="$(_config_fetch --single --value "$overlay")"
     # Check empty string
-    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "You must set bind_cont for $overlay"; break; }
-    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "You must set bind_host for $overlay"; break; }
+    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "Could not find dwarfs filesystem 'dwarfs.$basename_filesystem'"; break; }
+    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "Could not find mount point for overlay '$overlay'"; break; }
     # Expand
     bind_cont="$(eval echo "$bind_cont")"
     bind_host="$(eval echo "$bind_host")" 
@@ -658,7 +708,7 @@ function _find_overlayfs()
     _msg "OVERLAYFS DST: ${bind_host}"
     # Save
     FIM_MOUNTS_OVERLAYFS["$bind_cont"]="$bind_host"
-  done < <(_config_fetch --key "^overlay\.[A-Za-z0-9_]+$")
+  done < <(_config_fetch --key "dwarfs.overlay")
 }
 # }}}
 
@@ -674,10 +724,11 @@ function _mount_dwarfs()
     # Create mountpoint
     mkdir -p "$mp"
     # Get path to symlink to
-    local symlink_target="$(_config_fetch --single --value "dwarfs.$(basename "$i")")"
+    local symlink_target="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
+    _msg "DWARFS SYMLINK TARGET: $symlink_target"
     symlink_target="$FIM_DIR_MOUNT/$symlink_target"
     mkdir -p "$(dirname "$symlink_target")"
-    _msg "DWARFS SYMLINK: $symlink_target"
+    _msg "DWARFS SYMLINK PATH: $symlink_target"
     # Symlink, skip if directory exists
     ln -T -sfnv "$mp" "$symlink_target" &>"$FIM_STREAM" || continue
     # Mount
@@ -703,25 +754,30 @@ function _mount_overlayfs()
     # Define host-sided paths
     local workdir="$bind_host"/workdir
     local upperdir="$bind_host"/upperdir
-    local mount="$bind_host"/mount
     _msg "OVERLAYFS workdir: $workdir"
     _msg "OVERLAYFS upperdir: $upperdir"
-    _msg "OVERLAYFS mount: $mount"
     # Create host-sided paths
     mkdir -pv "$bind_host"/{workdir,upperdir,mount} &> "$FIM_STREAM"
     # If is a symlink from inside the container that points to a directory in the host
     # # Update bind_cont with resolved path (might be a symlink created by dwarfs)
     # # Replace symlink to point to mount to overlayfs
-    if test -L "$bind_cont"; then
-      local symm="$bind_cont"
-      _msg "OVERLAYFS unresolved: $symm"
+    local bind_symlink="$bind_cont"
+    if test -h "$bind_cont"; then
+      _msg "OVERLAYFS unresolved: $bind_symlink"
       bind_cont="$(readlink -f "$bind_cont")"
       _msg "OVERLAYFS lowerdir: $bind_cont"
-      ln -T -sfn "$mount" "$symm"
     else
       FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' not a symlink"
       break
     fi
+    # Define mount point for overlayfs
+    local basename_mount="$(basename "$bind_cont")"
+    basename_mount="${basename_mount##*dwarfs.}"
+    _msg "basename mount: $basename_mount"
+    local mount="${FIM_DIR_MOUNT}.mount.overlayfs.$basename_mount"
+    mkdir -vp "$mount" &> "$FIM_STREAM"
+    _msg "OVERLAYFS mount: $mount"
+    ln -T -sfn "$mount" "$bind_symlink"
     # Define lowerdir
     local lowerdir="$bind_cont"
     # Mount
@@ -733,24 +789,9 @@ function _mount_overlayfs()
 # _setup_filesystems() {{{
 function _setup_filesystems()
 {
-  # Mount dwarfs files
-  ## Fetch SHA
-  export DWARFS_SHA="$(_config_fetch --value --single "sha")"
-  _msg "DWARFS_SHA: $DWARFS_SHA"
-
   # Find mountpoints
   _find_dwarfs
   _find_overlayfs
-
-  # Save dwarfs mountpoints
-  for i in "${FIM_MOUNTS_DWARFS[@]}"; do
-    echo "$i" >> "${FIM_DIR_MOUNT}.dwarfs.dst"
-  done
-
-  # Save overlayfs mountpoints
-  for i in "${FIM_MOUNTS_OVERLAYFS[@]}"; do
-    echo "$i" >> "${FIM_DIR_MOUNT}.overlayfs.dst"
-  done
 
   # Mount filesystems
   _mount_dwarfs
@@ -1054,7 +1095,6 @@ function _exec()
 function _compress()
 {
   [ -n "$FIM_RW" ] || _die "Set FIM_RW to 1 before compression"
-  [ -z "$(_config_fetch --value --single "sha")" ] || _die "sha is set (already compressed?)"
 
   # Remove apt lists and cache
   rm -rf "$FIM_DIR_MOUNT"/var/{lib/apt/lists,cache}
@@ -1062,28 +1102,40 @@ function _compress()
   # Create temporary directory to fit-resize fs
   local dir_compressed="$FIM_DIR_BINARY/$FIM_FILE_BINARY.tmp"
   rm -rf "$dir_compressed"
-  mkdir "$dir_compressed"
+  mkdir -p "$dir_compressed"
 
-  # Get SHA and save to re-mount (used as unique identifier)
-  local sha="$(sha256sum "$FIM_PATH_FILE_BINARY" | awk '{print $1}')"
-  _config_set "sha" "$sha"
-  _msg "sha: $sha"
+  # Copy flatimage dir
+  cp -r "$FIM_DIR_MOUNT/fim" "$dir_compressed"
+
+  # Create dwarfs dir if not already exists
+  mkdir -p "$dir_compressed/fim/dwarfs"
 
   # Compress selected directories
   for i in ${FIM_COMPRESSION_DIRS}; do
-    local target="$FIM_DIR_MOUNT/$i"
-    [ -d "$target" ] ||  _die "Folder $target not found for compression"
-    "$FIM_DIR_GLOBAL_BIN/mkdwarfs" -i "$target" -o "${dir_compressed}/$i.dwarfs" -l"$FIM_COMPRESSION_LEVEL" -f
-    rm -rf "$target"
-    ln -sf "$FIM_DIR_GLOBAL/dwarfs/$sha/$i" "${dir_compressed}/${i}"
+    local basename_target="$(basename "$i")"
+    local path_dir_target="$FIM_DIR_MOUNT/$i"
+    # Check if folder exists inside container
+    [ -d "$path_dir_target" ] || _die "Folder $path_dir_target not found for compression"
+    # Compress folder
+    "$FIM_DIR_GLOBAL_BIN/mkdwarfs" \
+      -f \
+      -i "$path_dir_target" \
+      -o "$dir_compressed/fim/dwarfs/$basename_target.dwarfs" \
+      -l "$FIM_COMPRESSION_LEVEL"
+    # Set mountpoint as the basename
+    _config_set "dwarfs.${basename_target}" "/$i"
+    # Remove it from inside the container
+    rm -rf "$path_dir_target"
   done
 
+  # Copy config file with update dwarfs mount points
+  cp "$FIM_FILE_CONFIG" "$dir_compressed/fim/$(basename "$FIM_FILE_CONFIG")"
 
-  # Remove remaining files from dev
+  # Remove remaining files from dev to avoid binding issues
   rm -rf "${FIM_DIR_MOUNT:?"Empty FIM_DIR_MOUNT"}"/dev
 
   # Move files to temporary directory
-  for i in "$FIM_DIR_MOUNT"/{fim,bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
+  for i in "$FIM_DIR_MOUNT"/{bin,etc,lib,lib64,opt,root,run,sbin,share,tmp,usr,var}; do
     { mv "$i" "$dir_compressed" || true; } &>"$FIM_STREAM"
   done
 
@@ -1295,6 +1347,8 @@ function _main()
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
       "dwarfs-add") _dwarfs_include "$2" "$3" ;;
+      "dwarfs-list") _dwarfs_list ;;
+      "dwarfs-overlayfs") _dwarfs_overlay "$2" "$3" ;;
       "help") _help;;
       *) _help; _die "Unknown fim command" ;;
     esac

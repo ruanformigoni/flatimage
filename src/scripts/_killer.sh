@@ -11,6 +11,8 @@
 exec 1> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.killer.log"; done)
 exec 2> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.killer.log" >&2; done)
 
+shopt -s nullglob
+
 # _msg() {{{
 # Writes a message to logfile
 # $(1..n-1) arguments to echo
@@ -71,10 +73,9 @@ function _die()
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
 
   # Unmount overlayfs
-  while read -r i; do
-    # Adjust to actual mountpoint
-    i="${i}/mount"
+  for i in "${FIM_DIR_MOUNT}".mount.overlayfs*; do
     # Iterate on parent and child pids
+    _msg "Unmount $i"
     for pid in $(pgrep -f "$i"); do
       # Ignore self
       if [ "$pid" = "$$" ]; then continue; fi
@@ -85,10 +86,11 @@ function _die()
       # Send again, now with the process released
       fusermount -u "$i"
     done
-  done < <(cat "${FIM_DIR_MOUNT}.overlayfs.dst")
+  done
 
   # Unmount dwarfs
-  while read -r i; do
+  for i in "${FIM_DIR_MOUNT}".mount.dwarfs*; do
+    _msg "Unmount $i"
     for pid in $(pgrep -f "$i"); do
       # Ignore self
       if [ "$pid" = "$$" ]; then continue; fi
@@ -99,7 +101,7 @@ function _die()
       # Send again, now with the process released
       fusermount -u "$i"
     done
-  done < <(cat "${FIM_DIR_MOUNT}.dwarfs.dst")
+  done
 
   # Unmount fuse2fs
   for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_PATH_FILE_BINARY.*$FIM_DIR_MOUNT"); do

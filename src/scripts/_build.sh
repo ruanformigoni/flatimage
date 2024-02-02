@@ -163,6 +163,9 @@ function _create_subsystem_debootstrap()
   # Create share symlink
   ln -s /usr/share "/tmp/$dist/share"
 
+  # Create fim dwarfs dir
+  mkdir -p "/tmp/$dist/fim/dwarfs"
+
   # Create fim tools dir
   mkdir -p "/tmp/$dist/fim/static"
 
@@ -246,6 +249,9 @@ function _create_subsystem_alpine()
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'
+
+  # Create fim dwarfs dir
+  mkdir -p "/tmp/$dist/fim/dwarfs"
 
   # Create fim tools dir
   mkdir -p "/tmp/$dist/fim/static"
@@ -369,6 +375,9 @@ function _create_subsystem_arch()
 
   # Create share symlink
   ln -sf /usr/share ./arch/share
+
+  # Create fim dwarfs dir
+  mkdir -p "./arch/fim/dwarfs"
 
   # Create fim tools dir
   mkdir -p "./arch/fim/static"

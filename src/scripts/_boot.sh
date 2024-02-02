@@ -489,7 +489,7 @@ function _desktop_integration()
   :Type=Application
   :Comment=FlatImage distribution of "$name"
   :TryExec=$FIM_PATH_FILE_BINARY
-  :Exec=$FIM_PATH_FILE_BINARY %F
+  :Exec="$FIM_PATH_FILE_BINARY" %F
   :Icon=application-flatimage_$name
   :MimeType=application/flatimage_$name
   :Categories=$categories

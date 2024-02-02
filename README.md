@@ -104,7 +104,6 @@ To enter the container as root (to install software) use:
 ## Options
 
 ```
-# FlatImage
 Avaliable options:
 - fim-compress: Compress the filesystem to a read-only format.
 - fim-root: Execute an arbitrary command as root.
@@ -128,12 +127,10 @@ Avaliable options:
     - E.g.: ./arch.flatimage fim-config-set backend "proot"
 - fim-config-list: List the current configurations for the container
     - E.g.: ./arch.flatimage fim-config-list                      # List all
-    - E.g.: ./arch.flatimage fim-config-list "overlay.*"          # List ones that match regex
-    - E.g.: ./arch.flatimage fim-config-list --single "overlay.*" # Stop on first match
-    - E.g.: ./arch.flatimage fim-config-list --value  "overlay.*" # Print only the value
+    - E.g.: ./arch.flatimage fim-config-list "^dwarfs.*"          # List ones that match regex
 - fim-dwarfs-add: Includes a dwarfs file inside the image, it is
                       automatically mounted on startup to the specified mount point
-    - E.g.: ./arch.flatimage fim-dwarfs-add ../my-dir/image.dwarfs /opt/image
+    - E.g.: ./arch.flatimage fim-dwarfs-add ./image.dwarfs /opt/image
 - fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
     - E.g.: ./arch.flatimage fim-dwarfs-list
 - fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
@@ -252,7 +249,7 @@ $ ./arch.flatimage fim-dwarfs-list
 usr
 opt
  # Suppose you want to make "usr" writteable again, use
-$ ./arch.flatimage fim-dwarfs-overlay usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
+$ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_PATH_FILE_BINARY".config/overlays/usr'
 ```
 
 # Use cases

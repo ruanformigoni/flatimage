@@ -255,13 +255,11 @@ $ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/
 
 ### Hooks
 
-You can include `bash` hooks to execute code before and after your program:
+You can include `bash` hooks to execute code before and/or after your program:
 
 ```bash
- # Create hook dir
-$ ./arch.flatimage fim-exec mkdir -p /fim/hooks/pre
  # Include hook
-$ ./arch.flatimage fim-exec cp ./my-pre-hook /fim/hooks/pre
+$ ./arch.flatimage fim-hook-add-pre ./my-pre-hook
 ```
 
 This is an example of a pre-hook file:
@@ -283,10 +281,8 @@ To remove the hook, just use:
 
 To insert a post hook, just use the directory `post` instead.
 ```bash
- # Create hook dir
-$ ./arch.flatimage fim-exec mkdir -p /fim/hooks/post
  # Include hook
-$ ./arch.flatimage fim-exec cp ./my-post-hook /fim/hooks/post
+$ ./arch.flatimage fim-hook-add-post ./my-post-hook
 ```
 
 # Use cases

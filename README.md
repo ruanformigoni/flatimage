@@ -136,6 +136,10 @@ Avaliable options:
     - E.g.: ./arch.flatimage fim-dwarfs-list
 - fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
     - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
+- fim-hook-add-pre: Includes a hook that runs before the main command
+    - E.g.: ./arch.flatimage fim-hook-add-pre ./my-hook
+- fim-hook-add-post: Includes a hook that runs after the main command
+    - E.g.: ./arch.flatimage fim-hook-add-post ./my-hook
 - fim-help: Print this message.
 ```
 

@@ -284,6 +284,10 @@ function _help()
   :    - E.g.: ./arch.flatimage fim-dwarfs-list
   :- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
   :    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
+  :- fim-hook-add-pre: Includes a hook that runs before the main command
+  :    - E.g.: ./arch.flatimage fim-hook-add-pre ./my-hook
+  :- fim-hook-add-post: Includes a hook that runs after the main command
+  :    - E.g.: ./arch.flatimage fim-hook-add-post ./my-hook
   :- fim-help: Print this message.
 	EOF
 }
@@ -497,10 +501,10 @@ function _desktop_integration()
 }
 # }}}
 
-# _dwarfs_include {{{ 
+# _dwarfs_add {{{ 
 # $1 Path to the file to include
 # $2 Mountpoint
-function _dwarfs_include()
+function _dwarfs_add()
 {
   # Default directory for dwarfs files
   mkdir -p "$FIM_DIR_DWARFS"
@@ -511,7 +515,7 @@ function _dwarfs_include()
 
   # Basename, only leave stem
   local basename_file_host="$(basename -s .dwarfs "$path_file_host")"
-  # # Normalize
+  # # Sanitize
   basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=][=-=]' | xargs)"
   basename_file_host="$(echo "$basename_file_host" | tr ' ' '-')"
 
@@ -600,6 +604,51 @@ function _dwarfs_overlay()
   # Create overlayfs configuration
   local basename_file_dwarfs="$(basename -s .dwarfs "$path_file_dwarfs")"
   _config_set "dwarfs.overlay.$basename_file_dwarfs" "$mountpoint"
+}
+# }}}
+
+# _hook_add() {{{ 
+function _hook_add()
+{
+  # Default directory for hooks
+  mkdir -p "$FIM_DIR_HOOKS"
+
+  # Check if is pre or post hook
+  local type_hook="$1"
+  if [[ "$type_hook" != "pre" ]] && [[ "$type_hook" != "post" ]]; then
+    _die "Invalid hook type"
+  fi
+
+  # Input file
+  local path_file_host="$(readlink -f "$2")"
+  FIM_DEBUG=1 _msg "Input file: $path_file_host"
+
+  if [[ ! -f "$path_file_host" ]]; then
+    _die "Invalid hook file '$path_file_host'"
+  fi
+
+  # Basename
+  local basename_file_host="$(basename "$path_file_host")"
+  # # Sanitize
+  basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=][=-=]' | xargs)"
+  basename_file_host="$(echo "$basename_file_host" | tr ' ' '-')"
+
+  # Save as
+  local path_file_guest="$FIM_DIR_HOOKS/$type_hook/$basename_file_host"
+  FIM_DEBUG=1 _msg "Save as: $path_file_guest"
+
+  # Create parent dir
+  mkdir -p "$(dirname "$path_file_guest")"
+
+  # Copy hook
+  cp "$path_file_host" "$path_file_guest"
+}
+# }}}
+
+# _hook_list() {{{ 
+function _hook_list()
+{
+  ls -1 "$FIM_DIR_HOOKS"
 }
 # }}}
 
@@ -1362,9 +1411,12 @@ function _main()
       "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;
       "perms-set") _perms_set "$2";;
-      "dwarfs-add") _dwarfs_include "$2" "$3" ;;
+      "dwarfs-add") _dwarfs_add "$2" "$3" ;;
       "dwarfs-list") _dwarfs_list ;;
       "dwarfs-overlayfs") _dwarfs_overlay "$2" "$3" ;;
+      "hook-add-pre") _hook_add "pre" "$2" ;;
+      "hook-add-post") _hook_add "post" "$2" ;;
+      "hook-list") _hook_list "$2" ;;
       "help") _help;;
       *) _help; _die "Unknown fim command" ;;
     esac

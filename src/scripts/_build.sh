@@ -301,7 +301,7 @@ function _create_subsystem_arch()
   chmod -R +x ./bin/.
 
   # Fetch bootstrap
-  git clone https://github.com/tokland/arch-bootstrap.git
+  git clone "https://github.com/ruanformigoni/arch-bootstrap.git"
 
   # Build
   sed -i 's|DEFAULT_REPO_URL=".*"|DEFAULT_REPO_URL="http://linorg.usp.br/archlinux"|' ./arch-bootstrap/arch-bootstrap.sh

@@ -503,8 +503,7 @@ function _desktop_integration()
 function _dwarfs_include()
 {
   # Default directory for dwarfs files
-  local path_dir_dwarfs="$FIM_DIR_MOUNT/fim/dwarfs/"
-  mkdir -p "$path_dir_dwarfs"
+  mkdir -p "$FIM_DIR_DWARFS"
 
   # Input file
   local path_file_host="$(readlink -f "$1")"
@@ -513,11 +512,11 @@ function _dwarfs_include()
   # Basename, only leave stem
   local basename_file_host="$(basename -s .dwarfs "$path_file_host")"
   # # Normalize
-  basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=]' | xargs)"
+  basename_file_host="$(echo "$basename_file_host" | tr -d -c '[:alnum:][:space:][=.=][=-=]' | xargs)"
   basename_file_host="$(echo "$basename_file_host" | tr ' ' '-')"
 
   # Save as
-  local path_file_guest="$path_dir_dwarfs/$basename_file_host"
+  local path_file_guest="$FIM_DIR_DWARFS/$basename_file_host.dwarfs"
   FIM_DEBUG=1 _msg "Save as: $path_file_guest"
 
   # Target

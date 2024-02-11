@@ -804,7 +804,7 @@ function _mount_overlayfs()
     _msg "OVERLAYFS workdir: $workdir"
     _msg "OVERLAYFS upperdir: $upperdir"
     # Create host-sided paths
-    mkdir -pv "$bind_host"/{workdir,upperdir,mount} &> "$FIM_STREAM"
+    mkdir -pv "$bind_host"/{workdir,upperdir} &> "$FIM_STREAM"
     # If is a symlink from inside the container that points to a directory in the host
     # # Update bind_cont with resolved path (might be a symlink created by dwarfs)
     # # Replace symlink to point to mount to overlayfs
@@ -817,14 +817,18 @@ function _mount_overlayfs()
       FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' not a symlink"
       break
     fi
-    # Define mount point for overlayfs
+    # Get basename of dwarfs mount point
     local basename_mount="$(basename "$bind_cont")"
     basename_mount="${basename_mount##*dwarfs.}"
     _msg "basename mount: $basename_mount"
+    # Define mount point for overlayfs
     local mount="${FIM_DIR_MOUNT}.mount.overlayfs.$basename_mount"
     mkdir -vp "$mount" &> "$FIM_STREAM"
     _msg "OVERLAYFS mount: $mount"
+    # Symlink from inside the container to the mount directory
     ln -T -sfn "$mount" "$bind_symlink"
+    # Symlink from the mount point to the host directory
+    ln -T -sfn "$mount" "$bind_host"/mount
     # Define lowerdir
     local lowerdir="$bind_cont"
     # Mount

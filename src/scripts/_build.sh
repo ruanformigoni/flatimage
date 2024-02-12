@@ -194,11 +194,11 @@ function _create_subsystem_debootstrap()
   _create_elf "$dist.img" "$dist.flatimage"
 
   # Create sha256sum
-  sha256sum "$dist.flatimage" > "$dist.flatimage.sha256sum"
-  mv "$dist.flatimage.sha256sum" dist/
+  sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
 
   tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
+  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
 
   mv "$dist.tar.xz" dist/
 }

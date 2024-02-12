@@ -281,11 +281,11 @@ function _create_subsystem_alpine()
   _create_elf "$dist.img" "$dist.flatimage"
 
   # Create sha256sum
-  sha256sum "$dist.flatimage" > "$dist.flatimage.sha256sum"
-  mv "$dist.flatimage.sha256sum" dist/
+  sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
 
   tar -cf "$dist.tar" "$dist.flatimage"
   xz -3zv "$dist.tar"
+  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
 
   mv "$dist.tar.xz" dist/
 }
@@ -420,11 +420,11 @@ function _create_subsystem_arch()
   _create_elf "arch.img" "arch.flatimage"
 
   # Create sha256sum
-  sha256sum arch.flatimage > "arch.flatimage.sha256sum"
-  mv "arch.flatimage.sha256sum" dist/
+  sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
 
   tar -cf arch.tar arch.flatimage
   xz -3zv arch.tar
+  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
 
   mv "arch.tar.xz" dist/
 }

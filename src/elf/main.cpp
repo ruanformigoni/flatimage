@@ -78,7 +78,7 @@ void write_from_offset(std::string const& f_in_str, std::string const& f_out_str
   std::ofstream f_ou{f_out_str, f_ou.binary | f_ou.out};
 
   if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_in_str); }
-  if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_out_str); }
+  if ( ! f_ou.good() ) { "Failed to open target file {}\n"_err(f_out_str); }
 
   f_in.seekg(offset.second);
   auto end = f_in.tellg();

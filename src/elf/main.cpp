@@ -53,6 +53,9 @@ using u64 = unsigned long;
 // }}}
 
 // Literals {{{
+auto operator"" _print(const char* c_str, std::size_t)
+{ return [=](auto&&... args){ return fmt::println(fmt::runtime(c_str), args...); }; }
+
 auto operator"" _fmt(const char* c_str, std::size_t)
 { return [=](auto&&... args){ return fmt::format(fmt::runtime(c_str), args...); }; }
 
@@ -74,23 +77,31 @@ std::string create_temp_dir(std::string const& prefix)
 // fn: write_from_offset {{{
 void write_from_offset(std::string const& f_in_str, std::string const& f_out_str, std::pair<u64,u64> offset)
 {
-  std::ifstream f_in{f_in_str, f_in.binary | f_in.in};
-  std::ofstream f_ou{f_out_str, f_ou.binary | f_ou.out};
+  std::ifstream f_in{f_in_str, std::ios::binary};
+  std::ofstream f_out{f_out_str, std::ios::binary};
 
   if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_in_str); }
-  if ( ! f_ou.good() ) { "Failed to open target file {}\n"_err(f_out_str); }
+  if ( ! f_out.good() ) { "Failed to open target file {}\n"_err(f_out_str); }
 
-  f_in.seekg(offset.second);
-  auto end = f_in.tellg();
-  f_in.seekg(offset.first);
+  // Calculate the size of the data to read
+  u64 size = offset.second - offset.first;
 
-  for(char ch; f_in.tellg() != end;)
+  // Seek to the start offset in the input file
+  f_in.seekg(offset.first, std::ios::beg);
+
+  // Read in chunks
+  const size_t size_buf = 4096;
+  char buffer[size_buf];
+
+  while( size > 0 )
   {
-    f_in.get(ch);
-    f_ou.write(&ch, sizeof(char));
-  }
+    std::streamsize read_size = static_cast<std::streamsize>(std::min(static_cast<u64>(size_buf), size));
 
-  f_ou.close(); f_in.close();
+    f_in.read(buffer, read_size);
+    f_out.write(buffer, read_size);
+
+    size -= read_size;
+  } // while
 } // function: write_from_offset
 
 // }}}
@@ -106,7 +117,8 @@ u64 read_elf_header(const char* elfFile, u64 offset = 0) {
 
   FILE* file = fopen(elfFile, "rb");
   fseek(file, offset, SEEK_SET);
-  if(file) {
+  if(file)
+  {
     // read the header
     fread(&header, sizeof(header), 1, file);
     // check so its really an elf file
@@ -299,15 +311,24 @@ int main(int argc, char** argv)
     //
     // Write binaries
     //
+    auto start = std::chrono::high_resolution_clock::now();
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "main", 0);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "bash", offset_end);
+    auto end = std::chrono::high_resolution_clock::now();
 
     //
     // Option to show offset and exit
     //
-    if( getenv("FIM_MAIN_OFFSET") ){ fmt::print("{}\n", offset_end); exit(0); }
+    if( getenv("FIM_MAIN_OFFSET") ){ "{}"_print(offset_end); exit(0); }
+
+    // Print copy duration
+    if ( getenv("FIM_DEBUG") != nullptr )
+    {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+      "Copy binaries finished in '{}' ms"_print(elapsed.count());
+    } // if
 
     //
     // Set env variables to execve

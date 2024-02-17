@@ -1359,12 +1359,17 @@ function _main()
   # Check if config exists, else try to touch if mounted as RW
   [ -f "$FIM_FILE_CONFIG" ] || { [ -n "$FIM_RO" ] || touch "$FIM_FILE_CONFIG"; }
 
-  # Check if custom home directory is set
-  local home="$(_config_fetch --value --single "home")"
-  # # Expand
-  home="$(eval echo "$home")"
-  # # Set & show on debug mode
-  [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
+  # Only set HOME by config if environment variable is unset
+  if [[ -v FIM_HOME ]]; then
+    HOME="$(eval echo "$FIM_HOME")"
+  else
+    # Get custom home
+    local home="$(_config_fetch --value --single "home")"
+    # Expand
+    home="$(eval echo "$home")"
+    # Set
+    [[ -z "$home" ]] || { mkdir -p "$home" && export HOME="$home"; }
+  fi
   _msg "FIM_HOME        : $HOME"
 
   # Check if custom package name is set

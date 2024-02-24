@@ -156,6 +156,7 @@ Avaliable options:
     50000000 bytes (50MB).
 * `FIM_COMPRESSION_DIRS`: Directories to compress with dwarfs, default is `/usr /opt`.
 * `FIM_DEBUG`: If defined to 1, print debug messages.
+* `FIM_FIFO`: If defined to 1, use FIFO when stdout/stderr are not connected to a terminal, default is 1.
 
 ### Read-Only
 

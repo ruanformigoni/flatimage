@@ -83,9 +83,9 @@ function _die()
       fusermount -u "$i"
       # Wait and kill if it takes too long
       _wait_kill "Wait for unmount of overlayfs in $i" "$pid"
-      # Send again, now with the process released
-      fusermount -u "$i"
     done
+    # Send again, now with the process released
+    fusermount -u "$i"
   done
 
   # Unmount dwarfs
@@ -98,30 +98,35 @@ function _die()
       fusermount -u "$i"
       # Wait and kill if it takes too long
       _wait_kill "Wait for unmount of dwarfs in $i" "$pid"
-      # Send again, now with the process released
-      fusermount -u "$i"
     done
+    # Send again, now with the process released
+    fusermount -u "$i"
   done
 
   # Unmount fuse2fs
-  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY.*$FIM_DIR_MOUNT"); do
-    # Ignore self
-    if [ "$pid" = "$$" ]; then continue; fi
-    # Send unmount signal to fuse2fs mountpoint
-    fusermount -u "$FIM_DIR_MOUNT"
-    # Wait and kill if it takes too long
-    _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$pid"
-    # Send again, now with the process released
-    fusermount -u "$FIM_DIR_MOUNT"
-  done
+  fusermount -u "$FIM_DIR_MOUNT"
 
-  # Wait for processes using $FIM_FILE_BINARY
+  # Wait for processes using $FIM_FILE_BINARY or kill on timeout
   while read -r i; do
     # Ignore self
     if [ "$i" = "$$" ]; then continue; fi
     # Process PID
+    _msg "Process using '$FIM_FILE_BINARY' is '$(file "/proc/$i/exe")'"
     _wait_kill "Wait for process '$i' to stop using '$FIM_FILE_BINARY', timeout 6s" "$i" 60
   done < <(lsof -t "$FIM_FILE_BINARY")
+
+  # Kill the process if unmount does not work after a timeout
+  for pid in $(pgrep -f "fuse2fs.*offset=$FIM_OFFSET.*$FIM_FILE_BINARY.*$FIM_DIR_MOUNT"); do
+    # Ignore self
+    if [ "$pid" = "$$" ]; then continue; fi
+    # Wait and kill if it takes too long
+    _wait_kill "Wait for unmount of fuse2fs in $FIM_DIR_MOUNT" "$pid"
+  done
+
+  # Try again
+  # # Now process of fuse2fs is dead
+  # # Now no one is using FIM_DIR_MOUNT
+  fusermount -u "$FIM_DIR_MOUNT"
 
   # Exit
   kill -s SIGKILL "$PID"

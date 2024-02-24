@@ -66,11 +66,30 @@ export FIM_COMPRESSION_DIRS="${FIM_COMPRESSION_DIRS:-/usr /opt}"
 export FIM_STREAM="${FIM_DEBUG:+/dev/stdout}"
 export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 
+# FIFO config
+export FIM_FIFO="${FIM_FIFO:-1}"
+
+# Setup daemon to unmount filesystems on exit
+chmod +x "$FIM_FPATH_KILLER"
+nohup "$FIM_FPATH_KILLER" &>/dev/null & disown
+
 # Check for stdout/stderr
-if ! test -t 1 || ! test 2; then
-  notify-send "Using custom stdout/stderr to ${FIM_DIR_MOUNT}.log" &>"$FIM_STREAM" || true
-  exec 1> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log"; done)
-  exec 2> >(while IFS= read -r line; do echo "$line" | tee -a "${FIM_DIR_MOUNT}.log" >&2; done)
+if ! { test -t 1 && test -t 2; } && [[ "$FIM_FIFO" -eq 1 ]]; then
+  notify-send "Using custom stdout/stderr" &>/dev/null || true
+
+  mkfifo "${FIM_DIR_MOUNT}.stdout.pipe"
+  mkfifo "${FIM_DIR_MOUNT}.stderr.pipe"
+
+  dd if="${FIM_DIR_MOUNT}.stdout.pipe" of="${FIM_DIR_MOUNT}.stdout.log" bs=64k &
+  dd if="${FIM_DIR_MOUNT}.stderr.pipe" of="${FIM_DIR_MOUNT}.stderr.log" bs=64k &
+
+  exec 3>"${FIM_DIR_MOUNT}.stdout.pipe"
+  exec 4>"${FIM_DIR_MOUNT}.stderr.pipe"
+
+  exec 1>&3
+  exec 2>&4
+
+  export FIM_STREAM="${FIM_DIR_MOUNT}.stdout.pipe"
 fi
 
 # Overlayfs filesystems mounts
@@ -175,6 +194,7 @@ function _re_mount()
 # $* = Termination message
 function _die()
 {
+  set +e
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
   # Signal exit to killer
@@ -1342,10 +1362,6 @@ function _main()
     "unexpand" "uniq" "unlink" "uptime" "users" "vdir" "wc" "who" "whoami" "yes" "resize2fs"
     "mke2fs" "lsof"
   )
-
-  # Setup daemon to unmount filesystems on exit
-  chmod +x "$FIM_FPATH_KILLER"
-  nohup "$FIM_FPATH_KILLER" &>/dev/null & disown
 
   # Copy static binaries
   _copy_tools "${ext_tools[@]}"

@@ -974,7 +974,14 @@ function _exec()
     export PULSE_SERVER="unix:$PULSE_SOCKET"
     # bwrap
     _cmd_bwrap+=("--setenv PULSE_SERVER unix:$PULSE_SOCKET")
-    _cmd_bwrap+=("--bind $PULSE_SOCKET $PULSE_SOCKET")
+    _cmd_bwrap+=("--bind-try $PULSE_SOCKET $PULSE_SOCKET")
+    # Bind other paths required for sound
+    _cmd_bwrap+=("--dev-bind-try /dev/dsp /dev/dsp")
+    _cmd_bwrap+=("--bind-try /dev/snd /dev/snd")
+    _cmd_bwrap+=("--bind-try /dev/shm /dev/shm")
+    _cmd_bwrap+=("--bind-try /proc/asound /proc/asound")
+    local PIPEWIRE_SOCKET="$XDG_RUNTIME_DIR/pipewire-0"
+    _cmd_bwrap+=("--bind-try $PIPEWIRE_SOCKET $PIPEWIRE_SOCKET")
     # proot
     _cmd_proot+=("-b $PULSE_SOCKET")
   fi

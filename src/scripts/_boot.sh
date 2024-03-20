@@ -884,7 +884,10 @@ function _exec()
   # Fetch CMD
   declare -a cmd
   for i; do
-    [ -z "$i" ] || cmd+=("\"$i\"")
+    if [ -z "$i" ]; then continue; fi
+    i="\"$i\""
+    i="${i/\'/\'\\\'\'}"
+    cmd+=("$i")
   done
 
   _msg "cmd: ${cmd[*]}"
@@ -1384,7 +1387,7 @@ function _main()
 
   # Only set HOME by config if environment variable is unset
   if [[ -v FIM_HOME ]]; then
-    HOME="$(eval echo "$FIM_HOME")"
+    HOME="$(eval echo "${FIM_HOME//\'/\\\'}")"
   else
     # Get custom home
     local home="$(_config_fetch --value --single "home")"

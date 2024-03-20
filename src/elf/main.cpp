@@ -136,14 +136,6 @@ u64 read_elf_header(const char* elfFile, u64 offset = 0) {
 // fn: main {{{
 int main(int argc, char** argv)
 {
-
-  // Parse arguments {{{
-
-  // Get arguments from 1..n-1
-  std::string str_args;
-  std::for_each(argv+1, argv+argc, [&](char* p) { str_args.append(fmt::format("'{}' ", p)); });
-  // }}}
-
   // Launch program {{{
   if ( auto str_offset_fs = getenv("FIM_MAIN_LAUNCH") )
   {
@@ -223,8 +215,7 @@ int main(int argc, char** argv)
     //
     // Execute application
     //
-    std::string cmd = "{} {}"_fmt(str_boot_file, str_args);
-    system(cmd.c_str());
+    execve(str_boot_file.c_str(), argv, environ);
   } // }}}
   
   else // Write Runner {{{

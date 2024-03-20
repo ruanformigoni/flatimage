@@ -69,6 +69,12 @@ function _wait_kill()
 # $* = Termination message
 function _die()
 {
+  # Check if should continue
+  if [ -f "${FIM_DIR_MOUNT}.killer.stop" ]; then
+    _msg "Disarmed"
+    return;
+  fi
+
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
 
@@ -128,8 +134,15 @@ function _die()
   # # Now no one is using FIM_DIR_MOUNT
   fusermount -u "$FIM_DIR_MOUNT"
 
-  # Exit
-  kill -s SIGKILL "$PID"
+  # Force exit if killer is daemon
+  if [[ "$$" != "$PID" ]]; then
+    _msg "Killing pid '$PID', self is '$$'"
+    kill -s SIGKILL "$PID"
+  else
+    # Success, disarm daemon
+    touch "${FIM_DIR_MOUNT}.killer.stop"
+  fi
+
 }
 trap _die SIGINT EXIT
 # }}}
@@ -137,13 +150,19 @@ trap _die SIGINT EXIT
 # _main() {{{
 function main()
 {
-  [ -v PID ] || _msg "PID is not defined"
-  [ -v FIM_DIR_MOUNT ] || _msg "FIM_DIR_MOUNT is not defined"
+  [ -v PID             ] || _msg "PID is not defined"
+  [ -v FIM_DIR_MOUNT   ] || _msg "FIM_DIR_MOUNT is not defined"
   [ -v FIM_FILE_BINARY ] || _msg "FIM_FILE_BINARY is not defined"
 
+  # Used when main script becomes the killer
+  if [[ "$1" == "nowait" ]]; then
+    return;
+  fi
+
+  # Used on daemon to wait for the boot process to finish
   while kill -0 "$PID" 2>/dev/null; do
     if [ -f "${FIM_DIR_MOUNT}.killer.kill" ]; then
-      _msg "Killed by signal"
+      _msg "Manually killed"
       break
     fi
     sleep 1

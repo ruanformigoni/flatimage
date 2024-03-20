@@ -70,6 +70,8 @@ export FIM_STREAM="${FIM_STREAM:-/dev/null}"
 export FIM_FIFO="${FIM_FIFO:-1}"
 
 # Setup daemon to unmount filesystems on exit
+# This is useful in case this process gets killed by SIGKILL
+# Or it hangs and the user wants to kill it
 chmod +x "$FIM_FPATH_KILLER"
 nohup "$FIM_FPATH_KILLER" &>/dev/null & disown
 
@@ -202,10 +204,8 @@ function _die()
   set +e
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
-  # Signal exit to killer
-  echo 1 > "${FIM_DIR_MOUNT}.killer.kill"
-  # Wait_kill self
-  _wait_kill "Wait for self to finish" "$PID" 600
+  # Cleanup
+  exec "$FIM_FPATH_KILLER" nowait &>"$FIM_STREAM"
 }
 trap _die SIGINT EXIT
 # }}}

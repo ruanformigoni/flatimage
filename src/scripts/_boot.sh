@@ -185,7 +185,12 @@ function _re_mount()
   # Umount from initial mountpoint
   _unmount
   # Mount in new mountpoint
-  export FIM_DIR_MOUNT="$1"; _mount
+  if "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$1"; then
+    echo "Image mounted to '$1'"
+    echo "Press enter to un-mount"
+    read -r
+    fusermount -u "$1"
+  fi
 }
 # }}}
 
@@ -1441,7 +1446,7 @@ function _main()
       "cmd") _config_set "cmd" "${@:2}" ;;
       "resize") _resize "$2" ;;
       "xdg") _re_mount "$2"; xdg-open "$2"; read -r ;;
-      "mount") _re_mount "$2"; read -r ;;
+      "mount") _re_mount "$2"; ;;
       "config-list") shift; _config_fetch "$*" ;;
       "config-set") _config_set "$2" "$3";;
       "perms-list") _perms_list ;;

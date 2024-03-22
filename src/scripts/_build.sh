@@ -352,6 +352,34 @@ function _create_subsystem_arch()
   :When = PostTransaction
   :Exec = /bin/true
   :END
+  :
+  :tee /etc/pacman.d/hooks/cleanup-pkgs.hook <<-"END"
+  :[Trigger]
+  :Type = Path
+  :Operation = Install
+  :Operation = Upgrade
+  :Operation = Remove
+  :Target = *
+
+  :[Action]
+  :Description = Cleaning up downloaded files...
+  :When = PostTransaction
+  :Exec = /bin/sh -c 'rm -rf /var/cache/pacman/pkg/*'
+  :END
+  :
+  :tee /etc/pacman.d/hooks/cleanup-locale.hook <<-"END"
+  :[Trigger]
+  :Type = Path
+  :Operation = Install
+  :Operation = Upgrade
+  :Operation = Remove
+  :Target = *
+
+  :[Action]
+  :Description = Cleaning up locale files...
+  :When = PostTransaction
+  :Exec = /bin/sh -c 'find /usr/share/locale -mindepth 1 -maxdepth 1 -type d -not -iname "en_us" -exec rm -rf "{}" \;'
+  :END
 	END
   chmod +x ./arch/patch.sh
   chroot arch /bin/bash -c /patch.sh

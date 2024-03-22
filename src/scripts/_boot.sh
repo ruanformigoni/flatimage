@@ -617,13 +617,13 @@ function _dwarfs_overlay()
 
   # Check if exists
   if [[ ! -f "$path_file_dwarfs" ]]; then
-    _die "Filesystem '$path_file_dwarfs' not found for overlayfs setup"
+    FIM_DEBUG=1 _msg "Filesystem '$path_file_dwarfs' not found, continuing setup without it..."
   fi
 
   # Check if mountpoint is not empty string
   local mountpoint="$2"
   if [[ -z "$mountpoint" ]]; then
-    _die "Empty mountpoint argument"
+    _die "You must provide a mount point for the overlayfs filesystem"
   fi
 
   # Create overlayfs configuration

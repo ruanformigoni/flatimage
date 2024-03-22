@@ -395,6 +395,11 @@ function _create_subsystem_arch()
   chroot arch /bin/bash -c "pacman -Scc --noconfirm"
   rm -rf ./arch/var/cache/pacman/pkg/*
 
+  # Configure Locale
+  sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' ./arch/etc/locale.gen
+  chroot arch /bin/bash -c "locale-gen"
+  echo "LANG=en_US.UTF-8" > ./arch/etc/locale.conf
+
   # Install yay
   wget -O yay.tar.gz https://github.com/Jguer/yay/releases/download/v11.3.2/yay_11.3.2_x86_64.tar.gz
   tar -xf yay.tar.gz --strip-components=1 "yay_11.3.2_x86_64/yay"

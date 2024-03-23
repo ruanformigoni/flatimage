@@ -289,7 +289,7 @@ $ ./arch.flatimage fim-hook-add-post ./my-post-hook
 # Use cases
 
 To use FlatImage there is no need to install anything, simply download an image in
-the [releases](https://gitlab.com/formigoni/art/-/releases) page, i.e., `focal
+the [releases](https://github.com/ruanformigoni/flatimage/releases) page, i.e., `focal
 (ubuntu)`, `alpine` or `arch`. The archive is compressed, extract it and use it
 as shown in the following examples.
 

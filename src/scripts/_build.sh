@@ -333,6 +333,9 @@ function _create_subsystem_arch()
   # Required for nvidia
   chroot arch /bin/bash -c "pacman -S --noconfirm libvdpau lib32-libvdpau"
 
+  # Avoid segfaults on some OpenGL applications
+  chroot arch /bin/bash -c "pacman -S --noconfirm libxkbcommon lib32-libxkbcommon"
+
   # Pacman hooks
   ## Avoid taking too long on 'Arming ConditionNeedsUpdate' and 'Update MIME database'
   { sed -E 's/^\s+://' | tee ./arch/patch.sh | sed -e 's/^/-- /'; } <<-"END"

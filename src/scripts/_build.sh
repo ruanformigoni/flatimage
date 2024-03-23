@@ -318,7 +318,10 @@ function _create_subsystem_arch()
 
   # Audio & video
   pkgs_va+=("alsa-lib lib32-alsa-lib alsa-plugins lib32-alsa-plugins libpulse")
-  pkgs_va+=("lib32-libpulse jack2 lib32-jack2 alsa-tools alsa-utils")
+  pkgs_va+=("lib32-libpulse alsa-tools alsa-utils")
+  pkgs_va+=("pipewire lib32-pipewire pipewire-pulse")
+  pkgs_va+=("pipewire-jack lib32-pipewire-jack pipewire-alsa")
+  pkgs_va+=("wireplumber")
   # pkgs_va+=("mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon vulkan-intel nvidia-utils")
   # pkgs_va+=("lib32-vulkan-intel lib32-nvidia-utils vulkan-icd-loader lib32-vulkan-icd-loader")
   # pkgs_va+=("vulkan-mesa-layers lib32-vulkan-mesa-layers libva-mesa-driver")

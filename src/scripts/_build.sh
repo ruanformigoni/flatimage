@@ -330,6 +330,9 @@ function _create_subsystem_arch()
   # pkgs_va+=("lib32-mesa-utils")
   chroot arch /bin/bash -c "pacman -S ${pkgs_va[*]} --noconfirm"
 
+  # Required for nvidia
+  chroot arch /bin/bash -c "pacman -S --noconfirm libvdpau lib32-libvdpau"
+
   # Pacman hooks
   ## Avoid taking too long on 'Arming ConditionNeedsUpdate' and 'Update MIME database'
   { sed -E 's/^\s+://' | tee ./arch/patch.sh | sed -e 's/^/-- /'; } <<-"END"

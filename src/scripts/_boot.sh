@@ -1096,7 +1096,7 @@ function _exec()
 
       ### Bind
       for i in "${nvidia_binds[@]}"; do
-        _cmd_bwrap+=("--bind \"$i\" \"${dir_usr}/${i#/usr}\"")
+        _cmd_bwrap+=("--bind-try \"$i\" \"${dir_usr}/${i#/usr}\"")
         _cmd_proot+=("-b \"$i\"")
         _msg "NVIDIA bind '$i'"
       done &>"$FIM_STREAM" || true

@@ -51,13 +51,11 @@ jobs:
           wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/af507a2/fuse-overlayfs-x86_64"
       - name: Fetch dwarfs
         run: |
-          mkdir -p ./dwarfs
-          wget -Odwarfs.tar.xz https://github.com/mhx/dwarfs/releases/download/v0.6.2/dwarfs-0.6.2-Linux.tar.xz
-          tar xf dwarfs.tar.xz --strip-components=1 -Cdwarfs
           mkdir -p ./bin
-          mv ./dwarfs/bin/mkdwarfs      ./bin
-          mv ./dwarfs/bin/dwarfsextract ./bin
-          mv ./dwarfs/sbin/dwarfs2      ./bin/dwarfs
+          wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
+          ln -sf dwarfs_aio bin/mkdwarfs
+          ln -sf dwarfs_aio bin/dwarfsextract
+          ln -sf dwarfs_aio bin/dwarfs
       - name: Fetch bash
         run: |
           mkdir -p bin

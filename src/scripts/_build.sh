@@ -465,7 +465,7 @@ function _create_subsystem_arch()
   mkdir -p "./arch/fim"
 
   # Create mounts symlink
-  ln -sf /tmp/fim/run/dwarfs ./arch/fim/mount
+  ln -sf /tmp/fim/run/mounts/dwarfs ./arch/fim/mount
 
   # Create fim dwarfs dir
   mkdir -p "./arch/fim/dwarfs"

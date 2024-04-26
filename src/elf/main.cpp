@@ -157,14 +157,14 @@ int main(int argc, char** argv)
     if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
-    // Create mount dir as $FIM_DIR_TEMP/mount (/tmp/fim/app/xxxx.../mount)
+    // Create instance dir as $FIM_DIR_TEMP/instance (/tmp/fim/app/xxxx.../instance)
     //
     //// Fetch tempdir location
     char* cstr_dir_temp = getenv("FIM_DIR_TEMP");
     if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
-    fs::path path_dir_mount_prefix = "{}/{}/"_fmt(cstr_dir_temp, "mount");
+    fs::path path_dir_instance_prefix = "{}/{}/"_fmt(cstr_dir_temp, "instance");
     //// Create temp dir to mount filesystems into
-    fs::path path_dir_mounts = create_temp_dir(path_dir_mount_prefix);
+    fs::path path_dir_mounts = create_temp_dir(path_dir_instance_prefix);
     //// Path to ext mount dir is a directory called 'ext'
     fs::path path_dir_mount = path_dir_mounts / "ext";
     /// Create dir

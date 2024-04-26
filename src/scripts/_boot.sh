@@ -1340,7 +1340,7 @@ function _main()
   _msg '$*                   : '"$*"
 
   # Check filesystem
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -y "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   declare -a ext_tools=(

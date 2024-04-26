@@ -55,6 +55,11 @@ export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
 export FIM_DIR_HOOKS="$FIM_DIR_MOUNT/fim/hooks"
 
+# Default host directories
+#shellcheck disable=2016
+export FIM_DIR_HOST_CONFIG="$FIM_DIR_BINARY/.$FIM_BASENAME_BINARY".config
+export FIM_DIR_HOST_OVERLAYS="$FIM_DIR_HOST_CONFIG/overlays"
+
 # Directories with mountpoints for respective filesystem types
 export FIM_DIR_MOUNTS_DWARFS="${FIM_DIR_MOUNTS}/dwarfs"
 export FIM_DIR_MOUNTS_OVERLAYFS="${FIM_DIR_MOUNTS}/overlayfs"

@@ -168,6 +168,8 @@ Avaliable options:
 * `FIM_DIR_TEMP`: Location of the temporary runtime directory.
 * `FIM_DIR_MOUNT`: Location of the runtime fim mountpoint.
 * `FIM_MAIN_OFFSET`: Shows filesystem offset and exits.
+* `FIM_DIR_HOST_CONFIG`: Configuration directory in the host machine
+* `FIM_DIR_HOST_OVERLAYS`: Overlayfs mountpoint directory in the host machine
 
 
 The default path of `FIM` temporary files is `/tmp/fim`.

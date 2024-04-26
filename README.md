@@ -28,8 +28,9 @@
         - [Inside the container](#inside-the-container)
 - [Samples](#samples)
 - [Usage Inside Docker](#usage-inside-docker)
-- [Further Considerations](#further-considerations)
 - [Motivations](#motivations)
+- [Further Considerations](#further-considerations)
+- [Architecture](#architecture)
 - [Related Projects](#related-projects)
 
 ## What is FlatImage?
@@ -550,6 +551,10 @@ docker run --privileged -it --rm -v "$(pwd):/workdir" ubuntu:focal /bin/bash
 cd workdir
 ./alpine.flatimage
 ```
+
+# Architecture
+
+![architecture.svg](./doc/flatimage-architecture.svg)
 
 # Further Considerations
 

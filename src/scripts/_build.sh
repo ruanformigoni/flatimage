@@ -461,6 +461,12 @@ function _create_subsystem_arch()
   # Create share symlink
   ln -sf /usr/share ./arch/share
 
+  # Create fim dir
+  mkdir -p "./arch/fim"
+
+  # Create mounts symlink
+  ln -sf /tmp/fim/run/dwarfs ./arch/fim/mount
+
   # Create fim dwarfs dir
   mkdir -p "./arch/fim/dwarfs"
 

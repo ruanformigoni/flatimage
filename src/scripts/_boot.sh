@@ -41,6 +41,7 @@ export FIM_SECTOR=$((FIM_OFFSET/512))
 # Paths
 export FIM_DIR_GLOBAL="${FIM_DIR_GLOBAL:?FIM_DIR_GLOBAL is unset or null}"
 export FIM_DIR_GLOBAL_BIN="${FIM_DIR_GLOBAL}/bin"
+export FIM_DIR_MOUNTS="${FIM_DIR_MOUNTS:?FIM_DIR_MOUNTS is unset or null}"
 export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
 export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
 export FIM_FILE_CONFIG="$FIM_DIR_MOUNT/fim/config"
@@ -53,6 +54,16 @@ export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
 export FIM_DIR_HOOKS="$FIM_DIR_MOUNT/fim/hooks"
+
+# Directories with mountpoints for respective filesystem types
+export FIM_DIR_MOUNTS_DWARFS="${FIM_DIR_MOUNTS}/dwarfs"
+export FIM_DIR_MOUNTS_OVERLAYFS="${FIM_DIR_MOUNTS}/overlayfs"
+
+# Runtime directories (only exist inside the container, binds to host)
+export FIM_DIR_RUNTIME="/tmp/fim/run"
+export FIM_DIR_RUNTIME_MOUNTS="${FIM_DIR_RUNTIME}/mounts"
+export FIM_DIR_RUNTIME_MOUNTS_DWARFS="${FIM_DIR_RUNTIME_MOUNTS}/dwarfs"
+export FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS="${FIM_DIR_RUNTIME_MOUNTS}/overlayfs"
 
 # Give static tools priority in PATH
 export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
@@ -736,7 +747,7 @@ function _find_dwarfs()
   while read -r i; do
     local filesystem_file="$i"
     # Define mountpoint
-    local mountpoint="${FIM_DIR_MOUNT}.mount.dwarfs.$(basename -s .dwarfs "$i")"
+    local mountpoint="${FIM_DIR_MOUNTS_DWARFS}/$(basename -s .dwarfs "$i")"
     # Log
     _msg "DWARFS FS: $filesystem_file"
     _msg "DWARFS MP: $mountpoint"
@@ -796,13 +807,21 @@ function _mount_dwarfs()
     # Create mountpoint
     mkdir -p "$mp"
     # Get path to symlink to
-    local symlink_target="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
+    local symlink_name="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
+    _msg "DWARFS SYMLINK NAME: $symlink_name"
+    symlink_name="$FIM_DIR_MOUNT/$symlink_name"
+    mkdir -p "$(dirname "$symlink_name")"
+    _msg "DWARFS SYMLINK NAME (FULL): $symlink_name"
+    # Translate mountpoint to fim runtime dir
+    local symlink_target="$FIM_DIR_RUNTIME_MOUNTS_DWARFS/$(basename "$mp")"
     _msg "DWARFS SYMLINK TARGET: $symlink_target"
-    symlink_target="$FIM_DIR_MOUNT/$symlink_target"
-    mkdir -p "$(dirname "$symlink_target")"
-    _msg "DWARFS SYMLINK PATH: $symlink_target"
-    # Symlink, skip if directory exists
-    ln -T -sfnv "$mp" "$symlink_target" &>"$FIM_STREAM" || continue
+    # Symlink, skip if exists
+    if ! [[ -h "$symlink_name" ]]; then
+      ln -T -sfnv "$symlink_target" "$symlink_name" &>"$FIM_STREAM" || continue
+      _msg "Symlink created"
+    else
+      _msg "Symlink exists"
+    fi
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM" || continue
   done
@@ -847,7 +866,7 @@ function _mount_overlayfs()
     basename_mount="${basename_mount##*dwarfs.}"
     _msg "basename mount: $basename_mount"
     # Define mount point for overlayfs
-    local mount="${FIM_DIR_MOUNT}.mount.overlayfs.$basename_mount"
+    local mount="${FIM_DIR_MOUNTS_OVERLAYFS}/$basename_mount"
     mkdir -vp "$mount" &> "$FIM_STREAM"
     _msg "OVERLAYFS mount: $mount"
     # Symlink from inside the container to the mount directory
@@ -954,6 +973,9 @@ function _exec()
   _cmd_proot+=("-b /proc")
   _cmd_proot+=("-b /tmp")
   _cmd_proot+=("-b /sys")
+
+  # Setup access to filesystems from inside the container
+  _cmd_bwrap+=("--bind \"$FIM_DIR_MOUNTS\" ${FIM_DIR_RUNTIME_MOUNTS}")
 
   # Create HOME if not exists
   mkdir -p "$HOME"

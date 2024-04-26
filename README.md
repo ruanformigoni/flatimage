@@ -135,8 +135,6 @@ Avaliable options:
     - E.g.: ./arch.flatimage fim-dwarfs-add ./image.dwarfs /opt/image
 - fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
     - E.g.: ./arch.flatimage fim-dwarfs-list
-- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
 - fim-hook-add-pre: Includes a hook that runs before the main command
     - E.g.: ./arch.flatimage fim-hook-add-pre ./my-hook
 - fim-hook-add-post: Includes a hook that runs after the main command
@@ -246,16 +244,7 @@ $ find ~/.local/share -iname "*flatimage*" -exec rm -v "{}" \;
 
 ### Overlayfs
 
-You can use overlayfs on top of the `dwarfs` filesystems, e.g.:
-
-```bash
- # List dwarfs filesystems
-$ ./arch.flatimage fim-dwarfs-list
-usr
-opt
- # Suppose you want to make "usr" writteable again, use
-$ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
-```
+Overlayfs is automatically enabled for all compressed filesystems.
 
 ### Hooks
 

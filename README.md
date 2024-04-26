@@ -537,9 +537,32 @@ In this case `arch.flatimage` is now a portable building environment for htop.
 
 # Samples
 
-[1.](https://gitlab.com/formigoni/flatimage/-/blob/master/samples/sample-steam.sh?ref_type=heads) Portable steam
+## Portable steam
 
-[2.](https://gitlab.com/formigoni/wine/-/releases) Portable wine
+Creates a portable steam installation that works on both `GNU` and `MUSL` systems:
+
+```
+wget -O- https://raw.githubusercontent.com/ruanformigoni/flatimage/master/samples/steam.sh | sh
+```
+
+The home directory (where your games will be installed into) for this steam sample is always on the same directory as the flatimage, in a folder called `steam.home`. This enables the usage of steam on an external hard drive that maybe plugged in several linux distros, without having to re-configure anything.
+
+## Portable wine
+
+Creates a portable wine installation that works on both `GNU` and `MUSL` systems:
+
+```
+wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/base.flatimage.tar.xz
+wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/staging.dwarfs
+tar xf base.flatimage.tar.xz
+rm base.flatimage.tar.xz
+chmod +x base.flatimage
+./base.flatimage fim-dwarfs-add staging.dwarfs /fim/mount/wine
+rm staging.dwarfs
+mv ./base.flatimage ./wine
+```
+
+You can use it simply by:
 
 # Usage Inside Docker
 

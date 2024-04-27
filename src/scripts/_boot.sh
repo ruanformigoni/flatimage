@@ -599,9 +599,16 @@ function _dwarfs_add()
 
   # Get current free space
   local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
+  FIM_DEBUG=1 _msg "Size of free space is '$(numfmt --from=iec --to-unit=1M "${size_free}")M'"
 
   # Resize by the amount required to fit
-  _resize "+${size_target}"
+  if [[ $size_free -lt $size_target ]]; then
+    local size_new=$(( size_target - size_free ))
+    FIM_DEBUG=1 _msg "Resize the filesystem to to '$(numfmt --from=iec --to-unit=1M "${size_new}")M'"
+    _resize "+${size_new}"
+  else
+    FIM_DEBUG=1 _msg "Available size is enough to fit file"
+  fi
 
   # Include dwarfs inside container
   FIM_DEBUG=1 _msg "Include target '$path_file_host' in '$path_file_guest'"

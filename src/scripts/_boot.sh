@@ -866,7 +866,7 @@ function _exec()
   [ -n "$*" ] || FIM_DEBUG=1 _msg "Empty arguments for exec"
 
   # Mount overlayfs and dwarfs
-  _setup_filesystems
+  _setup_filesystems || true
 
   # Fetch CMD
   declare -a cmd

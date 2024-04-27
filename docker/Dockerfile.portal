@@ -1,0 +1,33 @@
+FROM alpine:latest
+
+# Enable community repo
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/main/ > /etc/apk/repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
+RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
+
+# Install deps
+RUN apk update && apk upgrade
+RUN apk add --no-cache build-base git libbsd-dev git cmake gcc \
+  bash e2fsprogs xz curl zstd gawk upx
+
+# Update PATH
+ENV PATH="/root/.local/bin:$PATH"
+
+# Copy files
+RUN mkdir /fim
+COPY . /fim/
+
+# Set workdir
+WORKDIR /fim
+
+# Compile
+WORKDIR /fim/src/portal
+RUN g++ -o portal_guest portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
+RUN g++ -o portal_host portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
+RUN upx --brute --no-lzma portal_guest
+RUN upx --brute --no-lzma portal_host
+
+# Move to dist dir
+RUN mkdir -p /fim/dist
+RUN cp /fim/src/portal/portal_guest /fim/dist/portal_guest
+RUN cp /fim/src/portal/portal_host /fim/dist/portal_host

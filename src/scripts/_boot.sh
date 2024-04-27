@@ -1351,12 +1351,13 @@ function _main()
 
   # Copy tools
   declare -a ext_tools=(
+    "xdg-open" "xdg-mime"
+    "dwarfs_aio" "dwarfs" "mkdwarfs" "dwarfsextract"
     "[" "b2sum" "base32" "base64" "basename" "cat" "chcon" "chgrp" "chmod" "chown" "chroot" "cksum"
     "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du"
-    "dwarfs_aio" "dwarfs" "mkdwarfs" "dwarfsextract"
     "echo" "env" "expand" "expr" "factor" "false" "fmt" "fold" "groups" "head" "hostid" "id" "join"
     "kill" "link" "ln" "logname" "ls" "magick" "md5sum" "mkdir" "mkfifo" "mknod" "mktemp"
-    "mv" "nice" "nl" "nohup" "nproc" "numfmt" "od" "overlayfs" "paste" "pathchk" "pr" "printenv"
+    "mv" "nice" "nl" "nohup" "nproc" "numfmt" "od" "overlayfs" "paste" "pathchk" "fim_portal_host" "pr" "printenv"
     "printf" "ptx" "pwd" "readlink" "realpath" "rm" "rmdir" "runcon" "seq" "sha1sum" "sha224sum"
     "sha256sum" "sha384sum" "sha512sum" "shred" "shuf" "sleep" "sort" "split" "stat" "stty" "sum"
     "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr" "true" "truncate" "tsort" "uname"
@@ -1366,6 +1367,9 @@ function _main()
 
   # Copy static binaries
   _copy_tools "${ext_tools[@]}"
+
+  # Start portal
+  &>"${FIM_DIR_MOUNT}.portal.log" fim_portal_host "$FIM_FILE_BINARY" &
 
   # Mount filesystem
   _mount

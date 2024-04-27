@@ -78,6 +78,9 @@ function _die()
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
 
+  # Close portal
+  pkill --signal SIGTERM -f "portal_host $FIM_FILE_BINARY"
+
   # Unmount overlayfs
   for i in "${FIM_DIR_MOUNTS_OVERLAYFS}"/*; do
     # Iterate on parent and child pids

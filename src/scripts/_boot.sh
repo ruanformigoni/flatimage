@@ -729,10 +729,11 @@ function _rebuild()
 # Populates FIM_MOUNTS_DWARFS (filesystem file -> mountpoint)
 function _find_dwarfs()
 {
+  mkdir -p "$FIM_DIR_MOUNTS_DWARFS"
   while read -r i; do
     local filesystem_file="$i"
     # Define mountpoint
-    local mountpoint="${FIM_DIR_MOUNTS_DWARFS}/$(basename -s .dwarfs "$i")"
+    local mountpoint="$(mktemp -d --tmpdir="$FIM_DIR_MOUNTS_DWARFS" mount.XXXXXXXXXXXXXXXXX)"
     # Log
     _msg "DWARFS FS: $filesystem_file"
     _msg "DWARFS MP: $mountpoint"
@@ -748,13 +749,10 @@ function _find_dwarfs()
 function _find_overlayfs()
 {
   for filesystem in "${!FIM_MOUNTS_DWARFS[@]}"; do
-    # Filesystem
-    local basename_filesystem="$(basename -s .dwarfs "$filesystem")"
-    # Filesystem path
-    _msg "OVERLAYFS FS: $FIM_DIR_DWARFS/$basename_filesystem.dwarfs"
+    local mountpoint="${FIM_MOUNTS_DWARFS[$filesystem]}"
     # Define container and host bindings
-    local fs_ro="$FIM_DIR_MOUNTS_DWARFS/$basename_filesystem"
-    local fs_rw="$FIM_DIR_MOUNTS_OVERLAYFS/$basename_filesystem" 
+    local fs_ro="$mountpoint"
+    local fs_rw="$FIM_DIR_MOUNTS_OVERLAYFS/$(basename "$mountpoint")" 
     # Log
     _msg "OVERLAYFS fs_ro path: ${fs_ro}"
     _msg "OVERLAYFS fs_rw path: ${fs_rw}"
@@ -773,6 +771,8 @@ function _mount_dwarfs()
   for i in "${!FIM_MOUNTS_DWARFS[@]}"; do
     local fs="$i"
     local mp="${FIM_MOUNTS_DWARFS["$i"]}"
+    _msg "DWARFS filesystem: $fs"
+    _msg "DWARFS mountpoint: $mp"
     # Create mountpoint
     mkdir -p "$mp"
     # Mount
@@ -785,15 +785,22 @@ function _mount_dwarfs()
 # # Configure symlinks from filesystem that should point to overlayfs
 function _mount_symlinks()
 {
-  for i in "${!FIM_MOUNTS_DWARFS[@]}"; do
+  for filesystem in "${!FIM_MOUNTS_DWARFS[@]}"; do
+    local mountpoint="${FIM_MOUNTS_DWARFS[$filesystem]}"
     # Configure symlink to overlayfs
-    local symlink_name="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
+    local symlink_name="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$filesystem")")"
     _msg "OVERLAYFS SYMLINK NAME: $symlink_name"
-    symlink_name="$FIM_DIR_MOUNT/$symlink_name"
-    mkdir -p "$(dirname "$symlink_name")"
-    _msg "OVERLAYFS SYMLINK NAME (FULL): $symlink_name"
+    ## Replace /fim/mount with the corresponding path on the host
+    if [[ "$symlink_name" =~ ^/+fim/mount.* ]]; then
+      mkdir -p "$FIM_DIR_MOUNTS/symlinks"
+      symlink_name="${symlink_name//fim\/mount/$FIM_DIR_MOUNTS\/symlinks}"
+    ## Prepend ext mount directory
+    else
+      symlink_name="$FIM_DIR_MOUNT/$symlink_name"
+    fi
+    _msg "OVERLAYFS SYMLINK NAME: $symlink_name"
     # Translate mountpoint to fim runtime dir
-    local symlink_target="$FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS/$(basename "$mp")"
+    local symlink_target="$FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS/$(basename "$mountpoint")"
     _msg "OVERLAYFS SYMLINK TARGET: $symlink_target"
     # Symlink does not exist
     if ! [[ -h "$symlink_name" ]]; then
@@ -852,8 +859,8 @@ function _setup_filesystems()
 
   # Mount filesystems
   _mount_dwarfs
-  _mount_symlinks
   _mount_overlayfs
+  _mount_symlinks
 }
 # }}}
 

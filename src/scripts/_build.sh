@@ -167,7 +167,7 @@ function _create_subsystem_debootstrap()
   mkdir -p "/tmp/$dist/fim"
 
   # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/dwarfs "/tmp/$dist/fim/mount"
+  ln -sf /tmp/fim/run/mounts/symlinks "/tmp/$dist/fim/mount"
 
   # Create fim dwarfs dir
   mkdir -p "/tmp/$dist/fim/dwarfs"
@@ -260,7 +260,7 @@ function _create_subsystem_alpine()
   mkdir -p "/tmp/$dist/fim"
 
   # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/dwarfs "/tmp/$dist/fim/mount"
+  ln -sf /tmp/fim/run/mounts/symlinks "/tmp/$dist/fim/mount"
 
   # Create fim dwarfs dir
   mkdir -p "/tmp/$dist/fim/dwarfs"
@@ -477,7 +477,7 @@ function _create_subsystem_arch()
   mkdir -p "./arch/fim"
 
   # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/dwarfs ./arch/fim/mount
+  ln -sf /tmp/fim/run/mounts/symlinks ./arch/fim/mount
 
   # Create fim dwarfs dir
   mkdir -p "./arch/fim/dwarfs"

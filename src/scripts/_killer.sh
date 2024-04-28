@@ -78,8 +78,11 @@ function _die()
   # Force debug message
   [ -z "$*" ] || FIM_DEBUG=1 _msg "$*"
 
+  # Close portal
+  pkill --signal SIGTERM -f "portal_host $FIM_FILE_BINARY"
+
   # Unmount overlayfs
-  for i in "${FIM_DIR_MOUNT}".mount.overlayfs*; do
+  for i in "${FIM_DIR_MOUNTS_OVERLAYFS}"/*; do
     # Iterate on parent and child pids
     _msg "Unmount $i"
     for pid in $(pgrep -f "$i"); do
@@ -95,7 +98,7 @@ function _die()
   done
 
   # Unmount dwarfs
-  for i in "${FIM_DIR_MOUNT}".mount.dwarfs*; do
+  for i in "${FIM_DIR_MOUNTS_DWARFS}"/*; do
     _msg "Unmount $i"
     for pid in $(pgrep -f "$i"); do
       # Ignore self

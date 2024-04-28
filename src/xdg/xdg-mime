@@ -1,0 +1,3 @@
+#!/tmp/fim/bin/bash
+
+fim_portal_guest xdg-mime "$@"

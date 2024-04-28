@@ -28,8 +28,9 @@
         - [Inside the container](#inside-the-container)
 - [Samples](#samples)
 - [Usage Inside Docker](#usage-inside-docker)
-- [Further Considerations](#further-considerations)
 - [Motivations](#motivations)
+- [Further Considerations](#further-considerations)
+- [Architecture](#architecture)
 - [Related Projects](#related-projects)
 
 ## What is FlatImage?
@@ -134,8 +135,6 @@ Avaliable options:
     - E.g.: ./arch.flatimage fim-dwarfs-add ./image.dwarfs /opt/image
 - fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
     - E.g.: ./arch.flatimage fim-dwarfs-list
-- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
 - fim-hook-add-pre: Includes a hook that runs before the main command
     - E.g.: ./arch.flatimage fim-hook-add-pre ./my-hook
 - fim-hook-add-post: Includes a hook that runs after the main command
@@ -167,6 +166,8 @@ Avaliable options:
 * `FIM_DIR_TEMP`: Location of the temporary runtime directory.
 * `FIM_DIR_MOUNT`: Location of the runtime fim mountpoint.
 * `FIM_MAIN_OFFSET`: Shows filesystem offset and exits.
+* `FIM_DIR_HOST_CONFIG`: Configuration directory in the host machine
+* `FIM_DIR_HOST_OVERLAYS`: Overlayfs mountpoint directory in the host machine
 
 
 The default path of `FIM` temporary files is `/tmp/fim`.
@@ -243,16 +244,7 @@ $ find ~/.local/share -iname "*flatimage*" -exec rm -v "{}" \;
 
 ### Overlayfs
 
-You can use overlayfs on top of the `dwarfs` filesystems, e.g.:
-
-```bash
- # List dwarfs filesystems
-$ ./arch.flatimage fim-dwarfs-list
-usr
-opt
- # Suppose you want to make "usr" writteable again, use
-$ ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
-```
+Overlayfs is automatically enabled for all compressed filesystems.
 
 ### Hooks
 
@@ -536,9 +528,32 @@ In this case `arch.flatimage` is now a portable building environment for htop.
 
 # Samples
 
-[1.](https://gitlab.com/formigoni/flatimage/-/blob/master/samples/sample-steam.sh?ref_type=heads) Portable steam
+## Portable steam
 
-[2.](https://gitlab.com/formigoni/wine/-/releases) Portable wine
+Creates a portable steam installation that works on both `GNU` and `MUSL` systems:
+
+```
+wget -O- https://raw.githubusercontent.com/ruanformigoni/flatimage/master/samples/steam.sh | sh
+```
+
+The home directory (where your games will be installed into) for this steam sample is always on the same directory as the flatimage, in a folder called `steam.home`. This enables the usage of steam on an external hard drive that maybe plugged in several linux distros, without having to re-configure anything.
+
+## Portable wine
+
+Creates a portable wine installation that works on both `GNU` and `MUSL` systems:
+
+```
+wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/base.flatimage.tar.xz
+wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/staging.dwarfs
+tar xf base.flatimage.tar.xz
+rm base.flatimage.tar.xz
+chmod +x base.flatimage
+./base.flatimage fim-dwarfs-add staging.dwarfs /fim/mount/wine
+rm staging.dwarfs
+mv ./base.flatimage ./wine
+```
+
+You can use it simply by:
 
 # Usage Inside Docker
 
@@ -550,6 +565,10 @@ docker run --privileged -it --rm -v "$(pwd):/workdir" ubuntu:focal /bin/bash
 cd workdir
 ./alpine.flatimage
 ```
+
+# Architecture
+
+![architecture.svg](./doc/flatimage-architecture.svg)
 
 # Further Considerations
 

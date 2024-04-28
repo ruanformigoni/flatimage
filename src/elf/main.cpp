@@ -66,6 +66,7 @@ auto operator"" _err(const char* c_str, std::size_t)
 // fn: create_temp_dir {{{
 std::string create_temp_dir(std::string const& prefix)
 {
+  fs::create_directories(prefix);
   std::string temp_dir_template = prefix + "XXXXXX";
   auto temp_dir_template_cstr = std::unique_ptr<char[]>(new char[temp_dir_template.size() + 1]);
   std::strcpy(temp_dir_template_cstr.get(), temp_dir_template.c_str());
@@ -156,22 +157,24 @@ int main(int argc, char** argv)
     if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
-    // Create temp dir
+    // Create instance dir as $FIM_DIR_TEMP/instance (/tmp/fim/app/xxxx.../instance)
     //
     //// Fetch tempdir location
     char* cstr_dir_temp = getenv("FIM_DIR_TEMP");
     if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
-    //// Create prefix as $FIM_DIR_TEMP/mount
-    std::string str_dir_mount_prefix{"{}/{}/"_fmt(cstr_dir_temp, "mount")};
-    fs::create_directories(str_dir_mount_prefix);
-    //// Create temp dir to mount filesystems as $FIM_DIR_TEMP/mount/XXXXXX
-    std::string str_dir_mount = create_temp_dir(str_dir_mount_prefix);
+    fs::path path_dir_instance_prefix = "{}/{}/"_fmt(cstr_dir_temp, "instance");
+    //// Create temp dir to mount filesystems into
+    fs::path path_dir_mounts = create_temp_dir(path_dir_instance_prefix);
+    //// Path to ext mount dir is a directory called 'ext'
+    fs::path path_dir_mount = path_dir_mounts / "ext";
+    /// Create dir
+    fs::create_directory(path_dir_mount);
 
     //
     // Set extract path for helper scripts (boot,killer)
     //
-    std::string str_boot_file = "{}.boot"_fmt(str_dir_mount);
-    std::string str_killer_file = "{}.killer"_fmt(str_dir_mount);
+    std::string str_boot_file = "{}.boot"_fmt(path_dir_mount.c_str());
+    std::string str_killer_file = "{}.killer"_fmt(path_dir_mount.c_str());
     // Change to global directory if debug flag is enabled
     if ( getenv("FIM_DEBUG") )
     {
@@ -209,7 +212,8 @@ int main(int argc, char** argv)
     //
     // Set environment
     //
-    setenv("FIM_DIR_MOUNT", str_dir_mount.c_str(), 1);
+    setenv("FIM_DIR_MOUNTS", path_dir_mounts.c_str(), 1);
+    setenv("FIM_DIR_MOUNT", path_dir_mount.c_str(), 1);
     setenv("FIM_OFFSET", str_offset_fs, 1);
 
     //
@@ -254,10 +258,10 @@ int main(int argc, char** argv)
     //
     // Create temp dir
     //
-    std::string str_dir_instance = str_dir_base + "/instance/";
-    if ( ! fs::exists(str_dir_instance) && ! fs::create_directories(str_dir_instance) )
+    std::string str_dir_app = str_dir_base + "/app/";
+    if ( ! fs::exists(str_dir_app) && ! fs::create_directories(str_dir_app) )
     {
-      "Failed to create directory {}"_err(str_dir_instance);
+      "Failed to create directory {}"_err(str_dir_app);
     }
 
     // Get some metadata for uniqueness
@@ -269,7 +273,7 @@ int main(int argc, char** argv)
       "Failed to retrieve size of self '{}'"_err(path_absolute.c_str());
     }
     // // Stitch all to make the temporary directory name
-    std::string str_dir_temp = str_dir_base + "/instance/{}_{}"_fmt(COMMIT, TIMESTAMP);
+    std::string str_dir_temp = str_dir_base + "/app/{}_{}"_fmt(COMMIT, TIMESTAMP);
     fs::create_directories(str_dir_temp);
 
     //

@@ -41,6 +41,7 @@ export FIM_SECTOR=$((FIM_OFFSET/512))
 # Paths
 export FIM_DIR_GLOBAL="${FIM_DIR_GLOBAL:?FIM_DIR_GLOBAL is unset or null}"
 export FIM_DIR_GLOBAL_BIN="${FIM_DIR_GLOBAL}/bin"
+export FIM_DIR_MOUNTS="${FIM_DIR_MOUNTS:?FIM_DIR_MOUNTS is unset or null}"
 export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
 export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
 export FIM_FILE_CONFIG="$FIM_DIR_MOUNT/fim/config"
@@ -53,6 +54,21 @@ export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
 export FIM_DIR_HOOKS="$FIM_DIR_MOUNT/fim/hooks"
+
+# Default host directories
+#shellcheck disable=2016
+export FIM_DIR_HOST_CONFIG="$FIM_DIR_BINARY/.$FIM_BASENAME_BINARY".config
+export FIM_DIR_HOST_OVERLAYS="$FIM_DIR_HOST_CONFIG/overlays"
+
+# Directories with mountpoints for respective filesystem types
+export FIM_DIR_MOUNTS_DWARFS="${FIM_DIR_MOUNTS}/dwarfs"
+export FIM_DIR_MOUNTS_OVERLAYFS="${FIM_DIR_MOUNTS}/overlayfs"
+
+# Runtime directories (only exist inside the container, binds to host)
+export FIM_DIR_RUNTIME="/tmp/fim/run"
+export FIM_DIR_RUNTIME_MOUNTS="${FIM_DIR_RUNTIME}/mounts"
+export FIM_DIR_RUNTIME_MOUNTS_DWARFS="${FIM_DIR_RUNTIME_MOUNTS}/dwarfs"
+export FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS="${FIM_DIR_RUNTIME_MOUNTS}/overlayfs"
 
 # Give static tools priority in PATH
 export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
@@ -307,8 +323,6 @@ function _help()
   :    - E.g.: ./arch.flatimage fim-dwarfs-add ./image.dwarfs /opt/image
   :- fim-dwarfs-list: Lists the dwarfs filesystems in the flatimage
   :    - E.g.: ./arch.flatimage fim-dwarfs-list
-  :- fim-dwarfs-overlayfs: Makes dwarfs filesystems writteable again with overlayfs
-  :    - E.g.: ./arch.flatimage fim-dwarfs-overlayfs usr '"$FIM_FILE_BINARY".config/overlays/usr'
   :- fim-hook-add-pre: Includes a hook that runs before the main command
   :    - E.g.: ./arch.flatimage fim-hook-add-pre ./my-hook
   :- fim-hook-add-post: Includes a hook that runs after the main command
@@ -585,9 +599,16 @@ function _dwarfs_add()
 
   # Get current free space
   local size_free="$(_get_space_free "$FIM_DIR_MOUNT")"
+  FIM_DEBUG=1 _msg "Size of free space is '$(numfmt --from=iec --to-unit=1M "${size_free}")M'"
 
   # Resize by the amount required to fit
-  _resize "+${size_target}"
+  if [[ $size_free -lt $size_target ]]; then
+    local size_new=$(( size_target - size_free ))
+    FIM_DEBUG=1 _msg "Resize the filesystem to to '$(numfmt --from=iec --to-unit=1M "${size_new}")M'"
+    _resize "+${size_new}"
+  else
+    FIM_DEBUG=1 _msg "Available size is enough to fit file"
+  fi
 
   # Include dwarfs inside container
   FIM_DEBUG=1 _msg "Include target '$path_file_host' in '$path_file_guest'"
@@ -604,31 +625,6 @@ function _dwarfs_list()
   for i in "$FIM_DIR_DWARFS"/*; do
     basename -s .dwarfs "$i"
   done
-}
-# }}}
-
-# _dwarfs_overlay {{{ 
-# $1 Dwarfs filesystem to overlay
-# $2 Mountpoint
-function _dwarfs_overlay()
-{
-  # Create full path to filesystem
-  local path_file_dwarfs="$FIM_DIR_DWARFS/$1.dwarfs"
-
-  # Check if exists
-  if [[ ! -f "$path_file_dwarfs" ]]; then
-    FIM_DEBUG=1 _msg "Filesystem '$path_file_dwarfs' not found, continuing setup without it..."
-  fi
-
-  # Check if mountpoint is not empty string
-  local mountpoint="$2"
-  if [[ -z "$mountpoint" ]]; then
-    _die "You must provide a mount point for the overlayfs filesystem"
-  fi
-
-  # Create overlayfs configuration
-  local basename_file_dwarfs="$(basename -s .dwarfs "$path_file_dwarfs")"
-  _config_set "dwarfs.overlay.$basename_file_dwarfs" "$mountpoint"
 }
 # }}}
 
@@ -736,7 +732,7 @@ function _find_dwarfs()
   while read -r i; do
     local filesystem_file="$i"
     # Define mountpoint
-    local mountpoint="${FIM_DIR_MOUNT}.mount.dwarfs.$(basename -s .dwarfs "$i")"
+    local mountpoint="${FIM_DIR_MOUNTS_DWARFS}/$(basename -s .dwarfs "$i")"
     # Log
     _msg "DWARFS FS: $filesystem_file"
     _msg "DWARFS MP: $mountpoint"
@@ -751,36 +747,20 @@ function _find_dwarfs()
 # Populates FIM_MOUNTS_OVERLAYFS (src dir -> target dir)
 function _find_overlayfs()
 {
-  while read -r overlay; do
+  for filesystem in "${!FIM_MOUNTS_DWARFS[@]}"; do
     # Filesystem
-    local basename_filesystem="${overlay##dwarfs.overlay.}"
+    local basename_filesystem="$(basename -s .dwarfs "$filesystem")"
     # Filesystem path
-    local path_dwarfs_filesystem="$FIM_DIR_DWARFS/${basename_filesystem}.dwarfs"
-    # Check if exists
-    if [[ ! -f "$path_dwarfs_filesystem" ]]; then
-      FIM_DEBUG=1 _msg "Dwarfs filesystem not found in '$path_dwarfs_filesystem'"
-      return
-    fi
-    _msg "OVERLAYFS FS: $path_dwarfs_filesystem"
-    # Fetch paths
-    # # This is the dwarfs mount point
-    local bind_cont="$(_config_fetch --single --value "dwarfs.$basename_filesystem")"
-    # # This is the overlayfs mount point, it will overlay the dwarfs mount point
-    local bind_host="$(_config_fetch --single --value "$overlay")"
-    # Check empty string
-    [[ -n "$bind_cont" ]] || { FIM_DEBUG=1 _msg "Could not find dwarfs filesystem 'dwarfs.$basename_filesystem'"; break; }
-    [[ -n "$bind_host" ]] || { FIM_DEBUG=1 _msg "Could not find mount point for overlay '$overlay'"; break; }
-    # Expand
-    bind_cont="$(eval echo "$bind_cont")"
-    bind_host="$(eval echo "$bind_host")" 
-    # Adjust path to relative from inside the container
-    bind_cont="$FIM_DIR_MOUNT/$bind_cont"
+    _msg "OVERLAYFS FS: $FIM_DIR_DWARFS/$basename_filesystem.dwarfs"
+    # Define container and host bindings
+    local fs_ro="$FIM_DIR_MOUNTS_DWARFS/$basename_filesystem"
+    local fs_rw="$FIM_DIR_MOUNTS_OVERLAYFS/$basename_filesystem" 
     # Log
-    _msg "OVERLAYFS SRC: ${bind_cont}"
-    _msg "OVERLAYFS DST: ${bind_host}"
+    _msg "OVERLAYFS fs_ro path: ${fs_ro}"
+    _msg "OVERLAYFS fs_rw path: ${fs_rw}"
     # Save
-    FIM_MOUNTS_OVERLAYFS["$bind_cont"]="$bind_host"
-  done < <(_config_fetch --key "dwarfs.overlay")
+    FIM_MOUNTS_OVERLAYFS["$fs_ro"]="$fs_rw"
+  done
 }
 # }}}
 
@@ -795,16 +775,37 @@ function _mount_dwarfs()
     local mp="${FIM_MOUNTS_DWARFS["$i"]}"
     # Create mountpoint
     mkdir -p "$mp"
-    # Get path to symlink to
-    local symlink_target="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
-    _msg "DWARFS SYMLINK TARGET: $symlink_target"
-    symlink_target="$FIM_DIR_MOUNT/$symlink_target"
-    mkdir -p "$(dirname "$symlink_target")"
-    _msg "DWARFS SYMLINK PATH: $symlink_target"
-    # Symlink, skip if directory exists
-    ln -T -sfnv "$mp" "$symlink_target" &>"$FIM_STREAM" || continue
     # Mount
     "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM" || continue
+  done
+}
+# }}}
+
+# _mount_symlinks() {{{
+# # Configure symlinks from filesystem that should point to overlayfs
+function _mount_symlinks()
+{
+  for i in "${!FIM_MOUNTS_DWARFS[@]}"; do
+    # Configure symlink to overlayfs
+    local symlink_name="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$i")")"
+    _msg "OVERLAYFS SYMLINK NAME: $symlink_name"
+    symlink_name="$FIM_DIR_MOUNT/$symlink_name"
+    mkdir -p "$(dirname "$symlink_name")"
+    _msg "OVERLAYFS SYMLINK NAME (FULL): $symlink_name"
+    # Translate mountpoint to fim runtime dir
+    local symlink_target="$FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS/$(basename "$mp")"
+    _msg "OVERLAYFS SYMLINK TARGET: $symlink_target"
+    # Symlink does not exist
+    if ! [[ -h "$symlink_name" ]]; then
+      _msg "Creating symlink..."
+      ln -T -sfnv "$symlink_target" "$symlink_name" &>"$FIM_STREAM" || continue
+    # Symlink exists but points to incorrect path
+    elif [[ "$(readlink "$symlink_name")" != "$symlink_target" ]]; then
+      _msg "Symlink exists, but points to an incorrect path, re-creating..."
+      ln -T -sfnv "$symlink_target" "$symlink_name" &>"$FIM_STREAM" || continue
+    else
+      _msg "Symlink exists and points to the correct path"
+    fi
   done
 }
 # }}}
@@ -813,51 +814,31 @@ function _mount_dwarfs()
 # # Mount overlayfs filesystems defined in FIM_MOUNTS_OVERLAYFS
 function _mount_overlayfs()
 {
-  # Mount overlayfs
-  ## Read overlays
   for i in "${!FIM_MOUNTS_OVERLAYFS[@]}"; do
     # Fetch paths
-    local bind_cont="$i"
-    local bind_host="${FIM_MOUNTS_OVERLAYFS[$i]}"
+    local fs_ro="$i"
+    local fs_rw="${FIM_MOUNTS_OVERLAYFS[$i]}"
     # Test if target exists
-    if ! test -e "$bind_cont"; then
-      _msg "Target of overlay '$overlay', $bind_cont, does not exist"
+    if ! test -d "$fs_ro"; then
+      _msg "Target directory of overlayfs, $fs_ro, does not exist"
     fi
     # Define host-sided paths
-    local workdir="$bind_host"/workdir
-    local upperdir="$bind_host"/upperdir
+    local workdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/workdir"
+    local lowerdir="$fs_ro"
+    local upperdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/upperdir"
+    local mount="$fs_rw"
     _msg "OVERLAYFS workdir: $workdir"
+    _msg "OVERLAYFS lowerdir: $lowerdir"
     _msg "OVERLAYFS upperdir: $upperdir"
-    # Create host-sided paths
-    mkdir -pv "$bind_host"/{workdir,upperdir} &> "$FIM_STREAM"
-    # If is a symlink from inside the container that points to a directory in the host
-    # # Update bind_cont with resolved path (might be a symlink created by dwarfs)
-    # # Replace symlink to point to mount to overlayfs
-    local bind_symlink="$bind_cont"
-    if test -h "$bind_cont"; then
-      _msg "OVERLAYFS unresolved: $bind_symlink"
-      bind_cont="$(readlink -f "$bind_cont")"
-      _msg "OVERLAYFS lowerdir: $bind_cont"
-    else
-      FIM_DEBUG=1 _msg "Overlay container mount '$bind_cont' not a symlink"
-      break
-    fi
-    # Get basename of dwarfs mount point
-    local basename_mount="$(basename "$bind_cont")"
-    basename_mount="${basename_mount##*dwarfs.}"
-    _msg "basename mount: $basename_mount"
-    # Define mount point for overlayfs
-    local mount="${FIM_DIR_MOUNT}.mount.overlayfs.$basename_mount"
-    mkdir -vp "$mount" &> "$FIM_STREAM"
     _msg "OVERLAYFS mount: $mount"
-    # Symlink from inside the container to the mount directory
-    ln -T -sfn "$mount" "$bind_symlink"
-    # Symlink from the mount point to the host directory
-    ln -T -sfn "$mount" "$bind_host"/mount
-    # Define lowerdir
-    local lowerdir="$bind_cont"
+    # Create host-sided paths
+    mkdir -pv "$workdir" &> "$FIM_STREAM"
+    mkdir -pv "$upperdir" &> "$FIM_STREAM"
+    mkdir -pv "$mount" &> "$FIM_STREAM"
+    # Create symlink from host overlays folder
+    ln -sfTnv "$mount" "$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/mount" || true
     # Mount
-    overlayfs -o squash_to_uid=1000,lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
+    overlayfs -o squash_to_uid="$(id -u)",squash_to_gid="$(id -g)",lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
   done
 }
 # }}}
@@ -871,6 +852,7 @@ function _setup_filesystems()
 
   # Mount filesystems
   _mount_dwarfs
+  _mount_symlinks
   _mount_overlayfs
 }
 # }}}
@@ -884,7 +866,7 @@ function _exec()
   [ -n "$*" ] || FIM_DEBUG=1 _msg "Empty arguments for exec"
 
   # Mount overlayfs and dwarfs
-  _setup_filesystems
+  _setup_filesystems || true
 
   # Fetch CMD
   declare -a cmd
@@ -954,6 +936,9 @@ function _exec()
   _cmd_proot+=("-b /proc")
   _cmd_proot+=("-b /tmp")
   _cmd_proot+=("-b /sys")
+
+  # Setup access to filesystems from inside the container
+  _cmd_bwrap+=("--bind \"$FIM_DIR_MOUNTS\" ${FIM_DIR_RUNTIME_MOUNTS}")
 
   # Create HOME if not exists
   mkdir -p "$HOME"
@@ -1096,7 +1081,7 @@ function _exec()
 
       ### Bind
       for i in "${nvidia_binds[@]}"; do
-        _cmd_bwrap+=("--bind \"$i\" \"${dir_usr}/${i#/usr}\"")
+        _cmd_bwrap+=("--bind-try \"$i\" \"${dir_usr}/${i#/usr}\"")
         _cmd_proot+=("-b \"$i\"")
         _msg "NVIDIA bind '$i'"
       done &>"$FIM_STREAM" || true
@@ -1362,15 +1347,17 @@ function _main()
   _msg '$*                   : '"$*"
 
   # Check filesystem
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
+  "$FIM_DIR_GLOBAL_BIN"/e2fsck -y "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   declare -a ext_tools=(
+    "xdg-open" "xdg-mime"
+    "dwarfs_aio" "dwarfs" "mkdwarfs" "dwarfsextract"
     "[" "b2sum" "base32" "base64" "basename" "cat" "chcon" "chgrp" "chmod" "chown" "chroot" "cksum"
-    "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du" "dwarfs"
+    "comm" "cp" "csplit" "cut" "date" "dcgen" "dd" "df" "dir" "dircolors" "dirname" "du"
     "echo" "env" "expand" "expr" "factor" "false" "fmt" "fold" "groups" "head" "hostid" "id" "join"
-    "kill" "link" "ln" "logname" "ls" "magick" "md5sum" "mkdir" "mkdwarfs" "mkfifo" "mknod" "mktemp"
-    "mv" "nice" "nl" "nohup" "nproc" "numfmt" "od" "overlayfs" "paste" "pathchk" "pr" "printenv"
+    "kill" "link" "ln" "logname" "ls" "magick" "md5sum" "mkdir" "mkfifo" "mknod" "mktemp"
+    "mv" "nice" "nl" "nohup" "nproc" "numfmt" "od" "overlayfs" "paste" "pathchk" "fim_portal_host" "pr" "printenv"
     "printf" "ptx" "pwd" "readlink" "realpath" "rm" "rmdir" "runcon" "seq" "sha1sum" "sha224sum"
     "sha256sum" "sha384sum" "sha512sum" "shred" "shuf" "sleep" "sort" "split" "stat" "stty" "sum"
     "sync" "tac" "tail" "tee" "test" "timeout" "touch" "tr" "true" "truncate" "tsort" "uname"
@@ -1380,6 +1367,9 @@ function _main()
 
   # Copy static binaries
   _copy_tools "${ext_tools[@]}"
+
+  # Start portal
+  &>"${FIM_DIR_MOUNT}.portal.log" fim_portal_host "$FIM_FILE_BINARY" &
 
   # Mount filesystem
   _mount
@@ -1453,7 +1443,6 @@ function _main()
       "perms-set") _perms_set "$2";;
       "dwarfs-add") _dwarfs_add "$2" "$3" ;;
       "dwarfs-list") _dwarfs_list ;;
-      "dwarfs-overlayfs") _dwarfs_overlay "$2" "$3" ;;
       "hook-add-pre") _hook_add "pre" "$2" ;;
       "hook-add-post") _hook_add "post" "$2" ;;
       "hook-list") _hook_list "$2" ;;

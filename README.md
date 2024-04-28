@@ -13,8 +13,11 @@
         - [HOME directory](#home-directory)
         - [Backend](#backend)
         - [Desktop Integration](#desktop-integration)
+            - [Desktop Entry and File Manager Icon](#desktop-entry-and-file-manager-icon)
+            - [XDG-Open](#xdg-open)
         - [Overlayfs](#overlayfs)
         - [Hooks](#hooks)
+    - [Portals](#portals)
 - [Use cases](#use-cases)
     - [Use pacman packages on non-arch systems](#use-pacman-packages-on-non-arch-systems)
     - [Use apt packages in non-debian systems](#use-apt-packages-in-non-debian-systems)
@@ -27,10 +30,12 @@
         - [Outside the container](#outside-the-container)
         - [Inside the container](#inside-the-container)
 - [Samples](#samples)
+    - [Portable steam](#portable-steam)
+    - [Portable wine](#portable-wine)
 - [Usage Inside Docker](#usage-inside-docker)
-- [Motivations](#motivations)
-- [Further Considerations](#further-considerations)
 - [Architecture](#architecture)
+- [Further Considerations](#further-considerations)
+- [Motivations](#motivations)
 - [Related Projects](#related-projects)
 
 ## What is FlatImage?
@@ -244,6 +249,15 @@ command:
 $ find ~/.local/share -iname "*flatimage*" -exec rm -v "{}" \;
 ```
 
+#### XDG-Open
+
+Flatimage redirects `xdg-open` commands to the host machine
+
+Examples:
+
+* Open a video file with the host default video player: `xdg-open my-file.mkv`
+* Open a link with the host default browser: `xdg-open www.google.com`
+
 ### Overlayfs
 
 Overlayfs is automatically enabled for all compressed filesystems.
@@ -279,16 +293,6 @@ To insert a post hook, just use the directory `post` instead.
  # Include hook
 $ ./arch.flatimage fim-hook-add-post ./my-post-hook
 ```
-
-#### XDG-Open
-
-Flatimage redirects `xdg-open` commands to the host machine
-
-Examples:
-
-* Open a video file with the host default video player: `xdg-open my-file.mkv`
-* Open a link with the host default browser: `xdg-open www.google.com`
-
 
 ## Portals
 

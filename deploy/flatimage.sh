@@ -5,19 +5,20 @@
 # @file        : flatimage
 ######################################################################
 
+set -e
 
 function fetch()
 {
-  # Fetch Magick
-  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/cc3f21c/magick-x86_64"
-  wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
-  chmod +x bin/magick
-
   # Fetch coreutils
   wget "https://github.com/ruanformigoni/coreutils-static/releases/download/d7f4cd2/coreutils-x86_64.tar.xz"
 
   # Extracts a bin/... folder
   tar xf "coreutils-x86_64.tar.xz"
+
+  # Fetch Magick
+  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/cc3f21c/magick-x86_64"
+  wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
+  chmod +x bin/magick
 
   # Fetch lsof
   wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/e1a88fb/lsof-x86_64"

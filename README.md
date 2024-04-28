@@ -203,6 +203,8 @@ $ ./arch.flatimage fim-config-set backend "host"
 
 ### Desktop Integration
 
+#### Desktop Entry and File Manager Icon
+
 Flatimage supports desktop integration, the icon and menu entry should appear
 after the first execution. Make sure to have this line in your `~/.bashrc`
 file:
@@ -277,6 +279,25 @@ To insert a post hook, just use the directory `post` instead.
  # Include hook
 $ ./arch.flatimage fim-hook-add-post ./my-post-hook
 ```
+
+#### XDG-Open
+
+Flatimage redirects `xdg-open` commands to the host machine
+
+Examples:
+
+* Open a video file with the host default video player: `xdg-open my-file.mkv`
+* Open a link with the host default browser: `xdg-open www.google.com`
+
+
+## Portals
+
+Flatimage has a portal mechanism to dispatch commands to the host machine.
+
+Examples:
+* Open thunar in the host machine: `fim_portal_guest thunar`
+* Open thunar in the host machine (full path): `fim_portal_guest /bin/thunar`
+* Open the desktop folder with thunar on the host machine: `fim_portal_guest thunar ~/Desktop`
 
 # Use cases
 

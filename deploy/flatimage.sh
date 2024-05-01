@@ -16,27 +16,27 @@ function fetch()
   tar xf "coreutils-x86_64.tar.xz"
 
   # Fetch Magick
-  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/cc3f21c/magick-x86_64"
+  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/c1c5775/magick-x86_64"
   wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
   chmod +x bin/magick
 
   # Fetch lsof
-  wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/e1a88fb/lsof-x86_64"
+  wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/12c2552/lsof-x86_64"
 
   # Fetch e2fsprogs
-  wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/e58f946/fuse2fs"
-  wget -O ./bin/mke2fs    "https://github.com/ruanformigoni/e2fsprogs/releases/download/e58f946/mke2fs"
-  wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/e58f946/e2fsck"
-  wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/e58f946/resize2fs"
+  wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/fuse2fs-x86_64"
+  wget -O ./bin/mke2fs    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/mke2fs-x86_64"
+  wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/e2fsck-x86_64"
+  wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/resize2fs-x86_64"
 
   # Fetch proot
-  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/5a4be11/proot"
+  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/d9211c8/proot-x86_64"
 
   # Fetch bwrap
-  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/559a725/bwrap"
+  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/719925f/bwrap-x86_64"
 
   # Fetch overlayfs
-  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/af507a2/fuse-overlayfs-x86_64"
+  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/bc2814e/fuse-overlayfs-x86_64"
 
   # Fetch dwarfs
   wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
@@ -45,7 +45,7 @@ function fetch()
   ln -sf dwarfs_aio bin/dwarfs
 
   # Fetch bash
-  wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/5355251/bash-linux-x86_64"
+  wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/b604d6c/bash-x86_64"
 
   # Setup xdg
   cp src/xdg/xdg-* bin

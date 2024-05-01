@@ -738,7 +738,7 @@ function _find_dwarfs()
     _msg "DWARFS FS: $filesystem_file"
     _msg "DWARFS MP: $mountpoint"
     # Save
-    FIM_MOUNTS_DWARFS["$filesystem_file"]="$mountpoint"
+    FIM_MOUNTS_DWARFS["$mountpoint"]="$filesystem_file"
   done < <(find "$FIM_DIR_DWARFS" -maxdepth 1 -iname "*.dwarfs")
 }
 # }}}
@@ -748,8 +748,7 @@ function _find_dwarfs()
 # Populates FIM_MOUNTS_OVERLAYFS (src dir -> target dir)
 function _find_overlayfs()
 {
-  for filesystem in "${!FIM_MOUNTS_DWARFS[@]}"; do
-    local mountpoint="${FIM_MOUNTS_DWARFS[$filesystem]}"
+  for mountpoint in "${!FIM_MOUNTS_DWARFS[@]}"; do
     # Define container and host bindings
     local fs_ro="$mountpoint"
     local fs_rw="$FIM_DIR_MOUNTS_OVERLAYFS/$(basename "$mountpoint")" 
@@ -768,9 +767,8 @@ function _mount_dwarfs()
 {
   ## Mount dwarfs files if exist
   # shellcheck disable=2044
-  for i in "${!FIM_MOUNTS_DWARFS[@]}"; do
-    local fs="$i"
-    local mp="${FIM_MOUNTS_DWARFS["$i"]}"
+  for mp in "${!FIM_MOUNTS_DWARFS[@]}"; do
+    local fs="${FIM_MOUNTS_DWARFS["$mp"]}"
     _msg "DWARFS filesystem: $fs"
     _msg "DWARFS mountpoint: $mp"
     # Create mountpoint
@@ -785,8 +783,8 @@ function _mount_dwarfs()
 # # Configure symlinks from filesystem that should point to overlayfs
 function _mount_symlinks()
 {
-  for filesystem in "${!FIM_MOUNTS_DWARFS[@]}"; do
-    local mountpoint="${FIM_MOUNTS_DWARFS[$filesystem]}"
+  for mountpoint in "${!FIM_MOUNTS_DWARFS[@]}"; do
+    local filesystem="${FIM_MOUNTS_DWARFS[$mountpoint]}"
     # Configure symlink to overlayfs
     local symlink_name="$(_config_fetch --single --value "dwarfs.$(basename -s .dwarfs "$filesystem")")"
     _msg "OVERLAYFS SYMLINK NAME: $symlink_name"
@@ -825,14 +823,15 @@ function _mount_overlayfs()
     # Fetch paths
     local fs_ro="$i"
     local fs_rw="${FIM_MOUNTS_OVERLAYFS[$i]}"
+    local fs="${FIM_MOUNTS_DWARFS[$fs_ro]}"
     # Test if target exists
     if ! test -d "$fs_ro"; then
       _msg "Target directory of overlayfs, $fs_ro, does not exist"
     fi
     # Define host-sided paths
-    local workdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/workdir"
+    local workdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs")/workdir"
     local lowerdir="$fs_ro"
-    local upperdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/upperdir"
+    local upperdir="$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs")/upperdir"
     local mount="$fs_rw"
     _msg "OVERLAYFS workdir: $workdir"
     _msg "OVERLAYFS lowerdir: $lowerdir"
@@ -843,7 +842,7 @@ function _mount_overlayfs()
     mkdir -pv "$upperdir" &> "$FIM_STREAM"
     mkdir -pv "$mount" &> "$FIM_STREAM"
     # Create symlink from host overlays folder
-    ln -sfTnv "$mount" "$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs_ro")/mount" || true
+    ln -sfTnv "$mount" "$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs")/mount" || true
     # Mount
     overlayfs -o squash_to_uid="$(id -u)",squash_to_gid="$(id -g)",lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
   done

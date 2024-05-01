@@ -840,7 +840,7 @@ function _mount_overlayfs()
     mkdir -pv "$upperdir" &> "$FIM_STREAM"
     mkdir -pv "$mount" &> "$FIM_STREAM"
     # Create symlink from host overlays folder
-    ln -sfTnv "$mount" "$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs")/mount" || true
+    ln -sfTnv "$mount" "$FIM_DIR_HOST_OVERLAYS/$(basename -s .dwarfs "$fs")/mount" &>"$FIM_STREAM" || true
     # Mount
     overlayfs -o squash_to_uid="$(id -u)",squash_to_gid="$(id -g)",lowerdir="$lowerdir",upperdir="$upperdir",workdir="$workdir" "$mount"
   done

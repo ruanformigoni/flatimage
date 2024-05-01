@@ -157,6 +157,12 @@ int main(int argc, char** argv)
     if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
+    // Get bin dir
+    //
+    char* cstr_dir_temp_bin = getenv("FIM_DIR_TEMP_BIN");
+    if ( cstr_dir_temp_bin == NULL ) { "FIM_DIR_TEMP_BIN dir variable is empty"_err(); }
+
+    //
     // Create instance dir as $FIM_DIR_TEMP/instance (/tmp/fim/app/xxxx.../instance)
     //
     //// Fetch tempdir location
@@ -185,6 +191,8 @@ int main(int argc, char** argv)
     setenv("FIM_FPATH_BOOT", str_boot_file.c_str(), 1);
     setenv("FIM_FPATH_KILLER", str_killer_file.c_str(), 1);
 
+    auto shbang = fmt::format("#!{}/bash\n", cstr_dir_temp_bin);
+
     //
     // Set boot script
     //
@@ -193,6 +201,7 @@ int main(int argc, char** argv)
       std::ofstream script_boot(str_boot_file, std::ios::binary);
       fs::permissions(str_boot_file, fs::perms::all);
       // -1 to exclude the trailing null byte
+      script_boot.write(shbang.c_str(), shbang.size());
       script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
       script_boot.close();
     }
@@ -205,6 +214,7 @@ int main(int argc, char** argv)
       std::ofstream script_killer(str_killer_file, std::ios::binary);
       fs::permissions(str_killer_file, fs::perms::all);
       // -1 to exclude the trailing null byte
+      script_killer.write(shbang.c_str(), shbang.size());
       script_killer.write(reinterpret_cast<const char*>(_script_killer), sizeof(_script_killer) - 1);
       script_killer.close();
     }
@@ -247,15 +257,6 @@ int main(int argc, char** argv)
     }
 
     //
-    // Create bin dir
-    //
-    std::string str_dir_bin = str_dir_base + "/bin/";
-    if ( ! fs::exists(str_dir_bin) && ! fs::create_directories(str_dir_bin) )
-    {
-      "Failed to create directory {}"_err(str_dir_bin);
-    }
-
-    //
     // Create temp dir
     //
     std::string str_dir_app = str_dir_base + "/app/";
@@ -275,6 +276,15 @@ int main(int argc, char** argv)
     // // Stitch all to make the temporary directory name
     std::string str_dir_temp = str_dir_base + "/app/{}_{}"_fmt(COMMIT, TIMESTAMP);
     fs::create_directories(str_dir_temp);
+
+    //
+    // Create bin dir
+    //
+    std::string str_dir_temp_bin = str_dir_temp + "/bin/";
+    if ( ! fs::exists(str_dir_temp_bin) && ! fs::create_directories(str_dir_temp_bin) )
+    {
+      "Failed to create directory {}"_err(str_dir_temp_bin);
+    }
 
     //
     // Starting offsets
@@ -308,9 +318,9 @@ int main(int argc, char** argv)
     //
     auto start = std::chrono::high_resolution_clock::now();
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "main", 0);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "fuse2fs", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "e2fsck", offset_end);
-    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_bin, "bash", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "fuse2fs", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "e2fsck", offset_end);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "bash", offset_end);
     auto end = std::chrono::high_resolution_clock::now();
 
     //
@@ -330,7 +340,7 @@ int main(int argc, char** argv)
     //
     setenv("FIM_MAIN_LAUNCH", std::to_string(offset_end).c_str(), 1);
     setenv("FIM_DIR_GLOBAL", str_dir_base.c_str(), 1);
-    setenv("FIM_DIR_GLOBAL_BIN", str_dir_bin.c_str(), 1);
+    setenv("FIM_DIR_TEMP_BIN", str_dir_temp_bin.c_str(), 1);
     setenv("FIM_FILE_BINARY", path_absolute.c_str(), 1);
     setenv("FIM_DIR_TEMP", str_dir_temp.c_str(), 1);
 

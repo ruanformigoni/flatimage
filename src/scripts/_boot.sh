@@ -1,5 +1,3 @@
-#!/tmp/fim/bin/bash
-
 ######################################################################
 # @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
 # @file        : _boot
@@ -40,7 +38,7 @@ export FIM_SECTOR=$((FIM_OFFSET/512))
 
 # Paths
 export FIM_DIR_GLOBAL="${FIM_DIR_GLOBAL:?FIM_DIR_GLOBAL is unset or null}"
-export FIM_DIR_GLOBAL_BIN="${FIM_DIR_GLOBAL}/bin"
+export FIM_DIR_TEMP_BIN="${FIM_DIR_TEMP_BIN:?FIM_DIR_TEMP_BIN is unset or null}"
 export FIM_DIR_MOUNTS="${FIM_DIR_MOUNTS:?FIM_DIR_MOUNTS is unset or null}"
 export FIM_DIR_MOUNT="${FIM_DIR_MOUNT:?FIM_DIR_MOUNT is unset or null}"
 export FIM_DIR_STATIC="$FIM_DIR_MOUNT/fim/static"
@@ -49,7 +47,7 @@ export FIM_DIR_TEMP="${FIM_DIR_TEMP:?FIM_DIR_TEMP is unset or null}"
 export FIM_FILE_BINARY="${FIM_FILE_BINARY:?FIM_FILE_BINARY is unset or null}"
 export FIM_BASENAME_BINARY="$(basename "$FIM_FILE_BINARY")"
 export FIM_DIR_BINARY="$(dirname "$FIM_FILE_BINARY")"
-export FIM_FILE_BASH="$FIM_DIR_GLOBAL_BIN/bash"
+export FIM_FILE_BASH="$FIM_DIR_TEMP_BIN/bash"
 export BASHRC_FILE="$FIM_DIR_TEMP/.bashrc"
 export FIM_FILE_PERMS="$FIM_DIR_MOUNT"/fim/perms
 export FIM_DIR_DWARFS="$FIM_DIR_MOUNT/fim/dwarfs"
@@ -71,7 +69,7 @@ export FIM_DIR_RUNTIME_MOUNTS_DWARFS="${FIM_DIR_RUNTIME_MOUNTS}/dwarfs"
 export FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS="${FIM_DIR_RUNTIME_MOUNTS}/overlayfs"
 
 # Give static tools priority in PATH
-export PATH="$FIM_DIR_GLOBAL_BIN:$PATH"
+export PATH="$FIM_DIR_TEMP_BIN:$PATH"
 
 # Compression
 export FIM_COMPRESSION_LEVEL="${FIM_COMPRESSION_LEVEL:-4}"
@@ -174,7 +172,7 @@ function _mount()
 {
   local mode="${FIM_RW:-ro,}"
   local mode="${mode#1}"
-  "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
+  "$FIM_DIR_TEMP_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$FIM_DIR_MOUNT" &> "$FIM_STREAM"
 
   if ! mount 2>&1 | grep "$FIM_DIR_MOUNT" &>/dev/null ; then
     echo "Could not mount main filesystem '$FIM_FILE_BINARY' to '$FIM_DIR_MOUNT'"
@@ -203,7 +201,7 @@ function _re_mount()
   # Umount from initial mountpoint
   _unmount
   # Mount in new mountpoint
-  if "$FIM_DIR_GLOBAL_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$1"; then
+  if "$FIM_DIR_TEMP_BIN"/fuse2fs -o "$mode"fakeroot,offset="$FIM_OFFSET" "$FIM_FILE_BINARY" "$1"; then
     echo "Image mounted to '$1'"
     echo "Press enter to un-mount"
     read -r
@@ -235,9 +233,9 @@ function _copy_tools()
   for i; do
     local tool="$i"
 
-    if [ ! -f "$FIM_DIR_GLOBAL_BIN"/"$tool" ]; then
-      cp "$FIM_DIR_MOUNT/fim/static/$tool" "$FIM_DIR_GLOBAL_BIN"
-      chmod +x "$FIM_DIR_GLOBAL_BIN"/"$tool"
+    if [ ! -f "$FIM_DIR_TEMP_BIN"/"$tool" ]; then
+      cp "$FIM_DIR_MOUNT/fim/static/$tool" "$FIM_DIR_TEMP_BIN"
+      chmod +x "$FIM_DIR_TEMP_BIN"/"$tool"
     fi
   done
 
@@ -384,9 +382,9 @@ function _resize()
   _unmount
 
   # Resize
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
-  "$FIM_DIR_GLOBAL_BIN"/resize2fs "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" "${size_new}"
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_TEMP_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
+  "$FIM_DIR_TEMP_BIN"/resize2fs "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" "${size_new}"
+  "$FIM_DIR_TEMP_BIN"/e2fsck -fy "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" || true
 
   # Mount
   _mount
@@ -692,7 +690,7 @@ function _rebuild()
   cp "$FIM_DIR_TEMP/main" "$FIM_FILE_BINARY"
 
   # Append tools
-  cat "$FIM_DIR_GLOBAL_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_FILE_BINARY"
+  cat "$FIM_DIR_TEMP_BIN"/{fuse2fs,e2fsck,bash}  >> "$FIM_FILE_BINARY"
 
   # Update offset
   FIM_OFFSET="$(du -sb "$FIM_FILE_BINARY" | awk '{print $1}')"
@@ -708,10 +706,10 @@ function _rebuild()
   _msg "block size: $block_size"
 
   # Format as ext2
-  "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
+  "$FIM_DIR_TEMP_BIN"/mke2fs -F -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
 
   # Re-format and include files
-  "$FIM_DIR_GLOBAL_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
+  "$FIM_DIR_TEMP_BIN"/mke2fs -F -d "$dir_system" -b"$(stat -fc %s .)" -t ext2 "$file_image" &> "$FIM_STREAM"
 
   # Append filesystem to binary
   cat "$file_image" >> "$FIM_FILE_BINARY"
@@ -774,7 +772,7 @@ function _mount_dwarfs()
     # Create mountpoint
     mkdir -p "$mp"
     # Mount
-    "$FIM_DIR_GLOBAL_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM" || continue
+    "$FIM_DIR_TEMP_BIN/dwarfs" "$fs" "$mp" &> "$FIM_STREAM" || continue
   done
 }
 # }}}
@@ -1209,7 +1207,7 @@ function _compress()
     # Check if folder exists inside container
     [ -d "$path_dir_target" ] || _die "Folder $path_dir_target not found for compression"
     # Compress folder
-    "$FIM_DIR_GLOBAL_BIN/mkdwarfs" \
+    "$FIM_DIR_TEMP_BIN/mkdwarfs" \
       -f \
       -i "$path_dir_target" \
       -o "$dir_rebuild/fim/dwarfs/$basename_target.dwarfs" \
@@ -1344,7 +1342,7 @@ function _main()
   _msg "FIM_DEBUG            : $FIM_DEBUG"
   _msg "FIM_NDEBUG           : $FIM_NDEBUG"
   _msg "FIM_DIR_GLOBAL       : $FIM_DIR_GLOBAL"
-  _msg "FIM_DIR_GLOBAL_BIN   : $FIM_DIR_GLOBAL_BIN"
+  _msg "FIM_DIR_TEMP_BIN     : $FIM_DIR_TEMP_BIN"
   _msg "FIM_DIR_MOUNT        : $FIM_DIR_MOUNT"
   _msg "FIM_DIR_TEMP         : $FIM_DIR_TEMP"
   _msg "FIM_FILE_BINARY      : $FIM_FILE_BINARY"
@@ -1353,7 +1351,7 @@ function _main()
   _msg '$*                   : '"$*"
 
   # Check filesystem
-  "$FIM_DIR_GLOBAL_BIN"/e2fsck -y "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
+  "$FIM_DIR_TEMP_BIN"/e2fsck -y "$FIM_FILE_BINARY"\?offset="$FIM_OFFSET" &> "$FIM_STREAM" || true
 
   # Copy tools
   declare -a ext_tools=(

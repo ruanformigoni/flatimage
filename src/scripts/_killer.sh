@@ -1,5 +1,3 @@
-#!/tmp/fim/bin/bash
-
 ######################################################################
 # @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
 # @file        : _daemon_killer

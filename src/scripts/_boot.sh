@@ -1038,6 +1038,9 @@ function _exec()
     _cmd_proot+=("-b /run/dbus/system_bus_socket")
   fi
 
+  # Udev
+  _cmd_bwrap+=("--bind-try /run/udev /run/udev")
+
   # GPU
   if [[ "$FIM_PERM_GPU" -eq 1 ]] &&
      [[ -e "/dev/dri" ]]; then

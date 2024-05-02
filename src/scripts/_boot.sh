@@ -1165,9 +1165,11 @@ function _exec()
   # Run in contained environment
   if [[ "$FIM_BACKEND" = "bwrap" ]]; then
     _msg "Using bubblewrap"
+    _msg "bwrap: ${_cmd_bwrap[*]}"
     eval "${_cmd_bwrap[*]}"
   elif [[ "$FIM_BACKEND" = "proot" ]]; then
     _msg "Using proot"
+    _msg "proot: ${_cmd_proot[*]}"
     eval "${_cmd_proot[*]}"
   # Run outside container
   elif [[ "$FIM_BACKEND" = "host" ]]; then

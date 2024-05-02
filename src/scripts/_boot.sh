@@ -1083,14 +1083,17 @@ function _exec()
       ### Set library search paths
       export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:$LD_LIBRARY_PATH"
 
-      ### Find actual root location if it a dwarfs or overlayfs symlink
-      local dir_usr="$(readlink -f "$FIM_DIR_MOUNT/usr")"
+      ### Find actual root location
+      local dir_usr="$FIM_DIR_MOUNT/usr"
+      if [[ -h "$dir_usr" ]]; then
+        dir_usr="$(readlink -f "$FIM_DIR_HOST_OVERLAYS/usr/mount")"
+      fi
 
       ### Bind
       for i in "${nvidia_binds[@]}"; do
         _cmd_bwrap+=("--bind-try \"$i\" \"${dir_usr}/${i#/usr}\"")
         _cmd_proot+=("-b \"$i\"")
-        _msg "NVIDIA bind '$i'"
+        _msg "NVIDIA bind '$i' -> '${dir_usr}/${i#/usr}'"
       done &>"$FIM_STREAM" || true
     fi
   fi

@@ -1091,6 +1091,7 @@ function _exec()
 
       ### Bind
       for i in "${nvidia_binds[@]}"; do
+        mkdir -pv "$(dirname "${dir_usr}/${i#/usr}")" &>"$FIM_STREAM" || true
         _cmd_bwrap+=("--bind-try \"$i\" \"${dir_usr}/${i#/usr}\"")
         _cmd_proot+=("-b \"$i\"")
         _msg "NVIDIA bind '$i' -> '${dir_usr}/${i#/usr}'"

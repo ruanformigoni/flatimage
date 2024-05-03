@@ -64,6 +64,7 @@ export FIM_DIR_MOUNTS_OVERLAYFS="${FIM_DIR_MOUNTS}/overlayfs"
 
 # Runtime directories (only exist inside the container, binds to host)
 export FIM_DIR_RUNTIME="/tmp/fim/run"
+export FIM_DIR_RUNTIME_HOST="/tmp/fim/run/host"
 export FIM_DIR_RUNTIME_MOUNTS="${FIM_DIR_RUNTIME}/mounts"
 export FIM_DIR_RUNTIME_MOUNTS_DWARFS="${FIM_DIR_RUNTIME_MOUNTS}/dwarfs"
 export FIM_DIR_RUNTIME_MOUNTS_OVERLAYFS="${FIM_DIR_RUNTIME_MOUNTS}/overlayfs"
@@ -943,6 +944,9 @@ function _exec()
 
   # Setup access to filesystems from inside the container
   _cmd_bwrap+=("--bind \"$FIM_DIR_MOUNTS\" ${FIM_DIR_RUNTIME_MOUNTS}")
+
+  # Setup ro access to /usr from inside the container
+  _cmd_bwrap+=("--ro-bind \"/\" ${FIM_DIR_RUNTIME_HOST}")
 
   # Create HOME if not exists
   mkdir -p "$HOME"

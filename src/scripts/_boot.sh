@@ -1054,35 +1054,35 @@ function _exec()
     _cmd_proot+=("-b /dev/dri")
 
     if { lsmod | grep -i nvidia; } &>/dev/null; then
-      _msg "Nvidia GPU detected, setting up driver bindings..."
+      _msg "Nvidia GPU detected, setting up driver symlinks..."
       ### Bind devices
       for i in /dev/*nvidia*; do
         _cmd_bwrap+=("--dev-bind \"$i\" \"$i\"")
         _cmd_proot+=("-b \"$i\"")
       done &>"$FIM_STREAM" || true
-      ### Bind files
-      declare -a nvidia_binds
-      nvidia_binds+=(/usr/lib/*nvidia*)
-      nvidia_binds+=(/usr/lib/*cuda*)
-      nvidia_binds+=(/usr/lib/*nvcuvid*)
-      nvidia_binds+=(/usr/lib/*nvoptix*)
-      # nvidia_binds+=(/usr/lib/*vdpau*)
-      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvidia*)
-      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*cuda*)
-      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvcuvid*)
-      nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*nvoptix*)
-      # nvidia_binds+=(/usr/lib/x86_64-linux-gnu/*vdpau*)
-      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvidia*)
-      nvidia_binds+=(/usr/lib/i386-linux-gnu/*cuda*)
-      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvcuvid*)
-      nvidia_binds+=(/usr/lib/i386-linux-gnu/*nvoptix*)
-      # nvidia_binds+=(/usr/lib/i386-linux-gnu/*vdpau*)
-      nvidia_binds+=(/usr/bin/*nvidia*)
-      nvidia_binds+=(/usr/share/*nvidia*)
-      nvidia_binds+=(/usr/share/vulkan/icd.d/*nvidia*)
-      nvidia_binds+=(/usr/lib32/*nvidia*)
-      nvidia_binds+=(/usr/lib32/*cuda*)
-      # nvidia_binds+=(/usr/lib32/*vdpau*)
+      ### Symlink files
+      declare -a nvidia_files
+      nvidia_files+=(/usr/lib/*nvidia*)
+      nvidia_files+=(/usr/lib/*cuda*)
+      nvidia_files+=(/usr/lib/*nvcuvid*)
+      nvidia_files+=(/usr/lib/*nvoptix*)
+      # nvidia_files+=(/usr/lib/*vdpau*)
+      nvidia_files+=(/usr/lib/x86_64-linux-gnu/*nvidia*)
+      nvidia_files+=(/usr/lib/x86_64-linux-gnu/*cuda*)
+      nvidia_files+=(/usr/lib/x86_64-linux-gnu/*nvcuvid*)
+      nvidia_files+=(/usr/lib/x86_64-linux-gnu/*nvoptix*)
+      # nvidia_files+=(/usr/lib/x86_64-linux-gnu/*vdpau*)
+      nvidia_files+=(/usr/lib/i386-linux-gnu/*nvidia*)
+      nvidia_files+=(/usr/lib/i386-linux-gnu/*cuda*)
+      nvidia_files+=(/usr/lib/i386-linux-gnu/*nvcuvid*)
+      nvidia_files+=(/usr/lib/i386-linux-gnu/*nvoptix*)
+      # nvidia_files+=(/usr/lib/i386-linux-gnu/*vdpau*)
+      nvidia_files+=(/usr/bin/*nvidia*)
+      nvidia_files+=(/usr/share/*nvidia*)
+      nvidia_files+=(/usr/share/vulkan/icd.d/*nvidia*)
+      nvidia_files+=(/usr/lib32/*nvidia*)
+      nvidia_files+=(/usr/lib32/*cuda*)
+      # nvidia_files+=(/usr/lib32/*vdpau*)
 
       ### Set library search paths
       export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:$LD_LIBRARY_PATH"
@@ -1093,12 +1093,15 @@ function _exec()
         dir_usr="$(readlink -f "$FIM_DIR_HOST_OVERLAYS/usr/mount")"
       fi
 
-      ### Bind
-      for i in "${nvidia_binds[@]}"; do
-        mkdir -pv "$(dirname "${dir_usr}/${i#/usr}")" &>"$FIM_STREAM" || true
-        _cmd_bwrap+=("--bind-try \"$i\" \"${dir_usr}/${i#/usr}\"")
-        _cmd_proot+=("-b \"$i\"")
-        _msg "NVIDIA bind '$i' -> '${dir_usr}/${i#/usr}'"
+      ### Symlink
+      for src in "${nvidia_files[@]}"; do
+        local linkname="${dir_usr}/${src#/usr/}"
+        # If file is directory, only create and continue
+        if [[ -d "$src" ]]; then mkdir -pv "$src"; continue; fi
+        # Symlink otherwise
+        mkdir -pv "$(dirname "$linkname")" || true
+        ln -sfnTv "$FIM_DIR_RUNTIME_HOST/$src" "$linkname" || true
+        _msg "NVIDIA symlink '$linkname' -> '$FIM_DIR_RUNTIME_HOST/$src'"
       done &>"$FIM_STREAM" || true
     fi
   fi

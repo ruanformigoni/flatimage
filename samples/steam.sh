@@ -71,7 +71,7 @@ function _main()
   "$image" fim-perms-set wayland,x11,gpu,session_bus,pulseaudio,input
 
   # Set command to run by default
-  "$image" fim-cmd steam
+  "$image" fim-cmd /usr/bin/steam
 
   # Clear cache
   "$image" fim-root fakechroot pacman -Scc --noconfirm

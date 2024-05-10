@@ -25,6 +25,24 @@ auto format_args(Args&&... args)
 
 // User defined literals {{{
 
+// Print to stdout
+inline auto operator""_print(const char* c_str, std::size_t)
+{
+  return [=]<typename... Args>(Args&&... args)
+  {
+    std::cout << std::vformat(c_str, format_args(std::forward<Args>(args)...)) << '\n';
+  };
+}
+
+// Print to stdout
+inline auto operator""_exit(const char* c_str, std::size_t)
+{
+  return [=]<typename... Args>(Args&&... args)
+  {
+    std::cerr << std::vformat(c_str, format_args(std::forward<Args>(args)...)) << '\n';
+  };
+}
+
 // Format strings with user-defined literals
 inline decltype(auto) operator ""_fmt(const char* str, size_t)
 {

@@ -10,12 +10,12 @@
 int main(int argc, char** argv)
 {
   // Check args
-  return_if( argc < 2, (ns_log::err("Incorrect arguments"), EXIT_FAILURE));
+  return_if( argc < 2, (ns_log::error("Incorrect arguments"), EXIT_FAILURE));
 
   // Get file path for IPC
   const char* env = assign_or_return(getenv("FIM_FILE_BINARY")
     , env
-    , (ns_log::err("Could not read FIM_FILE_BINARY"), EXIT_FAILURE)
+    , (ns_log::error("Could not read FIM_FILE_BINARY"), EXIT_FAILURE)
   );
 
   // Create ipc instance

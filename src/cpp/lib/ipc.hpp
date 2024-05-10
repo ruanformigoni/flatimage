@@ -96,7 +96,7 @@ inline Ipc Ipc::host(fs::path path_file)
   // Close existing queue
   if ( int message_queue_id = msgget(key, 0666); message_queue_id != -1 and msgctl(message_queue_id, IPC_RMID, NULL) == -1)
   {
-    ns_log::err("Could not remove existing message queue");
+    ns_log::error("Could not remove existing message queue");
     perror("Could not remove existing message queue");
   } // if
   else
@@ -125,7 +125,7 @@ inline Ipc::~Ipc()
   // Close
   if ( msgctl(m_message_queue_id, IPC_RMID, NULL) == -1 )
   {
-    ns_log::err("Could not remove the message queue");
+    ns_log::error("Could not remove the message queue");
     perror("Could not remove message queue");
   } // if
 } // Ipc::~Ipc() }}}
@@ -156,7 +156,7 @@ inline std::optional<std::string> Ipc::recv()
   if (length == -1)
   {
     perror("Failure to receive message");
-    ns_log::err("Failed to receive message: {}", strerror(errno));
+    ns_log::error("Failed to receive message: {}", strerror(errno));
     return std::nullopt;
   } // if
 

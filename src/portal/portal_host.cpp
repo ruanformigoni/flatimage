@@ -67,17 +67,17 @@ std::optional<fs::path> search_path(fs::path query)
 {
   const char* env_path = assign_or_return(std::getenv("PATH")
     , env_path
-    , (ns_log::err("PATH environment variable not found"), std::nullopt)
+    , (ns_log::error("PATH environment variable not found"), std::nullopt)
   );
 
   const char* env_dir_global_bin = assign_or_return(std::getenv("FIM_DIR_GLOBAL_BIN")
     , env_dir_global_bin
-    , (ns_log::err("FIM_DIR_GLOBAL_BIN environment variable not found"), std::nullopt)
+    , (ns_log::error("FIM_DIR_GLOBAL_BIN environment variable not found"), std::nullopt)
   );
 
   const char* env_dir_static = assign_or_return(std::getenv("FIM_DIR_STATIC")
     , env_dir_global_bin
-    , (ns_log::err("FIM_DIR_STATIC environment variable not found"), std::nullopt)
+    , (ns_log::error("FIM_DIR_STATIC environment variable not found"), std::nullopt)
   );
 
   if ( query.is_absolute() )
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
   signal(SIGINT, signal_handler);
 
   // Check args
-  return_if(argc != 2, (ns_log::err("Incorrect arguments"), EXIT_FAILURE));
+  return_if(argc != 2, (ns_log::error("Incorrect arguments"), EXIT_FAILURE));
 
   // Create ipc instance
   auto ipc = ns_ipc::Ipc::host(argv[1]);

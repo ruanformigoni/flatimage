@@ -22,7 +22,8 @@
 #include <unistd.h>
 #include <elf.h>
 #define FMT_HEADER_ONLY
-#include <fmt/ranges.h>
+#include <format>
+#include <iostream>
 #include <memory>
 
 #include "boot.h" // boot script
@@ -53,14 +54,21 @@ using u64 = unsigned long;
 // }}}
 
 // Literals {{{
+
 auto operator"" _print(const char* c_str, std::size_t)
-{ return [=](auto&&... args){ return fmt::println(fmt::runtime(c_str), args...); }; }
+{
+  return [=](auto&&... args){ std::cout << std::vformat(c_str, std::make_format_args(args...)) << '\n'; };
+}
 
 auto operator"" _fmt(const char* c_str, std::size_t)
-{ return [=](auto&&... args){ return fmt::format(fmt::runtime(c_str), args...); }; }
+{
+  return [=](auto&&... args) -> std::string { return std::vformat(c_str, std::make_format_args(args...)); };
+}
 
 auto operator"" _err(const char* c_str, std::size_t)
-{ return [=](auto&&... args){ fmt::print(fmt::runtime(c_str), args...); exit(1); }; }
+{
+  return [=](auto&&... args) { std::cout << std::vformat(c_str, std::make_format_args(args...)); exit(1); };
+}
 // }}}
 
 // fn: create_temp_dir {{{
@@ -191,7 +199,7 @@ int main(int argc, char** argv)
     setenv("FIM_FPATH_BOOT", str_boot_file.c_str(), 1);
     setenv("FIM_FPATH_KILLER", str_killer_file.c_str(), 1);
 
-    auto shbang = fmt::format("#!{}/bash\n", cstr_dir_temp_bin);
+    auto shbang = "#!{}/bash\n"_fmt(cstr_dir_temp_bin);
 
     //
     // Set boot script

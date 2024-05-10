@@ -7,17 +7,11 @@ RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/reposit
 
 # Install deps
 RUN apk update && apk upgrade
-RUN apk add --no-cache build-base git libbsd-dev py3-pip pipx git patchelf cmake gcc \
+RUN apk add --no-cache build-base git libbsd-dev git patchelf cmake gcc \
   bash e2fsprogs xz curl zstd gawk debootstrap
-
-# Install conan
-RUN pipx install conan
 
 # Update PATH
 ENV PATH="/root/.local/bin:$PATH"
-
-# Setup
-RUN conan profile detect --force
 
 # RUN git clone "https://gitlab.com/formigoni/fim.git"
 RUN mkdir /fim
@@ -30,17 +24,15 @@ ARG FIM_DIST
 RUN sed -i "s/FIM_DIST=.*/FIM_DIST=$FIM_DIST/" ./src/scripts/_boot.sh
 
 # Compile
-WORKDIR /fim/src/elf
-RUN conan install . --build=missing -g CMakeDeps -g CMakeToolchain --output-folder=build
-RUN cmake --preset conan-release -DCMAKE_BUILD_TYPE=Release
-RUN cmake --build --preset conan-release
+RUN cd /fim/src/elf && g++ -static -Os -Wall -Wextra -Weffc++ -std=c++23 -o main main.cpp && strip -s main
+RUN cd /fim/src/elf && g++ -static -O3 -Wall -Wextra -Weffc++ -std=c++23 -o magic magic.cpp && strip -s magic
 
 # Move to dist dir
-WORKDIR /fim
 RUN mkdir -p dist
+
 ## Patch magic bytes
-RUN cp /fim/src/elf/build/main dist/main
-RUN /fim/src/elf/build/magic dist/main
+RUN cp /fim/src/elf/main dist/main
+RUN /fim/src/elf/magic dist/main
 
 # Build image
 # RUN cp dist/main bin/elf

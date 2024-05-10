@@ -55,6 +55,13 @@ inline std::string to_string(T&& t)
   throw std::runtime_error("Cannot convert type to a valid string");
 } // to_string() }}}
 
+// to_tuple() {{{
+template<typename... Args>
+inline auto to_tuple(Args&&... args)
+{
+  return std::make_tuple(to_string(std::forward<Args>(args))...);
+} // to_tuple() }}}
+
 // to_lower() {{{
 template<ns_concept::AsString T>
 std::string to_lower(T&& t)

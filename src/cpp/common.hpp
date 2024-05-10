@@ -11,6 +11,18 @@
 #include <cstdlib>
 #include "string.hpp"
 
+namespace
+{
+
+template<typename... Args>
+auto format_args(Args&&... args)
+{
+  auto tuple_strings = ns_string::to_tuple(std::forward<Args>(args)...);
+  return std::apply([](auto&&... args){ return std::make_format_args(args...); }, tuple_strings);
+} // format_args
+
+}
+
 // User defined literals {{{
 
 // Format strings with user-defined literals
@@ -18,7 +30,7 @@ inline decltype(auto) operator ""_fmt(const char* str, size_t)
 {
   return [str]<typename... Args>(Args&&... args)
   {
-    return std::vformat(str, std::make_format_args(ns_string::to_string(std::forward<Args>(args))...) ) ;
+    return std::vformat(str, format_args(std::forward<Args>(args)...)) ;
   };
 } //
 
@@ -27,7 +39,7 @@ inline decltype(auto) operator ""_throw(const char* str, size_t)
 {
   return [str]<typename... Args>(Args&&... args)
   {
-    throw std::runtime_error(std::vformat(str, std::make_format_args(ns_string::to_string(std::forward<Args>(args))...)));
+    throw std::runtime_error(std::vformat(str, format_args(std::forward<Args>(args)...)));
   };
 } 
 
@@ -36,13 +48,13 @@ inline decltype(auto) operator ""_throw(const char* str, size_t)
 template<ns_concept::AsString T, typename... Args>
 inline void print(std::ostream& os, T&& t, Args&&... args)
 {
-  os << std::vformat(std::forward<T>(t), std::make_format_args(ns_string::to_string(std::forward<Args>(args))...));
+  os << std::vformat(std::forward<T>(t), format_args(std::forward<Args>(args)...));
 }
 
 template<ns_concept::AsString T, typename... Args>
 inline void print(T&& t, Args&&... args)
 {
-  std::cout << std::vformat(std::forward<T>(t), std::make_format_args(ns_string::to_string(std::forward<Args>(args))...)) << '\n';
+  std::cout << std::vformat(std::forward<T>(t), format_args(std::forward<Args>(args)...)) << '\n';
 }
 
 #define return_if(cond, ...) \

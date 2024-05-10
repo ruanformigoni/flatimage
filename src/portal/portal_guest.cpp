@@ -3,8 +3,8 @@
 // @file        : portal_guest
 ///
 
-#include "log.hpp"
-#include "ipc.hpp"
+#include "../cpp/log.hpp"
+#include "../cpp/ipc.hpp"
 
 // main() {{{
 int main(int argc, char** argv)

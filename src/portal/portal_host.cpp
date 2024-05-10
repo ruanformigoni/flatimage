@@ -9,8 +9,8 @@
 #include <filesystem>
 #include <unistd.h>
 
-#include "log.hpp"
-#include "ipc.hpp"
+#include "../cpp/log.hpp"
+#include "../cpp/ipc.hpp"
 
 namespace fs = std::filesystem;
 

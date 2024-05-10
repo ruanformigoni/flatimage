@@ -9,7 +9,7 @@
 #include <format>
 #include <iostream>
 #include <cstdlib>
-#include "string.hpp"
+#include "std/string.hpp"
 
 namespace
 {
@@ -74,6 +74,12 @@ inline void print(T&& t, Args&&... args)
 {
   std::cout << std::vformat(std::forward<T>(t), format_args(std::forward<Args>(args)...)) << '\n';
 }
+
+#define throw_if(cond, msg) \
+  if (cond) { throw std::runtime_error(msg); }
+
+#define throw_if_not(cond, msg) \
+  if (not cond) { throw std::runtime_error(msg); }
 
 #define return_if(cond, ...) \
   if (cond) { return __VA_ARGS__; }

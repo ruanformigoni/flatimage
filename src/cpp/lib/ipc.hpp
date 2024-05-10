@@ -8,9 +8,9 @@
 #include <sys/msg.h>
 #include <cstring>
 
-#include "common.hpp"
-#include "concepts.hpp"
-#include "string.hpp"
+#include "../common.hpp"
+#include "../std/concepts.hpp"
+#include "../std/string.hpp"
 #include "log.hpp"
 
 namespace ns_ipc

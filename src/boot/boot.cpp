@@ -100,12 +100,14 @@ int main()
 {
   setup_environment();
 
+  ns_log::set_level(ns_log::Level::DEBUG);
+
   ns_log::debug("Hello World");
 
   ns_subprocess::Subprocess("/usr/bin/cat")
-    .with_arg("/home/ruan/Documents/main.cpp")
+    .with_args("/home/ruan/Documents/main.cpp")
     .with_args(std::vector{"/home/ruan/Repositories/flatimage/build.sh", "/home/ruan/Desktop/hello.txt"})
-    .with_arg("/home/ruan/Desktop/hello.cpp")
+    .with_args("/home/ruan/Desktop/hello.cpp", "/home/ruan/Desktop/hello2.cpp")
     .spawn();
 
   return EXIT_SUCCESS;

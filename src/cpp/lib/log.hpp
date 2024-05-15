@@ -74,7 +74,8 @@ void info(ns_concept::AsString auto&& format, Args&&... args)
 template<ns_concept::AsString... Args>
 void error(ns_concept::AsString auto&& format, Args&&... args)
 {
-  print(instance.m_os, "E::{}\n"_fmt(format), std::forward<Args>(args)...);
+  print(instance.m_os, "E::{}\n"_fmt(format), args...);
+  print("E::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // error
 
 template<ns_concept::AsString... Args>

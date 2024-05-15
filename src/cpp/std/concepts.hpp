@@ -14,7 +14,11 @@ template<typename T>
 concept Enum = std::is_enum_v<T>;
 
 template<typename T>
-concept IterableForward = std::forward_iterator<T>;
+concept IterableConst = requires(T t)
+{
+  { t.cbegin() } -> std::input_iterator;
+  { t.cend() } -> std::input_iterator;
+};
 
 template<typename T>
 concept StringConvertible = std::is_convertible_v<std::decay_t<T>, std::string>;
@@ -33,7 +37,7 @@ concept StreamInsertable = requires(T t, std::ostream& os)
 };
 
 template<typename T>
-concept AsString = StringConvertible<T> or StringConstructible<T> or Numeric<T> or StreamInsertable<T>;
+concept AsString = StringConvertible<T> or StringConstructible<T> or Numeric<T> or StreamInsertable<T> or IterableConst<T>;
 
 } // namespace ns_concept
 

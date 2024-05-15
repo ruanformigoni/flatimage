@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <format>
 
 #include "concepts.hpp"
 
@@ -49,6 +50,14 @@ inline std::string to_string(T&& t)
   {
     std::stringstream ss;
     ss << t;
+    return ss.str();
+  } // else if 
+  else if constexpr ( ns_concept::IterableConst<T> )
+  {
+    std::stringstream ss;
+    ss << '[';
+    std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ ss << std::format("'{}',", e); });
+    ss << ']';
     return ss.str();
   } // else if 
   

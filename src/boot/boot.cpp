@@ -9,6 +9,7 @@
 #include "../cpp/lib/log.hpp"
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/filesystem.hpp"
+#include "../cpp/lib/subprocess.hpp"
 
 namespace fs = std::filesystem;
 
@@ -99,7 +100,13 @@ int main()
 {
   setup_environment();
 
-  ns_log::debug("Hello World\n");
+  ns_log::debug("Hello World");
+
+  ns_subprocess::Subprocess("/usr/bin/cat")
+    .with_arg("/home/ruan/Documents/main.cpp")
+    .with_args(std::vector{"/home/ruan/Repositories/flatimage/build.sh", "/home/ruan/Desktop/hello.txt"})
+    .with_arg("/home/ruan/Desktop/hello.cpp")
+    .spawn();
 
   return EXIT_SUCCESS;
 } // main

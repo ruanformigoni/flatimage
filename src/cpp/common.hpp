@@ -14,6 +14,7 @@
 namespace
 {
 
+// struct format_args {{{
 template<typename... Args>
 struct format_args
 {
@@ -30,7 +31,7 @@ struct format_args
   {
     return std::apply([](auto&&... e) { return std::make_format_args(e...); }, m_tuple_args);
   } // operator*
-};
+}; // struct format_args }}}
 
 } // namespace
 
@@ -41,7 +42,7 @@ inline auto operator""_print(const char* c_str, std::size_t)
 {
   return [=]<typename... Args>(Args&&... args)
   {
-    std::cout << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...)) << '\n';
+    std::cout << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...));
   };
 }
 
@@ -50,7 +51,7 @@ inline auto operator""_exit(const char* c_str, std::size_t)
 {
   return [=]<typename... Args>(Args&&... args)
   {
-    std::cerr << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...)) << '\n';
+    std::cerr << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...));
   };
 }
 
@@ -74,6 +75,7 @@ inline decltype(auto) operator ""_throw(const char* str, size_t)
 
 // }}}
 
+// print() {{{
 template<ns_concept::AsString T, typename... Args>
 inline void print(std::ostream& os, T&& t, Args&&... args)
 {
@@ -85,8 +87,9 @@ inline void print(std::ostream& os, T&& t, Args&&... args)
   {
     os << t;
   } // if
-}
+} // print() }}}
 
+// print() {{{
 template<ns_concept::AsString T, typename... Args>
 inline void print(T&& t, Args&&... args)
 {
@@ -98,8 +101,9 @@ inline void print(T&& t, Args&&... args)
   {
     std::cout << t;
   } // if
-}
+} // print() }}}
 
+// print_if() {{{
 template<typename... Args>
 inline void print_if(bool cond, Args&&... args)
 {
@@ -107,6 +111,6 @@ inline void print_if(bool cond, Args&&... args)
   {
     print(std::forward<Args>(args)...);
   } // if
-}
+} // print_if() }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

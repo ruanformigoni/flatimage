@@ -51,10 +51,10 @@ inline fs::path file(const char* name)
   const char * value = std::getenv(name) ;
 
   // Check if variable exists
-  ethrow_if(value, "Variable '{}' not set"_fmt(name));
+  ethrow_if(not value, "Variable '{}' not set"_fmt(name));
 
   // Create if not exists
-  ethrow_if(fs::exists(value), "File '{}' does not exist"_fmt(value));
+  ethrow_if(not fs::exists(value), "File '{}' does not exist"_fmt(value));
 
   return fs::canonical(value);
 } // file() }}}
@@ -127,7 +127,7 @@ inline const char* get(const char* name)
 // Checks if variable exists, else throws
 inline void check(const char* var)
 {
-  ethrow_if(get(var), "'{}' is unset"_fmt(var));
+  ethrow_if(not get(var), "'{}' is unset"_fmt(var));
 } // check() }}}
 
 } // namespace ns_env }}}

@@ -26,12 +26,19 @@ class Subprocess
   private:
     std::string m_program;
     std::vector<std::string> m_args;
+    std::vector<std::string> m_env;
     std::optional<std::function<void(std::string)>> m_fstdout;
     std::optional<std::function<void(std::string)>> m_fstderr;
 
   public:
     template<ns_concept::AsString T>
     Subprocess(T&& t);
+
+    template<ns_concept::AsString K, ns_concept::AsString V>
+    Subprocess& with_var(K&& k, V&& v);
+
+    template<ns_concept::AsString K>
+    Subprocess& rm_var(K&& k);
 
     template<ns_concept::AsString... T>
     Subprocess& with_args(T&&... t);
@@ -55,7 +62,29 @@ Subprocess::Subprocess(T&& t)
 {
   // argv0 is program name
   m_args.push_back(m_program);
+  // Copy environment
+  for(char** i = environ; *i != nullptr; ++i)
+  {
+    m_env.push_back(*i);
+  } // for
 } // Subprocess }}}
+
+// with_var() {{{
+template<ns_concept::AsString K, ns_concept::AsString V>
+Subprocess& Subprocess::with_var(K&& k, V&& v)
+{
+  m_env.push_back("{}={}"_fmt(k,v));
+  return *this;
+} // with_var() }}}
+
+// rm_var() {{{
+template<ns_concept::AsString K>
+Subprocess& Subprocess::rm_var(K&& k)
+{
+  auto it = std::ranges::find_if(m_env, [&](std::string const& e){ return e.starts_with(ns_string::to_string(k)); });
+  if ( it != std::ranges::end(m_env) ) { m_env.erase(it); }
+  return *this;
+} // rm_var() }}}
 
 // with_args() {{{
 template<ns_concept::AsString... T>
@@ -118,47 +147,27 @@ inline void Subprocess::spawn()
     ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)));
     ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
 
-    auto thread_stdout = std::thread([=,this]
+    auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
     {
+      // Check if 'f' is defined
+      if ( not f ) { f = [&](auto&& e){ ns_log::info("{}({}): {}", prefix, m_program, e); }; }
+      // Apply f to incoming data from pipe
       char buffer[1024];
       ssize_t count;
-      while ((count = read(pipestdout[0], buffer, sizeof(buffer))) != 0)
+      while ((count = read(id_pipe, buffer, sizeof(buffer))) != 0)
       {
         ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
-        // Split newlines and print each line with m_program as a prefix
+        // Split newlines and print each line with prefix
         for( auto&& i : std::string(buffer, count) | std::views::split('\n'))
         {
-          if ( this->m_fstdout )
-          {
-            (*m_fstdout)(std::string{i.begin(), i.end()});
-            continue;
-          } // if
-          ns_log::info("stdout({}): {}", m_program, std::string{i.begin(), i.end()});
+          (*f)(std::string{i.begin(), i.end()});
         } // for
       } // while
-      close(pipestdout[0]);
-    });
+      close(id_pipe);
+    };
 
-    auto thread_stderr = std::thread([=,this]
-    {
-      char buffer[1024];
-      ssize_t count;
-      while ((count = read(pipestderr[0], buffer, sizeof(buffer))) != 0)
-      {
-        ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
-        // Split newlines and print each line with m_program as a prefix
-        for( auto&& i : std::string(buffer, count) | std::views::split('\n'))
-        {
-          if ( this->m_fstderr )
-          {
-            (*m_fstderr)(std::string{i.begin(), i.end()});
-            continue;
-          } // if
-          ns_log::error("stderr({}): {}", m_program, std::string{i.begin(), i.end()});
-        } // for
-      } // while
-      close(pipestderr[0]);
-    });
+    auto thread_stdout = std::thread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
+    auto thread_stderr = std::thread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
 
     thread_stdout.join();
     thread_stderr.join();
@@ -184,7 +193,7 @@ inline void Subprocess::spawn()
   // Create arguments for execve
   const char **argv_custom = new const char* [m_args.size()+1];
 
-  // Set last arg to nullptr
+  // Set last entry to nullptr
   argv_custom[m_args.size()] = nullptr;
 
   // Copy arguments
@@ -193,8 +202,20 @@ inline void Subprocess::spawn()
     argv_custom[i] = m_args[i].c_str();
   } // for
 
+  // Create environment for execve
+  const char **envp_custom = new const char* [m_env.size()+1];
+
+  // Set last entry to nullptr
+  envp_custom[m_env.size()] = nullptr;
+
+  // Copy variables
+  for(size_t i = 0; i < m_env.size(); ++i)
+  {
+    envp_custom[i] = m_env[i].c_str();
+  } // for
+
   // Perform execve
-  execve(m_program.c_str(), (char**) argv_custom, environ);
+  execve(m_program.c_str(), (char**) argv_custom, (char**) envp_custom);
 
   // If got here, execve failed
   delete[] argv_custom;

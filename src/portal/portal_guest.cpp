@@ -3,6 +3,7 @@
 // @file        : portal_guest
 ///
 
+#include "../cpp/macro.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ipc.hpp"
 
@@ -10,12 +11,13 @@
 int main(int argc, char** argv)
 {
   // Check args
-  return_if( argc < 2, (ns_log::error("Incorrect arguments"), EXIT_FAILURE));
+  ereturn_if( argc < 2, "Incorrect arguments", EXIT_FAILURE);
 
   // Get file path for IPC
-  const char* env = assign_or_return(getenv("FIM_FILE_BINARY")
+  const char* env = assign_and_ereturn_if(getenv("FIM_FILE_BINARY")
     , env
-    , (ns_log::error("Could not read FIM_FILE_BINARY"), EXIT_FAILURE)
+    , "Could not read FIM_FILE_BINARY"
+    , EXIT_FAILURE
   );
 
   // Create ipc instance

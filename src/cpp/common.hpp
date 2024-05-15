@@ -109,31 +109,4 @@ inline void print_if(bool cond, Args&&... args)
   } // if
 }
 
-#define throw_if(cond, msg) \
-  if (cond) { throw std::runtime_error(msg); }
-
-#define throw_if_not(cond, msg) \
-  if (not cond) { throw std::runtime_error(msg); }
-
-#define return_if(cond, ...) \
-  if (cond) { return __VA_ARGS__; }
-
-#define return_if_else(cond, val1, val2) \
-  if (cond) { return val1; } else { return val2; }
-
-#define break_if(cond) \
-  if ( (cond) ) { break; }
-
-#define continue_if(cond) \
-  if ( (cond) ) { continue; }
-
-#define assign_if(cond, var, val) \
-  if ( cond ) { var = val; }
-
-#define assign_or_return(val, cond, ret) \
-  val; if ( not cond ) { return ret; }
-
-#define assign_or_throw(val, cond, msg) \
-  val; if ( not cond ) { throw_if(cond, msg); }
-
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

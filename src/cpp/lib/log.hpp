@@ -10,24 +10,24 @@
 #include <filesystem>
 #include <fstream>
 
+#include "../common.hpp"
 #include "../std/concepts.hpp"
 #include "../std/filesystem.hpp"
-#include "../common.hpp"
 
 namespace ns_log
 {
+
+enum class Level : int
+{
+  QUIET,
+  VERBOSE,
+  DEBUG,
+};
 
 namespace
 {
 
 namespace fs = std::filesystem;
-
-enum class Level : int
-{
-  DEFAULT,
-  VERBOSE,
-  DEBUG,
-};
 
 struct Logger
 {
@@ -52,12 +52,17 @@ inline Logger::Logger()
   // File output stream
   m_os = std::ofstream{m_file};
 
-  throw_if(m_os.bad(), "Could not open file '{}'"_fmt(m_file));
+  if( m_os.bad() ) { std::runtime_error("Could not open file '{}'"_fmt(m_file)); };
 } // Logger
 
 static Logger instance;
 
-}
+} // namespace
+
+inline void set_level(Level level)
+{
+  instance.m_level = level;
+} // info
 
 template<ns_concept::AsString... Args>
 void info(ns_concept::AsString auto&& format, Args&&... args)

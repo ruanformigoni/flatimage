@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "../common.hpp"
+#include "../macro.hpp"
 #include "../lib/log.hpp"
 
 // Environment variable handling {{{
@@ -33,10 +34,10 @@ inline fs::path dir(const char* name)
   const char * value = std::getenv(name) ;
 
   // Check if variable exists
-  throw_if_not(value, "Variable '{}' not set"_fmt(name));
+  ethrow_if(not value, "Variable '{}' not set"_fmt(name));
 
   // Create if not exists
-  throw_if_not(fs::create_directory(value), "Could not create directory {}"_fmt(value));
+  ethrow_if(not fs::create_directory(value), "Could not create directory {}"_fmt(value));
 
   return fs::canonical(value);
 } // dir() }}}
@@ -50,10 +51,10 @@ inline fs::path file(const char* name)
   const char * value = std::getenv(name) ;
 
   // Check if variable exists
-  throw_if_not(value, "Variable '{}' not set"_fmt(name));
+  ethrow_if(value, "Variable '{}' not set"_fmt(name));
 
   // Create if not exists
-  throw_if_not(fs::exists(value), "File '{}' does not exist"_fmt(value));
+  ethrow_if(fs::exists(value), "File '{}' does not exist"_fmt(value));
 
   return fs::canonical(value);
 } // file() }}}
@@ -126,7 +127,7 @@ inline const char* get(const char* name)
 // Checks if variable exists, else throws
 inline void check(const char* var)
 {
-  throw_if_not(get(var), "'{}' is unset"_fmt(var));
+  ethrow_if(get(var), "'{}' is unset"_fmt(var));
 } // check() }}}
 
 } // namespace ns_env }}}

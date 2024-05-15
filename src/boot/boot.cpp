@@ -20,7 +20,6 @@ void setup_environment()
 
   // User type
   ns_env::set_mutual_exclusion("FIM_ROOT", "FIM_NORM", "1");
-  ns_env::print("FIM_ROOT");
 
   // Mount mode
   ns_env::set_mutual_exclusion("FIM_RO", "FIM_RW", "1");

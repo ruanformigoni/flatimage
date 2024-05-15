@@ -10,8 +10,6 @@ project(Fim DESCRIPTION "Application Chroot Subsystem" LANGUAGES CXX)
 
 # Compiler
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
-add_definitions("--std=c++17 -Wall -Wextra")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
@@ -48,9 +46,6 @@ add_custom_command(
   VERBATIM
 )
 
-# External libraries
-find_package(fmt REQUIRED)
-
 # Definitions
 ## Timestamp
 string(TIMESTAMP TIMESTAMP "%Y%m%d%H%M%S")
@@ -68,8 +63,10 @@ message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
 
 # Main executable
 add_executable(main main.cpp boot.h killer.h)
-target_link_libraries(main PRIVATE fmt::fmt)
-target_include_directories(main PRIVATE ${fmt_INCLUDE_DIRS})
+target_compile_options(main PRIVATE --std=c++23 -Wall -Wextra)
+target_link_options(main PRIVATE -static)
 
 # Magic patcher
 add_executable(magic magic.cpp)
+target_compile_options(magic PRIVATE --std=c++23 -Wall -Wextra)
+target_link_options(magic PRIVATE -static)

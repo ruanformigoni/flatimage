@@ -14,6 +14,7 @@
 namespace
 {
 
+// struct format_args {{{
 template<typename... Args>
 struct format_args
 {
@@ -30,7 +31,7 @@ struct format_args
   {
     return std::apply([](auto&&... e) { return std::make_format_args(e...); }, m_tuple_args);
   } // operator*
-};
+}; // struct format_args }}}
 
 } // namespace
 
@@ -41,16 +42,7 @@ inline auto operator""_print(const char* c_str, std::size_t)
 {
   return [=]<typename... Args>(Args&&... args)
   {
-    std::cout << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...)) << '\n';
-  };
-}
-
-// Print and exit
-inline auto operator""_exit(const char* c_str, std::size_t)
-{
-  return [=]<typename... Args>(Args&&... args)
-  {
-    std::cerr << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...)) << '\n';
+    std::cout << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...));
   };
 }
 
@@ -74,7 +66,8 @@ inline decltype(auto) operator ""_throw(const char* str, size_t)
 
 // }}}
 
-template<ns_concept::AsString T, typename... Args>
+// print() {{{
+template<ns_concept::StringRepresentable T, typename... Args>
 inline void print(std::ostream& os, T&& t, Args&&... args)
 {
   if constexpr ( sizeof...(args) > 0 )
@@ -85,9 +78,11 @@ inline void print(std::ostream& os, T&& t, Args&&... args)
   {
     os << t;
   } // if
-}
+} // print() }}}
 
-template<ns_concept::AsString T, typename... Args>
+// print() {{{
+template<ns_concept::StringRepresentable T, typename... Args>
+requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
 inline void print(T&& t, Args&&... args)
 {
   if constexpr ( sizeof...(args) > 0 )
@@ -98,8 +93,9 @@ inline void print(T&& t, Args&&... args)
   {
     std::cout << t;
   } // if
-}
+} // print() }}}
 
+// print_if() {{{
 template<typename... Args>
 inline void print_if(bool cond, Args&&... args)
 {
@@ -107,6 +103,20 @@ inline void print_if(bool cond, Args&&... args)
   {
     print(std::forward<Args>(args)...);
   } // if
-}
+} // print_if() }}}
+
+// println() {{{
+template<typename T, typename... Args>
+inline void println(std::ostream& os, T&& t, Args&&... args)
+{
+  print(os, ns_string::to_string(std::forward<T>(t)) + "\n", std::forward<Args>(args)...);
+} // println() }}}
+
+// println() {{{
+template<ns_concept::StringRepresentable T, typename... Args>
+inline void println(T&& t, Args&&... args)
+{
+  print(ns_string::to_string(std::forward<T>(t)) + "\n", std::forward<Args>(args)...);
+} // println() }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

@@ -11,6 +11,7 @@
 
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ipc.hpp"
+#include "../cpp/macro.hpp"
 
 namespace fs = std::filesystem;
 
@@ -35,10 +36,10 @@ void fork_execve(std::vector<std::string>& vec_argv)
   pid_t pid = fork();
 
   // Failed to fork
-  return_if(pid == -1);
+  ereturn_if(pid == -1, "Failed to fork");
 
   // Is parent
-  return_if(pid > 0);
+  qreturn_if(pid > 0);
 
   // Create arguments for execve
   const char **argv_custom = new const char* [vec_argv.size()+1];
@@ -65,19 +66,22 @@ void fork_execve(std::vector<std::string>& vec_argv)
 // search_path() {{{
 std::optional<fs::path> search_path(fs::path query)
 {
-  const char* env_path = assign_or_return(std::getenv("PATH")
-    , env_path
-    , (ns_log::error("PATH environment variable not found"), std::nullopt)
+  const char* env_path = assign_and_ereturn_if(std::getenv("PATH")
+    , not env_path
+    , "PATH environment variable not found"
+    , std::nullopt
   );
 
-  const char* env_dir_global_bin = assign_or_return(std::getenv("FIM_DIR_GLOBAL_BIN")
-    , env_dir_global_bin
-    , (ns_log::error("FIM_DIR_GLOBAL_BIN environment variable not found"), std::nullopt)
+  const char* env_dir_global_bin = assign_and_ereturn_if(std::getenv("FIM_DIR_GLOBAL_BIN")
+    , not env_dir_global_bin
+    , "FIM_DIR_GLOBAL_BIN environment variable not found"
+    , std::nullopt
   );
 
-  const char* env_dir_static = assign_or_return(std::getenv("FIM_DIR_STATIC")
-    , env_dir_global_bin
-    , (ns_log::error("FIM_DIR_STATIC environment variable not found"), std::nullopt)
+  const char* env_dir_static = assign_and_ereturn_if(std::getenv("FIM_DIR_STATIC")
+    , not env_dir_global_bin
+    , "FIM_DIR_STATIC environment variable not found"
+    , std::nullopt
   );
 
   if ( query.is_absolute() )
@@ -88,14 +92,14 @@ std::optional<fs::path> search_path(fs::path query)
   std::string path(env_path);
   std::istringstream istream_path(path);
   std::string str_getline;
-  
+
   while (std::getline(istream_path, str_getline, ':'))
   {
     fs::path path_parent = str_getline;
-    continue_if(path_parent == fs::path(env_dir_static));
-    continue_if(path_parent == fs::path(env_dir_global_bin));
+    qcontinue_if(path_parent == fs::path(env_dir_static));
+    qcontinue_if(path_parent == fs::path(env_dir_global_bin));
     fs::path path_full = path_parent / query;
-    return_if(fs::exists(path_full), (ns_log::info("Found '{}' in PATH", path_full), path_full));
+    ireturn_if(fs::exists(path_full), "Found '{}' in PATH"_fmt(path_full), path_full);
   } // while
 
   return std::nullopt;
@@ -108,7 +112,7 @@ int main(int argc, char** argv)
   signal(SIGINT, signal_handler);
 
   // Check args
-  return_if(argc != 2, (ns_log::error("Incorrect arguments"), EXIT_FAILURE));
+  ereturn_if(argc != 2, "Incorrect number of arguments", EXIT_FAILURE);
 
   // Create ipc instance
   auto ipc = ns_ipc::Ipc::host(argv[1]);
@@ -120,11 +124,11 @@ int main(int argc, char** argv)
   {
     auto opt_msg = ipc.recv();
 
-    break_if(opt_msg == std::nullopt);
+    ibreak_if(opt_msg == std::nullopt, "Empty message");
 
-    ns_log::info("Recovered message: {}", *opt_msg);
+    ns_log::info()("Recovered message: {}", *opt_msg);
 
-    break_if(*opt_msg == "IPC_QUIT");
+    ibreak_if(*opt_msg == "IPC_QUIT", "IPC_QUIT");
 
     if ( *opt_msg == "IPC_ARGV_START" )
     {
@@ -138,7 +142,10 @@ int main(int argc, char** argv)
     else
     {
       // If is first argument, search in PATH
-      assign_if(argv_custom.empty(), opt_msg, search_path(*opt_msg));
+      if ( argv_custom.empty() )
+      {
+        opt_msg = search_path(*opt_msg);
+      } // if
       // Push to argument list
       argv_custom.push_back(*opt_msg);
     } // else

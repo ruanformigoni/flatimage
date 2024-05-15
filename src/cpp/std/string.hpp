@@ -7,8 +7,10 @@
 
 #include <algorithm>
 #include <sstream>
+#include <format>
+#include <vector>
 
-#include "concepts.hpp"
+#include "concept.hpp"
 
 namespace ns_string
 {
@@ -51,8 +53,16 @@ inline std::string to_string(T&& t)
     ss << t;
     return ss.str();
   } // else if 
+  else if constexpr ( ns_concept::IterableConst<T> )
+  {
+    std::stringstream ss;
+    ss << '[';
+    std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ ss << std::format("'{}',", e); });
+    ss << ']';
+    return ss.str();
+  } // else if 
   
-  throw std::runtime_error("Cannot convert type to a valid string");
+  throw std::runtime_error(std::string{"Cannot convert valid string, type: "} + typeid(T).name());
 } // to_string() }}}
 
 // to_tuple() {{{
@@ -63,7 +73,7 @@ inline auto to_tuple(Args&&... args)
 } // to_tuple() }}}
 
 // to_lower() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 std::string to_lower(T&& t)
 {
   std::string ret = to_string(t);
@@ -72,13 +82,30 @@ std::string to_lower(T&& t)
 } // to_lower() }}}
 
 // to_upper() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 std::string to_upper(T&& t)
 {
   std::string ret = to_string(t);
   std::ranges::for_each(ret, [](auto& c){ c = std::toupper(c); });
   return ret;
 } // to_upper() }}}
+
+// to_pair() {{{
+template<ns_concept::StringRepresentable T>
+std::pair<T,T> to_pair(T&& t, char delimiter)
+{
+  std::vector<T> tokens;
+  std::string token;
+  std::istringstream stream_token(ns_string::to_string(t));
+
+  while (std::getline(stream_token, token, delimiter))
+  {
+    tokens.push_back(token);
+  } // while
+
+  ethrow_if(tokens.size() != 2, "Pair from '{}' with delimiter '{}' could not split to 2 elements", t, delimiter);
+  return std::make_pair(tokens.front(), tokens.back());
+} // to_pair() }}}
 
 // from_container() {{{
 template<typename T>

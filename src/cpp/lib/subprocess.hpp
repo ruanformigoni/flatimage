@@ -156,12 +156,12 @@ inline void Subprocess::spawn()
       ssize_t count;
       while ((count = read(id_pipe, buffer, sizeof(buffer))) != 0)
       {
+        // Failed to read
         ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
         // Split newlines and print each line with prefix
-        for( auto&& i : std::string(buffer, count) | std::views::split('\n'))
-        {
-          (*f)(std::string{i.begin(), i.end()});
-        } // for
+        std::ranges::for_each(std::string(buffer, count) | std::views::split('\n')
+          , [&](auto&& e){ (*f)(std::string{e.begin(), e.end()});
+        });
       } // while
       close(id_pipe);
     };
@@ -191,34 +191,25 @@ inline void Subprocess::spawn()
   ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
 
   // Create arguments for execve
-  const char **argv_custom = new const char* [m_args.size()+1];
+  auto argv_custom = std::make_unique<const char*[]>(m_args.size() + 1);
+
+  // Copy arguments
+  std::ranges::transform(m_args, argv_custom.get(), [](auto&& e) { return e.c_str(); });
 
   // Set last entry to nullptr
   argv_custom[m_args.size()] = nullptr;
 
-  // Copy arguments
-  for(size_t i = 0; i < m_args.size(); ++i)
-  {
-    argv_custom[i] = m_args[i].c_str();
-  } // for
-
   // Create environment for execve
-  const char **envp_custom = new const char* [m_env.size()+1];
+  auto envp_custom = std::make_unique<const char*[]>(m_env.size() + 1);
+
+  // Copy variables
+  std::transform(m_env.begin(), m_env.end(), envp_custom.get(), [](auto&& e) { return e.c_str(); });
 
   // Set last entry to nullptr
   envp_custom[m_env.size()] = nullptr;
 
-  // Copy variables
-  for(size_t i = 0; i < m_env.size(); ++i)
-  {
-    envp_custom[i] = m_env[i].c_str();
-  } // for
-
   // Perform execve
-  execve(m_program.c_str(), (char**) argv_custom, (char**) envp_custom);
-
-  // If got here, execve failed
-  delete[] argv_custom;
+  execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
 
   // Child should stop here
   exit(1);

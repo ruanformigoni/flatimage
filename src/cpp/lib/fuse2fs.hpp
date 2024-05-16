@@ -25,13 +25,13 @@ enum class Mode
 inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset)
 {
   // Check if image exists and is a regular file
-  ereturn_if(not fs::exists(path_file_image) or not fs::is_regular_file(path_file_image)
+  ereturn_if(not fs::is_regular_file(path_file_image)
     , "'{}' does not exist or is not a regular file"_fmt(path_file_image)
     , -1
   );
 
   // Check if mountpoint exists and is directory
-  ereturn_if(not fs::exists(path_dir_mount) or not fs::is_directory(path_dir_mount)
+  ereturn_if(not fs::is_directory(path_dir_mount)
     , "'{}' does not exist or is not a directory"_fmt(path_file_image)
     , -1
   );
@@ -42,8 +42,7 @@ inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path con
 
   // Execute command
   auto ret = ns_subprocess::Subprocess(*opt_path_file_fuse2fs)
-    .with_args((mode == Mode::RO)? "-o ro,fakeroot" : "-o fakeroot")
-    .with_args("-o offset={}"_fmt(offset))
+    .with_args((mode == Mode::RO)? "-oro,fakeroot,offset={}"_fmt(offset) : "-ofakeroot,offset={}"_fmt(offset))
     .with_args(path_file_image, path_dir_mount)
     .spawn(true);
 

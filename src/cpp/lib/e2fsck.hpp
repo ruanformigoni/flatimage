@@ -17,8 +17,9 @@ namespace
 
 namespace fs = std::filesystem;
 
-}
+} // namespace
 
+// check() {{{
 inline int check(fs::path const& path_file_image, uint64_t offset)
 {
   // Check if image exists and is a regular file
@@ -40,7 +41,7 @@ inline int check(fs::path const& path_file_image, uint64_t offset)
   if ( not ret.has_value() ) { ret = 1; }
 
   return *ret;
-} // check
+} // check() }}}
 
 } // namespace ns_e2fsck
 

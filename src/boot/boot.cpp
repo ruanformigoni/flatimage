@@ -99,8 +99,22 @@ void setup_environment()
 } // setup_environment() }}}
 
 // copy_tools() {{{
-void copy_tools()
+void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bin)
 {
+  // Check if path_dir_tools exists and is directory
+  ereturn_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
+  // Check if path_dir_temp_bin exists and is directory
+  ereturn_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
+  // Copy programs
+  for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
+    | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
+  {
+    fs::path path_file_dst = path_dir_temp_bin / path_file_src.path().filename();
+    if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
+    {
+      ns_log::info("Copy '{}' -> '{}'", path_file_src, path_file_dst);
+    } // if
+  } // for
 } // copy_tools() }}}
 
 int main()
@@ -122,6 +136,11 @@ int main()
   // Mount filesystem as RO
   fs::path path_dir_mount = ns_env::get("FIM_DIR_MOUNT");
   ns_fuse2fs::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
+
+  // Copy tools
+  fs::path path_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
+  copy_tools(path_dir_mount / "fim/static", path_dir_temp_bin);
+
 
   return EXIT_SUCCESS;
 } // main

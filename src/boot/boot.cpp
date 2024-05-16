@@ -10,6 +10,8 @@
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/filesystem.hpp"
 #include "../cpp/lib/subprocess.hpp"
+#include "../cpp/lib/e2fsck.hpp"
+#include "../cpp/lib/fuse2fs.hpp"
 
 namespace fs = std::filesystem;
 
@@ -96,19 +98,30 @@ void setup_environment()
   ns_env::set("FIM_COMPRESSION_DIRS", "/usr:/opt", ns_env::Replace::N);
 } // setup_environment() }}}
 
+// copy_tools() {{{
+void copy_tools()
+{
+} // copy_tools() }}}
+
 int main()
 {
+  // Set logger level
+  if ( ns_env::get("FIM_DEBUG") )
+  {
+    ns_log::set_level(ns_log::Level::DEBUG);
+  } // if
+
+  // Setup environment variables
   setup_environment();
 
-  ns_log::set_level(ns_log::Level::DEBUG);
+  // Check filesystem
+  fs::path path_file_binary = ns_env::get("FIM_FILE_BINARY");
+  uint64_t offset_path_file_binary = std::stoi(ns_env::get("FIM_OFFSET"));
+  ns_e2fsck::check(path_file_binary, offset_path_file_binary);
 
-  ns_log::debug("Hello World");
-
-  ns_subprocess::Subprocess("/usr/bin/cat")
-    .with_args("/home/ruan/Documents/main.cpp")
-    .with_args(std::vector{"/home/ruan/Repositories/flatimage/build.sh", "/home/ruan/Desktop/hello.txt"})
-    .with_args("/home/ruan/Desktop/hello.cpp", "/home/ruan/Desktop/hello2.cpp")
-    .spawn();
+  // Mount filesystem as RO
+  fs::path path_dir_mount = ns_env::get("FIM_DIR_MOUNT");
+  ns_fuse2fs::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
 
   return EXIT_SUCCESS;
 } // main

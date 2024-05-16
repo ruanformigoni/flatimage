@@ -16,9 +16,42 @@
 #include <thread>
 
 #include "../macro.hpp"
+#include "../std/env.hpp"
 
 namespace ns_subprocess
 {
+
+namespace
+{
+
+namespace fs = std::filesystem;
+
+} // namespace 
+
+// search_path() {{{
+inline std::optional<std::string> search_path(std::string const& s)
+{
+  const char* cstr_path = ns_env::get("PATH");
+  ereturn_if(cstr_path == nullptr, "PATH: Could not read PATH", std::nullopt);
+
+  std::string str_path{cstr_path};
+  auto view = str_path | std::views::split(':');
+  auto it = std::find_if(view.begin(), view.end(), [&](auto&& e)
+  {
+    ns_log::debug("PATH: Check for {}", fs::path(e.begin(), e.end()) / s);
+    return fs::exists(fs::path(e.begin(), e.end()) / s);
+  });
+
+  if (it != view.end())
+  {
+    auto result = fs::path((*it).begin(), (*it).end()) / s;
+    ns_log::debug("PATH: Found '{}'", result);
+    return result;
+  } // if
+
+  ns_log::debug("PATH: Could not find '{}'", s);
+  return std::nullopt;
+} // search_path()}}}
 
 // class Subprocess {{{
 class Subprocess
@@ -34,6 +67,8 @@ class Subprocess
     template<ns_concept::AsString T>
     Subprocess(T&& t);
 
+    Subprocess& env_clear();
+
     template<ns_concept::AsString K, ns_concept::AsString V>
     Subprocess& with_var(K&& k, V&& v);
 
@@ -43,7 +78,8 @@ class Subprocess
     template<ns_concept::AsString... T>
     Subprocess& with_args(T&&... t);
 
-    template<ns_concept::IterableConst T>
+    template<typename T>
+    requires (not ns_concept::AsString<T>) && ns_concept::IterableConst<T>
     Subprocess& with_args(T&& t);
 
     template<typename F>
@@ -52,7 +88,7 @@ class Subprocess
     template<typename F>
     Subprocess& with_stderr_handle(F&& f);
 
-    void spawn();
+    std::optional<int> spawn(bool wait = false);
 }; // Subprocess }}}
 
 // Subprocess::Subprocess {{{
@@ -68,6 +104,13 @@ Subprocess::Subprocess(T&& t)
     m_env.push_back(*i);
   } // for
 } // Subprocess }}}
+
+// env_clear() {{{
+inline Subprocess& Subprocess::env_clear()
+{
+  m_env.clear();
+  return *this;
+} // env_clear() }}}
 
 // with_var() {{{
 template<ns_concept::AsString K, ns_concept::AsString V>
@@ -95,7 +138,8 @@ Subprocess& Subprocess::with_args(T&&... t)
 } // with_args }}}
 
 // with_args() {{{
-template<ns_concept::IterableConst T>
+template<typename T>
+requires (not ns_concept::AsString<T>) && ns_concept::IterableConst<T>
 Subprocess& Subprocess::with_args(T&& t)
 {
   std::copy(t.begin(), t.end(), std::back_inserter(m_args));
@@ -119,7 +163,7 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
 } // with_stderr_handle }}}
 
 // spawn() {{{
-inline void Subprocess::spawn()
+inline std::optional<int> Subprocess::spawn(bool wait)
 {
   // Log
   ns_log::info("Spawn command: {}", m_args);
@@ -128,29 +172,29 @@ inline void Subprocess::spawn()
   int pipestderr[2];
 
   // Create pipe
-  ereturn_if(pipe(pipestdout), strerror(errno));
-  ereturn_if(pipe(pipestderr), strerror(errno));
+  ereturn_if(pipe(pipestdout), strerror(errno), std::nullopt);
+  ereturn_if(pipe(pipestderr), strerror(errno), std::nullopt);
 
   // Ignore on empty vec_argv
-  if ( m_args.empty() ) { return; }
+  if ( m_args.empty() ) { return std::nullopt; }
 
   // Create child
   pid_t pid = fork();
 
   // Failed to fork
-  ereturn_if(pid == -1, "Failed to fork");
+  ereturn_if(pid == -1, "Failed to fork", std::nullopt);
 
   // Is parent
   if ( pid > 0 )
   {
     // Close write end
-    ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)));
-    ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
+    ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
+    ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
 
     auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
     {
       // Check if 'f' is defined
-      if ( not f ) { f = [&](auto&& e){ ns_log::info("{}({}): {}", prefix, m_program, e); }; }
+      if ( not f ) { f = [&](auto&& e) { ns_log::info("{}({}): {}", prefix, m_program, e); }; }
       // Apply f to incoming data from pipe
       char buffer[1024];
       ssize_t count;
@@ -159,7 +203,9 @@ inline void Subprocess::spawn()
         // Failed to read
         ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
         // Split newlines and print each line with prefix
-        std::ranges::for_each(std::string(buffer, count) | std::views::split('\n')
+        std::ranges::for_each(std::string(buffer, count)
+            | std::views::split('\n')
+            | std::views::filter([&](auto&& e){ return not e.empty(); })
           , [&](auto&& e){ (*f)(std::string{e.begin(), e.end()});
         });
       } // while
@@ -173,22 +219,28 @@ inline void Subprocess::spawn()
     thread_stderr.join();
 
     // Wait for child process to finish
-    int status;
-    waitpid(pid, &status, 0);
-    return;
+    if ( wait )
+    {
+      int status;
+      waitpid(pid, &status, 0);
+      return status;
+    } // if
+
+    // Does not wait for child to finish
+    return std::nullopt;
   } // if
 
   // Close read end
-  ereturn_if(close(pipestdout[0]) == -1, "pipestdout[0]: {}"_fmt(strerror(errno)));
-  ereturn_if(close(pipestderr[0]) == -1, "pipestderr[0]: {}"_fmt(strerror(errno)));
+  ereturn_if(close(pipestdout[0]) == -1, "pipestdout[0]: {}"_fmt(strerror(errno)), std::nullopt);
+  ereturn_if(close(pipestderr[0]) == -1, "pipestderr[0]: {}"_fmt(strerror(errno)), std::nullopt);
 
   // Make the opened pipe the replace stdout
-  ereturn_if(dup2(pipestdout[1], STDOUT_FILENO) == -1, "dup2(pipestdout[1]): {}"_fmt(strerror(errno)));
-  ereturn_if(dup2(pipestderr[1], STDERR_FILENO) == -1, "dup2(pipestderr[1]): {}"_fmt(strerror(errno)));
+  ereturn_if(dup2(pipestdout[1], STDOUT_FILENO) == -1, "dup2(pipestdout[1]): {}"_fmt(strerror(errno)), std::nullopt);
+  ereturn_if(dup2(pipestderr[1], STDERR_FILENO) == -1, "dup2(pipestderr[1]): {}"_fmt(strerror(errno)), std::nullopt);
 
   // Close original write end after duplication
-  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)));
-  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
+  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
+  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
 
   // Create arguments for execve
   auto argv_custom = std::make_unique<const char*[]>(m_args.size() + 1);

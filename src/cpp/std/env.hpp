@@ -127,7 +127,9 @@ inline const char* get(const char* name)
 // Checks if variable exists, else throws
 inline void check(const char* var)
 {
-  ethrow_if(not get(var), "'{}' is unset"_fmt(var));
+  const char* value = get(var);
+  ethrow_if(not value, "'{}' is unset"_fmt(var));
+  ns_log::debug("ENV: {} -> {}", var, value);
 } // check() }}}
 
 } // namespace ns_env }}}

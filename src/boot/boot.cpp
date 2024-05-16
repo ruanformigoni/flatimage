@@ -112,7 +112,7 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
     fs::path path_file_dst = path_dir_temp_bin / path_file_src.path().filename();
     if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
     {
-      ns_log::info("Copy '{}' -> '{}'", path_file_src, path_file_dst);
+      ns_log::debug("Copy '{}' -> '{}'", path_file_src, path_file_dst);
     } // if
   } // for
 } // copy_tools() }}}

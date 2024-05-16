@@ -166,7 +166,7 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
 inline std::optional<int> Subprocess::spawn(bool wait)
 {
   // Log
-  ns_log::info("Spawn command: {}", m_args);
+  ns_log::debug("Spawn command: {}", m_args);
 
   int pipestdout[2];
   int pipestderr[2];
@@ -194,7 +194,7 @@ inline std::optional<int> Subprocess::spawn(bool wait)
     auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
     {
       // Check if 'f' is defined
-      if ( not f ) { f = [&](auto&& e) { ns_log::info("{}({}): {}", prefix, m_program, e); }; }
+      if ( not f ) { f = [&](auto&& e) { ns_log::debug("{}({}): {}", prefix, m_program, e); }; }
       // Apply f to incoming data from pipe
       char buffer[1024];
       ssize_t count;

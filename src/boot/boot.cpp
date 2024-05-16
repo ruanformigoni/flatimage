@@ -10,8 +10,8 @@
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/filesystem.hpp"
 #include "../cpp/lib/subprocess.hpp"
-#include "../cpp/lib/e2fsck.hpp"
-#include "../cpp/lib/fuse2fs.hpp"
+#include "../cpp/lib/ext2/check.hpp"
+#include "../cpp/lib/ext2/mount.hpp"
 
 namespace fs = std::filesystem;
 
@@ -117,6 +117,7 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
   } // for
 } // copy_tools() }}}
 
+// main() {{{
 int main()
 {
   // Set logger level
@@ -131,18 +132,20 @@ int main()
   // Check filesystem
   fs::path path_file_binary = ns_env::get("FIM_FILE_BINARY");
   uint64_t offset_path_file_binary = std::stoi(ns_env::get("FIM_OFFSET"));
-  ns_e2fsck::check(path_file_binary, offset_path_file_binary);
+  ext2::ns_check::check(path_file_binary, offset_path_file_binary);
 
   // Mount filesystem as RO
   fs::path path_dir_mount = ns_env::get("FIM_DIR_MOUNT");
-  ns_fuse2fs::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
+  ext2::ns_mount::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
 
   // Copy tools
   fs::path path_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
   copy_tools(path_dir_mount / "fim/static", path_dir_temp_bin);
 
+  // Un-mount
+  ext2::ns_mount::unmount(path_dir_mount);
 
   return EXIT_SUCCESS;
-} // main
+} // main() }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

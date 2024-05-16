@@ -1,13 +1,13 @@
 ///
 // @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
-// @file        : fuse2fs
+// @file        : mount
 ///
 
 #pragma once
 
-#include "subprocess.hpp"
+#include "../subprocess.hpp"
 
-namespace ns_fuse2fs
+namespace ext2::ns_mount
 {
 
 namespace
@@ -32,7 +32,7 @@ inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path con
 
   // Check if mountpoint exists and is directory
   ereturn_if(not fs::is_directory(path_dir_mount)
-    , "'{}' does not exist or is not a directory"_fmt(path_file_image)
+    , "'{}' does not exist or is not a directory"_fmt(path_dir_mount)
     , -1
   );
 
@@ -65,6 +65,29 @@ inline int mount_rw(fs::path const& path_file_image, fs::path const& path_dir_mo
   return mount(Mode::RW, path_file_image, path_dir_mount, offset);
 } // mount_rw() }}}
 
-} // namespace ns_fuse2fs
+// unmount() {{{
+inline int unmount(fs::path const& path_dir_mount)
+{
+  // Check if mountpoint exists and is directory
+  ereturn_if(not fs::is_directory(path_dir_mount)
+    , "'{}' does not exist or is not a directory"_fmt(path_dir_mount)
+    , -1
+  );
+
+  // Find command in PATH
+  auto opt_path_file_fuse2fs = ns_subprocess::search_path("fusermount");
+  ereturn_if(not opt_path_file_fuse2fs.has_value(), "Could not find fusermount", 1);
+
+  // Execute command
+  auto ret = ns_subprocess::Subprocess(*opt_path_file_fuse2fs)
+    .with_args("-u", path_dir_mount)
+    .spawn(true);
+
+  if ( not ret.has_value() ) { ret = 1; }
+
+  return *ret;
+} // unmount() }}}
+
+} // namespace ns_mount
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

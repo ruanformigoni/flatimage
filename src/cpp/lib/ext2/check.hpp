@@ -1,15 +1,15 @@
 ///
 // @author      : Ruan E. Formigoni (ruanformigoni@gmail.com)
-// @file        : e2fsck
+// @file        : check
 ///
 
 #pragma once
 
-#include "subprocess.hpp"
+#include "../subprocess.hpp"
 
-#include "../std/string.hpp"
+#include "../../std/string.hpp"
 
-namespace ns_e2fsck
+namespace ext2::ns_check
 {
 
 namespace
@@ -43,6 +43,6 @@ inline int check(fs::path const& path_file_image, uint64_t offset)
   return *ret;
 } // check() }}}
 
-} // namespace ns_e2fsck
+} // namespace ns_check
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

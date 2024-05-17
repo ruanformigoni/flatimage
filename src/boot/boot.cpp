@@ -147,7 +147,7 @@ int main()
   ns_ext2::ns_mount::unmount(path_dir_mount);
 
   // Print stats
-  ns_ext2::ns_size::resize(path_file_binary, offset_path_file_binary, 40000000000);
+  ns_ext2::ns_size::resize_free_space(path_file_binary, offset_path_file_binary,  300000000);
 
   return EXIT_SUCCESS;
 } // main() }}}

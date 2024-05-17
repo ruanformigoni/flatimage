@@ -5,7 +5,7 @@
 
 #pragma once
 
-namespace ns_unit
+namespace ns_units
 {
 
 namespace
@@ -19,12 +19,18 @@ class Bytes
     Bytes(unsigned long long bytes)
       : m_bytes(bytes) {}
 
+    inline unsigned long long to_bytes();
     inline unsigned long long to_kibibytes();
     inline unsigned long long to_mebibytes();
     inline unsigned long long to_gibibytes();
 }; // 
 
 } // namespace
+
+inline unsigned long long Bytes::to_bytes()
+{
+  return m_bytes;
+}
 
 inline unsigned long long Bytes::to_kibibytes()
 {
@@ -62,6 +68,6 @@ inline Bytes from_gibibytes(unsigned long long gib)
 }
 
 
-} // namespace ns_unit
+} // namespace ns_units
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

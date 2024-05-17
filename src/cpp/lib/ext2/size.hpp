@@ -23,7 +23,7 @@
 
 namespace ns_ext2::ns_size
 {
-  
+
 namespace
 {
 
@@ -34,7 +34,7 @@ struct FilesystemFile
   int m_fd;
   FilesystemFile(int fd)
     : m_fd(fd) {};
-  
+
   ~FilesystemFile(){ close(m_fd); };
 }; // FilesystemFile
 
@@ -90,15 +90,15 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   ns_log::debug("Current  blocks free   : {}", blocks_free_curr);
   ns_log::debug("Target   blocks total  : {} ", blocks_new);
   ns_log::debug("Target   blocks free   : {}",  blocks_free_min - blocks_free_curr);
-  ns_log::debug("Current  size   total  : {} MiB", ns_unit::from_bytes(size_total).to_mebibytes());
-  ns_log::debug("Current  size   free   : {} MiB", ns_unit::from_bytes(size_free).to_mebibytes());
-  ns_log::debug("Target   size   total  : {} MiB", ns_unit::from_bytes(blocks_new * block_size).to_mebibytes());
-  ns_log::debug("Target   size   free   : {} MiB", ns_unit::from_bytes(size_free_min).to_mebibytes());
+  ns_log::debug("Current  size   total  : {} MiB", ns_units::from_bytes(size_total).to_mebibytes());
+  ns_log::debug("Current  size   free   : {} MiB", ns_units::from_bytes(size_free).to_mebibytes());
+  ns_log::debug("Target   size   total  : {} MiB", ns_units::from_bytes(blocks_new * block_size).to_mebibytes());
+  ns_log::debug("Target   size   free   : {} MiB", ns_units::from_bytes(size_free_min).to_mebibytes());
   ns_log::debug("----------------------------------------------------------------");
 
   // Check if filesystem already has the requested minimum free space
   ireturn_if (blocks_free_curr >= blocks_free_min
-    , "Filesystem already '{}' MiB of free space ({}% more than requested)"_fmt(ns_unit::from_bytes(size_free).to_mebibytes()
+    , "Filesystem already '{}' MiB of free space ({}% more than requested)"_fmt(ns_units::from_bytes(size_free).to_mebibytes()
     , (1 - static_cast<long double>(blocks_free_min) / blocks_free_curr) * 100.0)
   );
 

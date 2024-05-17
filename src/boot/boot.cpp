@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <filesystem>
 
+#include "../cpp/units.hpp"
 #include "../cpp/lib/log.hpp"
+#include "../cpp/units.hpp"
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/filesystem.hpp"
 #include "../cpp/lib/subprocess.hpp"
@@ -95,7 +97,7 @@ void setup_environment()
 
   // Compression
   ns_env::set("FIM_COMPRESSION_LEVEL", "4", ns_env::Replace::N);
-  ns_env::set("FIM_SLACK_MINIMUM", "50000000", ns_env::Replace::N);
+  ns_env::set("FIM_SLACK_MINIMUM", "50", ns_env::Replace::N);
   ns_env::set("FIM_COMPRESSION_DIRS", "/usr:/opt", ns_env::Replace::N);
 } // setup_environment() }}}
 
@@ -122,7 +124,7 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
 int main()
 {
   // Set logger level
-  if ( ns_env::get("FIM_DEBUG") )
+  if ( const char* env_fim_debug = ns_env::get("FIM_DEBUG"); env_fim_debug && std::string_view{env_fim_debug} == "1" )
   {
     ns_log::set_level(ns_log::Level::DEBUG);
   } // if
@@ -146,8 +148,15 @@ int main()
   // Un-mount
   ns_ext2::ns_mount::unmount(path_dir_mount);
 
-  // Print stats
-  ns_ext2::ns_size::resize_free_space(path_file_binary, offset_path_file_binary,  300000000);
+  // Keep at least FIM_SLACK_MINIMUM of extra free space
+  const char* env_fim_slack_minimum = ns_env::get("FIM_SLACK_MINIMUM");
+  ereturn_if(not env_fim_slack_minimum, "FIM_SLACK_MINIMUM is not defined", 1);
+  unsigned long long fim_slack_minimum = std::stoll(env_fim_slack_minimum);
+  ereturn_if(fim_slack_minimum < 0, "Invalid value '{}' for FIM_SLACK_MINIMUM"_fmt(fim_slack_minimum), 1);
+  ns_ext2::ns_size::resize_free_space(path_file_binary
+    , offset_path_file_binary
+    , ns_units::from_mebibytes(fim_slack_minimum).to_bytes()
+  );
 
   return EXIT_SUCCESS;
 } // main() }}}

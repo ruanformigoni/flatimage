@@ -12,6 +12,7 @@
 #include "../cpp/lib/subprocess.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
+#include "../cpp/lib/ext2/size.hpp"
 
 namespace fs = std::filesystem;
 
@@ -132,18 +133,21 @@ int main()
   // Check filesystem
   fs::path path_file_binary = ns_env::get("FIM_FILE_BINARY");
   uint64_t offset_path_file_binary = std::stoi(ns_env::get("FIM_OFFSET"));
-  ext2::ns_check::check(path_file_binary, offset_path_file_binary);
+  ns_ext2::ns_check::check(path_file_binary, offset_path_file_binary);
 
   // Mount filesystem as RO
   fs::path path_dir_mount = ns_env::get("FIM_DIR_MOUNT");
-  ext2::ns_mount::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
+  ns_ext2::ns_mount::mount_ro(path_file_binary, path_dir_mount, offset_path_file_binary);
 
   // Copy tools
   fs::path path_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
   copy_tools(path_dir_mount / "fim/static", path_dir_temp_bin);
 
   // Un-mount
-  ext2::ns_mount::unmount(path_dir_mount);
+  ns_ext2::ns_mount::unmount(path_dir_mount);
+
+  // Print stats
+  ns_ext2::ns_size::resize(path_file_binary, offset_path_file_binary, 40000000000);
 
   return EXIT_SUCCESS;
 } // main() }}}

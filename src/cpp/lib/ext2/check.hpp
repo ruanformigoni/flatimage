@@ -9,7 +9,7 @@
 
 #include "../../std/string.hpp"
 
-namespace ext2::ns_check
+namespace ns_ext2::ns_check
 {
 
 namespace
@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 inline int check(fs::path const& path_file_image, uint64_t offset)
 {
   // Check if image exists and is a regular file
-  ereturn_if(not fs::exists(path_file_image) or not fs::is_regular_file(path_file_image)
+  ereturn_if(not fs::is_regular_file(path_file_image)
     , "'{}' does not exist or is not a regular file"_fmt(path_file_image)
     , -1
   );
@@ -43,6 +43,6 @@ inline int check(fs::path const& path_file_image, uint64_t offset)
   return *ret;
 } // check() }}}
 
-} // namespace ns_check
+} // namespace ns_ext2::ns_check
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

@@ -7,7 +7,7 @@
 
 #include "../subprocess.hpp"
 
-namespace ext2::ns_mount
+namespace ns_ext2::ns_mount
 {
 
 namespace
@@ -88,6 +88,6 @@ inline int unmount(fs::path const& path_dir_mount)
   return *ret;
 } // unmount() }}}
 
-} // namespace ns_mount
+} // namespace ns_ext2::ns_mount
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

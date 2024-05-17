@@ -36,10 +36,6 @@
 #define return_if_else(cond, val1, val2) \
   if (cond) { return val1; } else { return val2; }
 
-// Assign
-#define assign_and_ereturn_if(val, cond, msg, ret) \
-  val; if ( cond ) { ns_log::error(msg); return ret; }
-
 // Break
 #define qbreak_if(cond) \
   if ( (cond) ) { break; }

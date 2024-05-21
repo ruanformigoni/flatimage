@@ -15,6 +15,7 @@
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"
+#include "../cpp/lib/bwrap.hpp"
 
 namespace fs = std::filesystem;
 
@@ -145,18 +146,21 @@ int main()
   fs::path path_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
   copy_tools(path_dir_mount / "fim/static", path_dir_temp_bin);
 
-  // Un-mount
-  ns_ext2::ns_mount::unmount(path_dir_mount);
+  // Run bwrap
+  ns_bwrap::run(path_dir_mount);
 
-  // Keep at least FIM_SLACK_MINIMUM of extra free space
-  const char* env_fim_slack_minimum = ns_env::get("FIM_SLACK_MINIMUM");
-  ereturn_if(not env_fim_slack_minimum, "FIM_SLACK_MINIMUM is not defined", 1);
-  unsigned long long fim_slack_minimum = std::stoll(env_fim_slack_minimum);
-  ereturn_if(fim_slack_minimum < 0, "Invalid value '{}' for FIM_SLACK_MINIMUM"_fmt(fim_slack_minimum), 1);
-  ns_ext2::ns_size::resize_free_space(path_file_binary
-    , offset_path_file_binary
-    , ns_units::from_mebibytes(fim_slack_minimum).to_bytes()
-  );
+  // // Un-mount
+  // ns_ext2::ns_mount::unmount(path_dir_mount);
+  //
+  // // Keep at least FIM_SLACK_MINIMUM of extra free space
+  // const char* env_fim_slack_minimum = ns_env::get("FIM_SLACK_MINIMUM");
+  // ereturn_if(not env_fim_slack_minimum, "FIM_SLACK_MINIMUM is not defined", 1);
+  // unsigned long long fim_slack_minimum = std::stoll(env_fim_slack_minimum);
+  // ereturn_if(fim_slack_minimum < 0, "Invalid value '{}' for FIM_SLACK_MINIMUM"_fmt(fim_slack_minimum), 1);
+  // ns_ext2::ns_size::resize_free_space(path_file_binary
+  //   , offset_path_file_binary
+  //   , ns_units::from_mebibytes(fim_slack_minimum).to_bytes()
+  // );
 
   return EXIT_SUCCESS;
 } // main() }}}

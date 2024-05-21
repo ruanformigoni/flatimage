@@ -62,7 +62,10 @@ class Subprocess
     std::vector<std::string> m_env;
     std::optional<std::function<void(std::string)>> m_fstdout;
     std::optional<std::function<void(std::string)>> m_fstderr;
+    bool m_with_piped_outputs;
 
+    std::optional<int> with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2]);
+    void with_pipes_child(pid_t pid, int pipestdout[2], int pipestderr[2]);
   public:
     template<ns_concept::AsString T>
     Subprocess(T&& t);
@@ -82,6 +85,8 @@ class Subprocess
     requires (not ns_concept::AsString<T>) && ns_concept::IterableConst<T>
     Subprocess& with_args(T&& t);
 
+    Subprocess& with_piped_outputs();
+
     template<typename F>
     Subprocess& with_stdout_handle(F&& f);
 
@@ -95,6 +100,7 @@ class Subprocess
 template<ns_concept::AsString T>
 Subprocess::Subprocess(T&& t)
   : m_program(ns_string::to_string(t))
+  , m_with_piped_outputs(false)
 {
   // argv0 is program name
   m_args.push_back(m_program);
@@ -146,6 +152,70 @@ Subprocess& Subprocess::with_args(T&& t)
   return *this;
 } // with_args }}}
 
+// with_piped_outputs() {{{
+inline Subprocess& Subprocess::with_piped_outputs()
+{
+  m_with_piped_outputs = true;
+  return *this;
+} // with_piped_outputs() }}}
+
+// with_pipes_parent() {{{
+inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2])
+{
+  // Close write end
+  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
+  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
+
+  auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
+  {
+    // Check if 'f' is defined
+    if ( not f ) { f = [&](auto&& e) { ns_log::debug("{}({}): {}", prefix, m_program, e); }; }
+    // Apply f to incoming data from pipe
+    char buffer[1024];
+    ssize_t count;
+    while ((count = read(id_pipe, buffer, sizeof(buffer))) != 0)
+    {
+      // Failed to read
+      ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
+      // Split newlines and print each line with prefix
+      std::ranges::for_each(std::string(buffer, count)
+          | std::views::split('\n')
+          | std::views::filter([&](auto&& e){ return not e.empty(); })
+        , [&](auto&& e){ (*f)(std::string{e.begin(), e.end()});
+      });
+    } // while
+    close(id_pipe);
+  };
+
+  auto thread_stdout = std::thread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
+  auto thread_stderr = std::thread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
+
+  // Joins the spawned threads to keep reading stdout and stderr
+  thread_stdout.join();
+  thread_stderr.join();
+
+  // Wait for child process to finish
+  int status;
+  waitpid(pid, &status, 0);
+  return status;
+} // with_pipes_parent() }}}
+
+// with_pipes_child() {{{
+inline void Subprocess::with_pipes_child(pid_t pid, int pipestdout[2], int pipestderr[2])
+{
+  // Close read end
+  ereturn_if(close(pipestdout[0]) == -1, "pipestdout[0]: {}"_fmt(strerror(errno)));
+  ereturn_if(close(pipestderr[0]) == -1, "pipestderr[0]: {}"_fmt(strerror(errno)));
+
+  // Make the opened pipe the replace stdout
+  ereturn_if(dup2(pipestdout[1], STDOUT_FILENO) == -1, "dup2(pipestdout[1]): {}"_fmt(strerror(errno)));
+  ereturn_if(dup2(pipestderr[1], STDERR_FILENO) == -1, "dup2(pipestderr[1]): {}"_fmt(strerror(errno)));
+
+  // Close original write end after duplication
+  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)));
+  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
+} // with_pipes_child() }}}
+
 // with_stdout_handle() {{{
 template<typename F>
 Subprocess& Subprocess::with_stdout_handle(F&& f)
@@ -184,63 +254,29 @@ inline std::optional<int> Subprocess::spawn(bool wait)
   // Failed to fork
   ereturn_if(pid == -1, "Failed to fork", std::nullopt);
 
-  // Is parent
-  if ( pid > 0 )
+  // Setup pipe on child and parent
+  // On parent, return exit code of child
+  if ( m_with_piped_outputs && pid > 0)
   {
-    // Close write end
-    ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
-    ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
-
-    auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
-    {
-      // Check if 'f' is defined
-      if ( not f ) { f = [&](auto&& e) { ns_log::debug("{}({}): {}", prefix, m_program, e); }; }
-      // Apply f to incoming data from pipe
-      char buffer[1024];
-      ssize_t count;
-      while ((count = read(id_pipe, buffer, sizeof(buffer))) != 0)
-      {
-        // Failed to read
-        ebreak_if(count == -1, "broke parent read loop: {}"_fmt(strerror(errno)));
-        // Split newlines and print each line with prefix
-        std::ranges::for_each(std::string(buffer, count)
-            | std::views::split('\n')
-            | std::views::filter([&](auto&& e){ return not e.empty(); })
-          , [&](auto&& e){ (*f)(std::string{e.begin(), e.end()});
-        });
-      } // while
-      close(id_pipe);
-    };
-
-    auto thread_stdout = std::thread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
-    auto thread_stderr = std::thread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
-
-    thread_stdout.join();
-    thread_stderr.join();
-
-    // Wait for child process to finish
-    if ( wait )
-    {
-      int status;
-      waitpid(pid, &status, 0);
-      return status;
-    } // if
-
-    // Does not wait for child to finish
-    return std::nullopt;
+    // This is blocking, waits for child to exit
+    return with_pipes_parent(pid, pipestdout, pipestderr);
   } // if
 
-  // Close read end
-  ereturn_if(close(pipestdout[0]) == -1, "pipestdout[0]: {}"_fmt(strerror(errno)), std::nullopt);
-  ereturn_if(close(pipestderr[0]) == -1, "pipestderr[0]: {}"_fmt(strerror(errno)), std::nullopt);
+  // On child, just setup the pipe
+  if ( m_with_piped_outputs && pid == 0)
+  {
+    // this is non-blocking, setup pipes and perform execve afterwards
+    with_pipes_child(pid, pipestdout, pipestderr);
+  } // else
 
-  // Make the opened pipe the replace stdout
-  ereturn_if(dup2(pipestdout[1], STDOUT_FILENO) == -1, "dup2(pipestdout[1]): {}"_fmt(strerror(errno)), std::nullopt);
-  ereturn_if(dup2(pipestderr[1], STDERR_FILENO) == -1, "dup2(pipestderr[1]): {}"_fmt(strerror(errno)), std::nullopt);
-
-  // Close original write end after duplication
-  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
-  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
+  // No custom pipe, wait for child to exit
+  if ( pid > 0 )
+  {
+    // Wait for child process to finish
+    int status;
+    waitpid(pid, &status, 0);
+    return status;
+  } // if
 
   // Create arguments for execve
   auto argv_custom = std::make_unique<const char*[]>(m_args.size() + 1);
@@ -261,7 +297,10 @@ inline std::optional<int> Subprocess::spawn(bool wait)
   envp_custom[m_env.size()] = nullptr;
 
   // Perform execve
-  execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
+  int ret = execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
+
+  // Log error
+  ns_log::error("execve() failed: ", strerror(errno));
 
   // Child should stop here
   exit(1);

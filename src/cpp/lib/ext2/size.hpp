@@ -109,6 +109,7 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   // resize2fs resizes by blocks if no unit is specified
   // so just need to divide the total number of bytes by the block size
   ns_subprocess::Subprocess(*opt_path_file_resize2fs)
+    .with_piped_outputs()
     .with_args(path_file_image.string() + "?offset=" + ns_string::to_string(offset))
     .with_args(blocks_new)
     .spawn(true);

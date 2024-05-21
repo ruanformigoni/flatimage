@@ -42,6 +42,7 @@ inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path con
 
   // Execute command
   auto ret = ns_subprocess::Subprocess(*opt_path_file_fuse2fs)
+    .with_piped_outputs()
     .with_args((mode == Mode::RO)? "-oro,fakeroot,offset={}"_fmt(offset) : "-ofakeroot,offset={}"_fmt(offset))
     .with_args(path_file_image, path_dir_mount)
     .spawn(true);
@@ -80,6 +81,7 @@ inline int unmount(fs::path const& path_dir_mount)
 
   // Execute command
   auto ret = ns_subprocess::Subprocess(*opt_path_file_fuse2fs)
+    .with_piped_outputs()
     .with_args("-u", path_dir_mount)
     .spawn(true);
 

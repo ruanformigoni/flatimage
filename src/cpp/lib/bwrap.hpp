@@ -6,6 +6,8 @@
 #pragma once
 
 #include <filesystem>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include "subprocess.hpp"
 
@@ -35,8 +37,9 @@ class Bwrap
 {
   private:
     fs::path m_path_file_program;
-    std::vector<std::string> m_program_args;
+    std::vector<std::string> m_path_file_program_args;
     std::vector<std::string> m_args;
+    std::unordered_map<std::string, std::string> m_env;
     bool m_is_root;
 
     void set_xdg_runtime_dir();
@@ -56,7 +59,11 @@ class Bwrap
     void bind_runtime_mounts();
 
   public:
-    Bwrap(fs::path const& path_dir_root, fs::path const& path_file_program, bool is_root);
+    template<ns_concept::AsString... Args>
+    Bwrap(bool is_root
+        , fs::path const& path_dir_root
+        , fs::path const& path_file_program
+        , Args&&... args);
 }; // class: Bwrap
 
 // set_xdg_runtime_dir() {{{
@@ -233,10 +240,46 @@ inline void Bwrap::bind_runtime_mounts()
 } // bind_runtime_mounts() }}}
 
 // Bwrap() {{{
-inline Bwrap::Bwrap(fs::path const& path_dir_root, fs::path const& path_file_program, bool is_root)
+template<ns_concept::AsString... Args>
+inline Bwrap::Bwrap(bool is_root
+    , fs::path const& path_dir_root
+    , fs::path const& path_file_program
+    , Args&&... args)
   : m_path_file_program(path_file_program)
+  , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
   , m_is_root(is_root)
 {
+  uid_t user_id = getuid();
+
+  // Configure some environment variables
+  m_env["TERM"] = "xterm";
+
+  if ( not ns_env::get("XDG_RUNTIME_DIR") )
+  {
+    m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_string::to_string(user_id));
+  } // if
+  
+  if ( struct passwd *pw = getpwuid(user_id); pw )
+  {
+    m_env["HOST_USERNAME"] = pw->pw_name;
+  } // if
+
+  if ( char const* env_path = ns_env::get("PATH") )
+  {
+    m_env["PATH"] = std::string{env_path} + ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";
+  } // if
+
+  // Create custom bashrc file
+  if ( const char* env_bashrc_file = ns_env::get("BASHRC_FILE"); env_bashrc_file )
+  {
+    std::ofstream of{env_bashrc_file};
+    if ( of.good() )
+    {
+      of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
+    } // if
+    of.close();
+  } // if
+
   // Check if root exists and is a directory
   ethrow_if(not fs::is_directory(path_dir_root)
     , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
@@ -249,25 +292,39 @@ inline Bwrap::Bwrap(fs::path const& path_dir_root, fs::path const& path_file_pro
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
   ns_vector::push_back(m_args, "--bind", "/sys", "/sys");
   ns_vector::push_back(m_args, "--bind-try", "/etc/group", "/etc/group");
-} // Bwrap() }}}
 
-inline void run(fs::path const& path_dir_root)
-{
-  // Find command in PATH
+  set_xdg_runtime_dir();
+  bind_root();
+  bind_home();
+  bind_media();
+  bind_audio();
+  bind_wayland();
+  bind_xorg();
+  bind_dbus_user();
+  bind_dbus_system();
+  bind_udev();
+  bind_input();
+  bind_usb();
+  bind_network();
+  bind_gpu();
+  bind_runtime_mounts();
+
+  // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
-  ereturn_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
+  ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
 
-  ns_subprocess::Subprocess(*opt_path_file_bwrap)
-    .with_args("--bind", path_dir_root, "/")
-    .with_args("--dev", "/dev")
-    .with_args("--proc", "/proc")
-    .with_args("--bind", "/tmp", "/tmp")
-    .with_args("--bind", "/sys", "/sys")
-    .with_args("--bind", "/tmp", "/tmp")
-    .with_args("/bin/sh")
-    .spawn(true);
-  
-}
+  auto subprocess = ns_subprocess::Subprocess(*opt_path_file_bwrap)
+    .with_args(m_args)
+    .with_args(m_path_file_program)
+    .with_args(m_path_file_program_args);
+
+  for (auto&& [k,v] : m_env)
+  {
+    subprocess.with_var(k, v);
+  } // for
+
+  subprocess.spawn(true);
+} // Bwrap() }}}
 
 } // namespace ns_bwrap
 

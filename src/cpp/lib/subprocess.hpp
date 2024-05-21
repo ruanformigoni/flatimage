@@ -17,6 +17,7 @@
 
 #include "../macro.hpp"
 #include "../std/env.hpp"
+#include "../std/vector.hpp"
 
 namespace ns_subprocess
 {
@@ -78,11 +79,11 @@ class Subprocess
     template<ns_concept::AsString K>
     Subprocess& rm_var(K&& k);
 
-    template<ns_concept::AsString... T>
+    template<typename... T>
+    requires (sizeof...(T) > 1)
     Subprocess& with_args(T&&... t);
 
     template<typename T>
-    requires (not ns_concept::AsString<T>) && ns_concept::IterableConst<T>
     Subprocess& with_args(T&& t);
 
     Subprocess& with_piped_outputs();
@@ -122,6 +123,7 @@ inline Subprocess& Subprocess::env_clear()
 template<ns_concept::AsString K, ns_concept::AsString V>
 Subprocess& Subprocess::with_var(K&& k, V&& v)
 {
+  rm_var(k);
   m_env.push_back("{}={}"_fmt(k,v));
   return *this;
 } // with_var() }}}
@@ -130,25 +132,53 @@ Subprocess& Subprocess::with_var(K&& k, V&& v)
 template<ns_concept::AsString K>
 Subprocess& Subprocess::rm_var(K&& k)
 {
-  auto it = std::ranges::find_if(m_env, [&](std::string const& e){ return e.starts_with(ns_string::to_string(k)); });
-  if ( it != std::ranges::end(m_env) ) { m_env.erase(it); }
+  // Find variable
+  auto it = std::ranges::find_if(m_env, [&](std::string const& e)
+  {
+    auto vec = ns_vector::from_string(e, '=');
+    qreturn_if(vec.empty(), false);
+    return vec.front() == k;
+  });
+
+  // Erase if found
+  if ( it != std::ranges::end(m_env) )
+  {
+    ns_log::debug("Erased var entry: {}", *it);
+    m_env.erase(it); 
+  } // if
+
   return *this;
 } // rm_var() }}}
 
 // with_args() {{{
-template<ns_concept::AsString... T>
+template<typename... T>
+requires (sizeof...(T) > 1)
 Subprocess& Subprocess::with_args(T&&... t)
 {
-  (this->m_args.push_back(ns_string::to_string(t)), ...);
-  return *this;
+  return ( with_args(std::forward<T>(t)), ... );
 } // with_args }}}
 
 // with_args() {{{
 template<typename T>
-requires (not ns_concept::AsString<T>) && ns_concept::IterableConst<T>
 Subprocess& Subprocess::with_args(T&& t)
 {
-  std::copy(t.begin(), t.end(), std::back_inserter(m_args));
+  if constexpr ( ns_concept::SameAs<T, std::string> )
+  {
+    this->m_args.push_back(std::forward<T>(t));
+  } // if
+  else if constexpr ( ns_concept::IterableConst<T> )
+  {
+    std::copy(t.begin(), t.end(), std::back_inserter(m_args));
+  } // else if
+  else if constexpr ( ns_concept::AsString<T> )
+  {
+    this->m_args.push_back(ns_string::to_string(std::forward<T>(t)));
+  } // else if
+  else
+  {
+    static_assert(false, "Could not determine argument type");
+  } // else
+
   return *this;
 } // with_args }}}
 

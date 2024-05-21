@@ -28,9 +28,6 @@ namespace fs = std::filesystem;
 enum class Permissions
 {
   STORAGE     = 0,
-  // PRINT    = 1 << 0,
-  // WAITFILE = 1 << 1,
-  // CHECKERR = 1 << 2,
 }; // enum
 
 class Bwrap
@@ -69,9 +66,16 @@ class Bwrap
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
 {
+  uid_t user_id = getuid();
+
   const char* env_xdg_runtime_dir = ns_env::get("XDG_RUNTIME_DIR");
-  ereturn_if(not env_xdg_runtime_dir, "XDG_RUNTIME_DIR is undefined");
-  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", env_xdg_runtime_dir);
+
+  if ( not ns_env::get("XDG_RUNTIME_DIR") )
+  {
+    m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_string::to_string(user_id));
+  } // if
+
+  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_env["XDG_RUNTIME_DIR"]);
 } // set_xdg_runtime_dir() }}}
 
 // bind_root() {{{
@@ -249,17 +253,10 @@ inline Bwrap::Bwrap(bool is_root
   , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
   , m_is_root(is_root)
 {
-  uid_t user_id = getuid();
-
   // Configure some environment variables
   m_env["TERM"] = "xterm";
 
-  if ( not ns_env::get("XDG_RUNTIME_DIR") )
-  {
-    m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_string::to_string(user_id));
-  } // if
-  
-  if ( struct passwd *pw = getpwuid(user_id); pw )
+  if ( struct passwd *pw = getpwuid(getuid()); pw )
   {
     m_env["HOST_USERNAME"] = pw->pw_name;
   } // if

@@ -12,6 +12,7 @@
 #include "subprocess.hpp"
 
 #include "../macro.hpp"
+#include "../config.hpp"
 
 #include "../std/vector.hpp"
 
@@ -25,10 +26,50 @@ namespace fs = std::filesystem;
 
 }
 
-enum class Permissions
+enum class EnumPermission { RW, RO, DENY, };
+
+struct Permission
 {
-  STORAGE     = 0,
-}; // enum
+  private:
+    EnumPermission m_permission;
+  public:
+    Permission(EnumPermission permission)
+      : m_permission(permission) {};
+    bool is_rw() { return m_permission == EnumPermission::RW; }
+    bool is_ro() { return m_permission == EnumPermission::RO; }
+    bool is_deny() { return m_permission == EnumPermission::DENY; }
+};
+
+class Permissions
+{
+  private:
+    Permission m_home        = EnumPermission::DENY;
+    Permission m_media       = EnumPermission::DENY;
+    Permission m_audio       = EnumPermission::DENY;
+    Permission m_wayland     = EnumPermission::DENY;
+    Permission m_xorg        = EnumPermission::DENY;
+    Permission m_dbus_user   = EnumPermission::DENY;
+    Permission m_dbus_system = EnumPermission::DENY;
+    Permission m_udev        = EnumPermission::DENY;
+    Permission m_input       = EnumPermission::DENY;
+    Permission m_usb         = EnumPermission::DENY;
+    Permission m_gpu         = EnumPermission::DENY;
+    Permission m_network     = EnumPermission::DENY;
+
+  public:
+    Permission home() const { return m_home; };
+    Permission media() const { return m_media; };
+    Permission audio() const { return m_audio; };
+    Permission wayland() const { return m_wayland; };
+    Permission xorg() const { return m_xorg; };
+    Permission dbus_user() const { return m_dbus_user; };
+    Permission dbus_system() const { return m_dbus_system; };
+    Permission udev() const { return m_udev; };
+    Permission input() const { return m_input; };
+    Permission usb() const { return m_usb; };
+    Permission gpu() const { return m_gpu; };
+    Permission network() const { return m_network; };
+};
 
 class Bwrap
 {
@@ -38,14 +79,12 @@ class Bwrap
     std::vector<std::string> m_path_file_program_args;
     std::vector<std::string> m_args;
     std::unordered_map<std::string, std::string> m_env;
-    bool m_is_root;
     void set_xdg_runtime_dir();
 
   public:
     template<ns_concept::AsString... Args>
-    Bwrap(bool is_root
-      , fs::path const& path_dir_root
-      , fs::path const& path_file_bashrc
+    Bwrap(ns_config::FlatimageConfig const& config
+      , Permissions const& permissions
       , fs::path const& path_file_program
       , Args&&... args);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
@@ -67,14 +106,12 @@ class Bwrap
 
 // Bwrap() {{{
 template<ns_concept::AsString... Args>
-inline Bwrap::Bwrap(bool is_root
-    , fs::path const& path_dir_root
-    , fs::path const& path_file_bashrc
+inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
+    , Permissions const& permissions
     , fs::path const& path_file_program
     , Args&&... args)
   : m_path_file_program(path_file_program)
   , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
-  , m_is_root(is_root)
 {
   // Configure some environment variables
   m_env["TERM"] = "xterm";
@@ -85,29 +122,50 @@ inline Bwrap::Bwrap(bool is_root
   } // if
 
   // Create custom bashrc file
-  std::ofstream of{path_file_bashrc};
+  std::ofstream of{config.path_file_bashrc};
   if ( of.good() )
   {
     of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
   } // if
   of.close();
-  ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
+  ns_env::set("BASHRC_FILE", config.path_file_bashrc.c_str(), ns_env::Replace::Y);
 
   // Check if root exists and is a directory
-  ethrow_if(not fs::is_directory(path_dir_root)
-    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
+  ethrow_if(not fs::is_directory(config.path_dir_mount_ext2)
+    , "'{}' does not exist or is not a directory"_fmt(config.path_dir_mount_ext2)
   );
 
   // Basic bindings
-  if ( is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
-  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
+  if ( config.is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+  ns_vector::push_back(m_args, "--bind", config.path_dir_mount_ext2, "/");
   ns_vector::push_back(m_args, "--dev", "/dev");
   ns_vector::push_back(m_args, "--proc", "/proc");
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
   ns_vector::push_back(m_args, "--bind", "/sys", "/sys");
   ns_vector::push_back(m_args, "--bind-try", "/etc/group", "/etc/group");
 
+  // Check if XDG_RUNTIME_DIR is set or try to set it manually
   set_xdg_runtime_dir();
+
+  // Make root filesystem accessible from the guest
+  bind_root(config.path_dir_runtime_host);
+
+  // Make filesystems accessible from the guest
+  bind_runtime_mounts(config.path_dir_mounts, config.path_dir_runtime_mounts);
+
+  // Configure permissions
+  ns_common::call_if(not config.is_root && permissions.home().is_ro(), [&]{ bind_home(config.path_dir_host_home); });
+  ns_common::call_if(permissions.media().is_ro()       , [&]{ bind_media(); });
+  ns_common::call_if(permissions.audio().is_ro()       , [&]{ bind_audio(); });
+  ns_common::call_if(permissions.wayland().is_ro()     , [&]{ bind_wayland(); });
+  ns_common::call_if(permissions.xorg().is_ro()        , [&]{ bind_xorg(); });
+  ns_common::call_if(permissions.dbus_user().is_ro()   , [&]{ bind_dbus_user(); });
+  ns_common::call_if(permissions.dbus_system().is_ro() , [&]{ bind_dbus_system(); });
+  ns_common::call_if(permissions.udev().is_ro()        , [&]{ bind_udev(); });
+  ns_common::call_if(permissions.input().is_ro()       , [&]{ bind_input(); });
+  ns_common::call_if(permissions.usb().is_ro()         , [&]{ bind_usb(); });
+  ns_common::call_if(permissions.network().is_ro()     , [&]{ bind_network(); });
+  ns_common::call_if(permissions.gpu().is_ro()         , [&]{ bind_gpu(); });
 } // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{
@@ -127,10 +185,7 @@ inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
 // bind_home() {{{
 inline Bwrap& Bwrap::bind_home(fs::path const& path_dir_home)
 {
-  if ( not m_is_root )
-  {
-    ns_vector::push_back(m_args, "--ro-bind-try", path_dir_home, path_dir_home);
-  } // if
+  ns_vector::push_back(m_args, "--ro-bind-try", path_dir_home, path_dir_home);
   return *this;
 } // bind_home() }}}
 

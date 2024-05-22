@@ -113,4 +113,17 @@ inline void print_if(bool cond, Args&&... args)
   } // if
 } // print_if() }}}
 
+namespace ns_common
+{
+
+// call_if() {{{
+template<typename F>
+inline auto call_if(bool cond, F&& f) -> std::optional<decltype(f())>
+{
+  if ( not cond ) { return std::nullopt; }
+  return f();
+} // call_if() }}}
+
+} // namespace ns_common
+
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

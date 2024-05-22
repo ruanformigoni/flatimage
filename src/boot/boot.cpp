@@ -74,9 +74,23 @@ int main()
   ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
 
   // Run bwrap
-  ns_bwrap::Bwrap(config.is_root
-    , config.path_dir_mount_ext2
-    , config.path_file_bashrc
+  ns_bwrap::Permissions permissions;
+  // permissions |= ns_bwrap::Permissions::HOME_RW;
+  // permissions |= ns_bwrap::Permissions::HOME_RO;
+  // permissions |= ns_bwrap::Permissions::MEDIA_RW;
+  // permissions |= ns_bwrap::Permissions::MEDIA_RO;
+  // permissions |= ns_bwrap::Permissions::AUDIO;
+  // permissions |= ns_bwrap::Permissions::WAYLAND;
+  // permissions |= ns_bwrap::Permissions::XORG;
+  // permissions |= ns_bwrap::Permissions::DBUS_USER;
+  // permissions |= ns_bwrap::Permissions::DBUS_SYSTEM;
+  // permissions |= ns_bwrap::Permissions::UDEV;
+  // permissions |= ns_bwrap::Permissions::INPUT;
+  // permissions |= ns_bwrap::Permissions::USB;
+  // permissions |= ns_bwrap::Permissions::GPU;
+
+  ns_bwrap::Bwrap(config
+    , permissions
     , config.path_dir_temp_bin / "bash")
     .bind_root(config.path_dir_runtime_host)
     .bind_home(config.path_dir_host_home)

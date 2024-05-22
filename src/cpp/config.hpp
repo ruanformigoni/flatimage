@@ -18,6 +18,8 @@ namespace
 
 namespace fs = std::filesystem;
 
+} // namespace 
+
 // struct FlatimageConfig {{{
 struct FlatimageConfig
 {
@@ -59,8 +61,6 @@ struct FlatimageConfig
   std::string env_path;
   std::string env_compression_dirs;
 }; // }}}
-
-} // namespace 
 
 // configure() {{{
 inline FlatimageConfig configure()

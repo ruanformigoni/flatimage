@@ -26,37 +26,58 @@ namespace fs = std::filesystem;
 
 }
 
-enum class EnumPermission { RW, RO, DENY, };
+enum class PermissionType { RW, RO, DENY, };
 
 struct Permission
 {
   private:
-    EnumPermission m_permission;
+    PermissionType m_permission;
   public:
-    Permission(EnumPermission permission)
+    Permission(PermissionType permission)
       : m_permission(permission) {};
-    bool is_rw() { return m_permission == EnumPermission::RW; }
-    bool is_ro() { return m_permission == EnumPermission::RO; }
-    bool is_deny() { return m_permission == EnumPermission::DENY; }
+    bool is_rw() { return m_permission == PermissionType::RW; }
+    bool is_ro() { return m_permission == PermissionType::RO; }
+    bool is_deny() { return m_permission == PermissionType::DENY; }
+    operator std::string()
+    {
+      return
+        (m_permission == PermissionType::DENY)? std::string{"DENY"}
+      : (m_permission == PermissionType::RO)? std::string{"RO"}
+      : std::string{"RW"};
+    } // operator std::string()
 };
 
 class Permissions
 {
   private:
-    Permission m_home        = EnumPermission::DENY;
-    Permission m_media       = EnumPermission::DENY;
-    Permission m_audio       = EnumPermission::DENY;
-    Permission m_wayland     = EnumPermission::DENY;
-    Permission m_xorg        = EnumPermission::DENY;
-    Permission m_dbus_user   = EnumPermission::DENY;
-    Permission m_dbus_system = EnumPermission::DENY;
-    Permission m_udev        = EnumPermission::DENY;
-    Permission m_input       = EnumPermission::DENY;
-    Permission m_usb         = EnumPermission::DENY;
-    Permission m_gpu         = EnumPermission::DENY;
-    Permission m_network     = EnumPermission::DENY;
+    Permission m_home        = PermissionType::DENY;
+    Permission m_media       = PermissionType::DENY;
+    Permission m_audio       = PermissionType::DENY;
+    Permission m_wayland     = PermissionType::DENY;
+    Permission m_xorg        = PermissionType::DENY;
+    Permission m_dbus_user   = PermissionType::DENY;
+    Permission m_dbus_system = PermissionType::DENY;
+    Permission m_udev        = PermissionType::DENY;
+    Permission m_input       = PermissionType::DENY;
+    Permission m_usb         = PermissionType::DENY;
+    Permission m_gpu         = PermissionType::DENY;
+    Permission m_network     = PermissionType::DENY;
 
   public:
+    // Setters
+    void set_home(Permission const& permission) { m_home = permission; };
+    void set_media(Permission const& permission) { m_media = permission; };
+    void set_audio(Permission const& permission) { m_audio = permission; };
+    void set_wayland(Permission const& permission) { m_wayland = permission; };
+    void set_xorg(Permission const& permission) { m_xorg = permission; };
+    void set_dbus_user(Permission const& permission) { m_dbus_user = permission; };
+    void set_dbus_system(Permission const& permission) { m_dbus_system = permission; };
+    void set_udev(Permission const& permission) { m_udev = permission; };
+    void set_input(Permission const& permission) { m_input = permission; };
+    void set_usb(Permission const& permission) { m_usb = permission; };
+    void set_gpu(Permission const& permission) { m_gpu = permission; };
+    void set_network(Permission const& permission) { m_network = permission; };
+    // Getters
     Permission home() const { return m_home; };
     Permission media() const { return m_media; };
     Permission audio() const { return m_audio; };
@@ -153,7 +174,7 @@ inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
   // Make filesystems accessible from the guest
   bind_runtime_mounts(config.path_dir_mounts, config.path_dir_runtime_mounts);
 
-  // Configure permissions
+  // Configure bindings
   ns_common::call_if(not config.is_root && permissions.home().is_ro(), [&]{ bind_home(config.path_dir_host_home); });
   ns_common::call_if(permissions.media().is_ro()       , [&]{ bind_media(); });
   ns_common::call_if(permissions.audio().is_ro()       , [&]{ bind_audio(); });
@@ -164,8 +185,21 @@ inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
   ns_common::call_if(permissions.udev().is_ro()        , [&]{ bind_udev(); });
   ns_common::call_if(permissions.input().is_ro()       , [&]{ bind_input(); });
   ns_common::call_if(permissions.usb().is_ro()         , [&]{ bind_usb(); });
-  ns_common::call_if(permissions.network().is_ro()     , [&]{ bind_network(); });
   ns_common::call_if(permissions.gpu().is_ro()         , [&]{ bind_gpu(); });
+  ns_common::call_if(permissions.network().is_ro()     , [&]{ bind_network(); });
+
+  ns_log::debug("PERM(HOME)        : {}", permissions.home());
+  ns_log::debug("PERM(MEDIA)       : {}", permissions.media());
+  ns_log::debug("PERM(AUDIO)       : {}", permissions.audio());
+  ns_log::debug("PERM(WAYLAND)     : {}", permissions.wayland());
+  ns_log::debug("PERM(XORG)        : {}", permissions.xorg());
+  ns_log::debug("PERM(DBUS_USER)   : {}", permissions.dbus_user());
+  ns_log::debug("PERM(DBUS_SYSTEM) : {}", permissions.dbus_system());
+  ns_log::debug("PERM(UDEV)        : {}", permissions.udev());
+  ns_log::debug("PERM(INPUT)       : {}", permissions.input());
+  ns_log::debug("PERM(USB)         : {}", permissions.usb());
+  ns_log::debug("PERM(GPU)         : {}", permissions.gpu());
+  ns_log::debug("PERM(NETWORK)     : {}", permissions.network());
 } // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{

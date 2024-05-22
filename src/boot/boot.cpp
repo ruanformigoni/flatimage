@@ -75,38 +75,19 @@ int main()
 
   // Run bwrap
   ns_bwrap::Permissions permissions;
-  // permissions |= ns_bwrap::Permissions::HOME_RW;
-  // permissions |= ns_bwrap::Permissions::HOME_RO;
-  // permissions |= ns_bwrap::Permissions::MEDIA_RW;
-  // permissions |= ns_bwrap::Permissions::MEDIA_RO;
-  // permissions |= ns_bwrap::Permissions::AUDIO;
-  // permissions |= ns_bwrap::Permissions::WAYLAND;
-  // permissions |= ns_bwrap::Permissions::XORG;
-  // permissions |= ns_bwrap::Permissions::DBUS_USER;
-  // permissions |= ns_bwrap::Permissions::DBUS_SYSTEM;
-  // permissions |= ns_bwrap::Permissions::UDEV;
-  // permissions |= ns_bwrap::Permissions::INPUT;
-  // permissions |= ns_bwrap::Permissions::USB;
-  // permissions |= ns_bwrap::Permissions::GPU;
-
-  ns_bwrap::Bwrap(config
-    , permissions
-    , config.path_dir_temp_bin / "bash")
-    .bind_root(config.path_dir_runtime_host)
-    .bind_home(config.path_dir_host_home)
-    .bind_media()
-    .bind_audio()
-    .bind_wayland()
-    .bind_xorg()
-    .bind_dbus_user()
-    .bind_dbus_system()
-    .bind_udev()
-    .bind_input()
-    .bind_usb()
-    .bind_network()
-    .bind_gpu()
-    .bind_runtime_mounts(config.path_dir_mounts, config.path_dir_runtime_mounts)
-    .run();
+  permissions.set_home(ns_bwrap::PermissionType::RO);
+  permissions.set_media(ns_bwrap::PermissionType::RO);
+  permissions.set_audio(ns_bwrap::PermissionType::RO);
+  permissions.set_wayland(ns_bwrap::PermissionType::RO);
+  permissions.set_xorg(ns_bwrap::PermissionType::RO);
+  permissions.set_dbus_user(ns_bwrap::PermissionType::RO);
+  permissions.set_dbus_system(ns_bwrap::PermissionType::RO);
+  permissions.set_udev(ns_bwrap::PermissionType::RO);
+  permissions.set_input(ns_bwrap::PermissionType::RO);
+  permissions.set_usb(ns_bwrap::PermissionType::RO);
+  permissions.set_gpu(ns_bwrap::PermissionType::RO);
+  permissions.set_network(ns_bwrap::PermissionType::RO);
+  ns_bwrap::Bwrap(config, permissions, config.path_dir_temp_bin / "bash").run();
 
   return EXIT_SUCCESS;
 } // main() }}}

@@ -118,10 +118,19 @@ namespace ns_common
 
 // call_if() {{{
 template<typename F>
-inline auto call_if(bool cond, F&& f) -> std::optional<decltype(f())>
+inline auto call_if(bool cond, F&& f)
 {
   if ( not cond ) { return std::nullopt; }
-  return f();
+
+  if constexpr ( std::is_void_v<decltype(f())> )
+  {
+    f();
+    return std::nullopt;
+  } // if
+  else
+  {
+    return std::make_optional(f());
+  } // else
 } // call_if() }}}
 
 } // namespace ns_common

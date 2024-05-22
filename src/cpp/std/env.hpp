@@ -154,7 +154,7 @@ inline bool exists(const char* var, std::string_view target)
 {
   const char* value = get(var);
   qreturn_if(not value, false);
-  return std::string_view{var} == target;
+  return std::string_view{value} == target;
 } // exists() }}}
 
 } // namespace ns_env }}}

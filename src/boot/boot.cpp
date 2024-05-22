@@ -11,8 +11,6 @@
 #include "../cpp/lib/log.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/std/env.hpp"
-#include "../cpp/std/filesystem.hpp"
-#include "../cpp/lib/subprocess.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"

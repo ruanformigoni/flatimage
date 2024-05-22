@@ -47,7 +47,7 @@ inline Logger::Logger()
   // File to save logs into
   m_file = fs::path{path_file_self.string() + ".log"};
 
-  "Logger file: {}"_print(m_file);
+  "Logger file: {}\n"_print(m_file);
 
   // File output stream
   m_os = std::ofstream{m_file};

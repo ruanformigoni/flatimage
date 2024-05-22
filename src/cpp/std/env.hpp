@@ -116,6 +116,24 @@ inline void print(const char* name, std::ostream& os = std::cout)
   } // if
 } // print() }}}
 
+// get_or_throw() {{{
+// Get an env variable
+template<typename T = const char*>
+inline T get_or_throw(const char* name)
+{
+  const char* value = std::getenv(name);
+  ethrow_if(not value, "Variable '{}' is undefined"_fmt(name));
+  return value;
+} // get_or_throw() }}}
+
+// get_or_else() {{{
+// Get an env variable
+inline std::string get_or_else(std::string_view name, std::string_view alternative)
+{
+  const char* value = std::getenv(name.data());
+  return_if_else(value != nullptr, value, alternative.data());
+} // get_or_else() }}}
+
 // get() {{{
 // Get an env variable
 inline const char* get(const char* name)
@@ -123,14 +141,21 @@ inline const char* get(const char* name)
   return std::getenv(name);
 } // get() }}}
 
-// check() {{{
-// Checks if variable exists, else throws
-inline void check(const char* var)
+// exists() {{{
+// Checks if variable exists
+inline bool exists(const char* var)
+{
+  return get(var) != nullptr;
+} // exists() }}}
+
+// exists() {{{
+// Checks if variable exists and equals value
+inline bool exists(const char* var, std::string_view target)
 {
   const char* value = get(var);
-  ethrow_if(not value, "'{}' is unset"_fmt(var));
-  ns_log::debug("ENV: {} -> {}", var, value);
-} // check() }}}
+  qreturn_if(not value, false);
+  return std::string_view{var} == target;
+} // exists() }}}
 
 } // namespace ns_env }}}
 

@@ -34,89 +34,125 @@ class Bwrap
 {
   private:
     fs::path m_path_file_program;
+    fs::path m_path_dir_xdg_runtime;
     std::vector<std::string> m_path_file_program_args;
     std::vector<std::string> m_args;
     std::unordered_map<std::string, std::string> m_env;
     bool m_is_root;
-
     void set_xdg_runtime_dir();
-    void bind_root();
-    void bind_home();
-    void bind_media();
-    void bind_audio();
-    void bind_wayland();
-    void bind_xorg();
-    void bind_dbus_user();
-    void bind_dbus_system();
-    void bind_udev();
-    void bind_input();
-    void bind_usb();
-    void bind_network();
-    void bind_gpu();
-    void bind_runtime_mounts();
 
   public:
     template<ns_concept::AsString... Args>
     Bwrap(bool is_root
-        , fs::path const& path_dir_root
-        , fs::path const& path_file_program
-        , Args&&... args);
+      , fs::path const& path_dir_root
+      , fs::path const& path_file_bashrc
+      , fs::path const& path_file_program
+      , Args&&... args);
+    Bwrap& bind_root(fs::path const& path_dir_runtime_host);
+    Bwrap& bind_home(fs::path const& path_dir_home);
+    Bwrap& bind_media();
+    Bwrap& bind_audio();
+    Bwrap& bind_wayland();
+    Bwrap& bind_xorg();
+    Bwrap& bind_dbus_user();
+    Bwrap& bind_dbus_system();
+    Bwrap& bind_udev();
+    Bwrap& bind_input();
+    Bwrap& bind_usb();
+    Bwrap& bind_network();
+    Bwrap& bind_gpu();
+    Bwrap& bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts);
+    void run();
 }; // class: Bwrap
+
+// Bwrap() {{{
+template<ns_concept::AsString... Args>
+inline Bwrap::Bwrap(bool is_root
+    , fs::path const& path_dir_root
+    , fs::path const& path_file_bashrc
+    , fs::path const& path_file_program
+    , Args&&... args)
+  : m_path_file_program(path_file_program)
+  , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
+  , m_is_root(is_root)
+{
+  // Configure some environment variables
+  m_env["TERM"] = "xterm";
+
+  if ( struct passwd *pw = getpwuid(getuid()); pw )
+  {
+    m_env["HOST_USERNAME"] = pw->pw_name;
+  } // if
+
+  // Create custom bashrc file
+  std::ofstream of{path_file_bashrc};
+  if ( of.good() )
+  {
+    of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
+  } // if
+  of.close();
+  ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
+
+  // Check if root exists and is a directory
+  ethrow_if(not fs::is_directory(path_dir_root)
+    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
+  );
+
+  // Basic bindings
+  if ( is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
+  ns_vector::push_back(m_args, "--dev", "/dev");
+  ns_vector::push_back(m_args, "--proc", "/proc");
+  ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
+  ns_vector::push_back(m_args, "--bind", "/sys", "/sys");
+  ns_vector::push_back(m_args, "--bind-try", "/etc/group", "/etc/group");
+
+  set_xdg_runtime_dir();
+} // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
 {
-  uid_t user_id = getuid();
-
-  const char* env_xdg_runtime_dir = ns_env::get("XDG_RUNTIME_DIR");
-
-  if ( not ns_env::get("XDG_RUNTIME_DIR") )
-  {
-    m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_string::to_string(user_id));
-  } // if
-
+  m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_env::get_or_else("XDG_RUNTIME_DIR", ns_string::to_string(getuid())));
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_env["XDG_RUNTIME_DIR"]);
 } // set_xdg_runtime_dir() }}}
 
 // bind_root() {{{
-inline void Bwrap::bind_root()
+inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
 {
-  const char* env_fim_dir_runtime_host = ns_env::get("FIM_DIR_RUNTIME_HOST");
-  ereturn_if(not env_fim_dir_runtime_host, "FIM_DIR_RUNTIME_HOST is undefined");
-  ns_vector::push_back(m_args, "--ro-bind-try", "/", env_fim_dir_runtime_host);
+  ns_vector::push_back(m_args, "--ro-bind-try", "/", path_dir_runtime_host);
+  return *this;
 } // bind_root() }}}
 
 // bind_home() {{{
-inline void Bwrap::bind_home()
+inline Bwrap& Bwrap::bind_home(fs::path const& path_dir_home)
 {
-  qreturn_if(m_is_root);
-  const char* env_home = ns_env::get("HOME");
-  ereturn_if(not env_home, "HOME is undefined");
-  ns_vector::push_back(m_args, "--ro-bind-try", env_home, env_home);
+  if ( not m_is_root )
+  {
+    ns_vector::push_back(m_args, "--ro-bind-try", path_dir_home, path_dir_home);
+  } // if
+  return *this;
 } // bind_home() }}}
 
 // bind_media() {{{
-inline void Bwrap::bind_media()
+inline Bwrap& Bwrap::bind_media()
 {
   ns_vector::push_back(m_args, "--ro-bind-try", "/media", "/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/run/media", "/run/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/mnt", "/mnt");
+  return *this;
 } // bind_media() }}}
 
 // bind_audio() {{{
-inline void Bwrap::bind_audio()
+inline Bwrap& Bwrap::bind_audio()
 {
-  // Get XDG_RUNTIME_DIR
-  const char* env_xdg_runtime_dir = ns_env::get("XDG_RUNTIME_DIR");
-  ereturn_if(not env_xdg_runtime_dir, "XDG_RUNTIME_DIR is undefined");
-
   // Try to bind pulse socket
-  fs::path path_socket_pulse = fs::path(env_xdg_runtime_dir) / "pulse/native";
+  fs::path path_socket_pulse = m_path_dir_xdg_runtime / "pulse/native";
   ns_vector::push_back(m_args, "--bind-try", path_socket_pulse, path_socket_pulse);
   ns_vector::push_back(m_args, "--setenv", "PULSE_SERVER", "unix:" + path_socket_pulse.string());
 
   // Try to bind pipewire socket
-  fs::path path_socket_pipewire = fs::path(env_xdg_runtime_dir) / "pipewire-0";
+  fs::path path_socket_pipewire = m_path_dir_xdg_runtime / "pipewire-0";
   ns_vector::push_back(m_args, "--bind-try", path_socket_pipewire, path_socket_pipewire);
 
   // Other paths required to sound
@@ -124,50 +160,52 @@ inline void Bwrap::bind_audio()
   ns_vector::push_back(m_args, "--bind-try", "/dev/snd", "/dev/snd");
   ns_vector::push_back(m_args, "--bind-try", "/dev/shm", "/dev/shm");
   ns_vector::push_back(m_args, "--bind-try", "/proc/asound", "/proc/asound");
+
+  return *this;
 } // bind_audio() }}}
 
 // bind_wayland() {{{
-inline void Bwrap::bind_wayland()
+inline Bwrap& Bwrap::bind_wayland()
 {
-  // Get XDG_RUNTIME_DIR
-  const char* env_xdg_runtime_dir = ns_env::get("XDG_RUNTIME_DIR");
-  ereturn_if(not env_xdg_runtime_dir, "XDG_RUNTIME_DIR is undefined");
-
   // Get WAYLAND_DISPLAY
   const char* env_wayland_display = ns_env::get("WAYLAND_DISPLAY");
-  ereturn_if(not env_wayland_display, "WAYLAND_DISPLAY is undefined");
+  dreturn_if(not env_wayland_display, "WAYLAND_DISPLAY is undefined", *this);
 
   // Get wayland socket
-  fs::path path_socket_wayland = fs::path(env_xdg_runtime_dir) / env_wayland_display;
+  fs::path path_socket_wayland = m_path_dir_xdg_runtime / env_wayland_display;
 
   // Bind
   ns_vector::push_back(m_args, "--bind-try", path_socket_wayland, path_socket_wayland);
   ns_vector::push_back(m_args, "--setenv", "WAYLAND_DISPLAY", env_wayland_display);
+
+  return *this;
 } // bind_wayland() }}}
 
 // bind_xorg() {{{
-inline void Bwrap::bind_xorg()
+inline Bwrap& Bwrap::bind_xorg()
 {
   // Get DISPLAY
   const char* env_display = ns_env::get("DISPLAY");
-  ereturn_if(not env_display, "DISPLAY is undefined");
+  dreturn_if(not env_display, "DISPLAY is undefined", *this);
 
   // Get XAUTHORITY
   const char* env_xauthority = ns_env::get("XAUTHORITY");
-  ereturn_if(not env_xauthority, "XAUTHORITY is undefined");
+  dreturn_if(not env_xauthority, "XAUTHORITY is undefined", *this);
 
   // Bind
   ns_vector::push_back(m_args, "--ro-bind-try", env_xauthority, env_xauthority);
   ns_vector::push_back(m_args, "--setenv", "XAUTHORITY", env_xauthority);
   ns_vector::push_back(m_args, "--setenv", "DISPLAY", env_display);
+
+  return *this;
 } // bind_xorg() }}}
 
 // bind_dbus_user() {{{
-inline void Bwrap::bind_dbus_user()
+inline Bwrap& Bwrap::bind_dbus_user()
 {
   // Get DBUS_SESSION_BUS_ADDRESS
   const char* env_dbus_session_bus_address = ns_env::get("DBUS_SESSION_BUS_ADDRESS");
-  ereturn_if(not env_dbus_session_bus_address, "DBUS_SESSION_BUS_ADDRESS is undefined");
+  dreturn_if(not env_dbus_session_bus_address, "DBUS_SESSION_BUS_ADDRESS is undefined", *this);
 
   // Path to current session bus
   std::string str_dbus_session_bus_path = env_dbus_session_bus_address;
@@ -188,124 +226,68 @@ inline void Bwrap::bind_dbus_user()
   // Bind
   ns_vector::push_back(m_args, "--setenv", "DBUS_SESSION_BUS_ADDRESS", env_dbus_session_bus_address);
   ns_vector::push_back(m_args, "--bind-try", str_dbus_session_bus_path, str_dbus_session_bus_path);
+
+  return *this;
 } // bind_dbus_user() }}}
 
 // bind_dbus_system() {{{
-inline void Bwrap::bind_dbus_system()
+inline Bwrap& Bwrap::bind_dbus_system()
 {
   ns_vector::push_back(m_args, "--bind-try", "/run/dbus/system_bus_socket", "/run/dbus/system_bus_socket");
+  return *this;
 } // bind_dbus_system() }}}
 
 // bind_udev() {{{
-inline void Bwrap::bind_udev()
+inline Bwrap& Bwrap::bind_udev()
 {
   ns_vector::push_back(m_args, "--bind-try", "/run/udev", "/run/udev");
+  return *this;
 } // bind_udev() }}}
 
 // bind_input() {{{
-inline void Bwrap::bind_input()
+inline Bwrap& Bwrap::bind_input()
 {
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/input", "/dev/input");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/uinput", "/dev/uinput");
+  return *this;
 } // bind_input() }}}
 
 // bind_usb() {{{
-inline void Bwrap::bind_usb()
+inline Bwrap& Bwrap::bind_usb()
 {
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/bus/usb", "/dev/bus/usb");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/usb", "/dev/usb");
+  return *this;
 } // bind_usb() }}}
 
 // bind_network() {{{
-inline void Bwrap::bind_network()
+inline Bwrap& Bwrap::bind_network()
 {
   ns_vector::push_back(m_args, "--bind-try", "/etc/host.conf", "/etc/host.conf");
   ns_vector::push_back(m_args, "--bind-try", "/etc/hosts", "/etc/hosts");
   ns_vector::push_back(m_args, "--bind-try", "/etc/nsswitch.conf", "/etc/nsswitch.conf");
   ns_vector::push_back(m_args, "--bind-try", "/etc/resolv.conf", "/etc/resolv.conf");
+  return *this;
 } // bind_network() }}}
 
 // bind_gpu() {{{
-inline void Bwrap::bind_gpu()
+inline Bwrap& Bwrap::bind_gpu()
 {
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/dri", "/dev/dri");
-  
-  // Nvidia symlinks
+  // TODO Nvidia symlinks
+  return *this;
 } // bind_gpu() }}}
 
 // bind_runtime_mounts() {{{
-inline void Bwrap::bind_runtime_mounts()
+inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts)
 {
-  const char* env_fim_dir_mounts = ns_env::get("FIM_DIR_MOUNTS");
-  const char* env_fim_dir_runtime_mounts = ns_env::get("FIM_DIR_RUNTIME_MOUNTS");
-  ereturn_if(not env_fim_dir_mounts, "FIM_DIR_MOUNTS is undefined");
-  ereturn_if(not env_fim_dir_runtime_mounts, "FIM_DIR_RUNTIME_MOUNTS is undefined");
-  ns_vector::push_back(m_args, "--bind-try", env_fim_dir_mounts, env_fim_dir_runtime_mounts);
+  ns_vector::push_back(m_args, "--bind-try", path_dir_mounts, path_dir_runtime_mounts);
+  return *this;
 } // bind_runtime_mounts() }}}
 
-// Bwrap() {{{
-template<ns_concept::AsString... Args>
-inline Bwrap::Bwrap(bool is_root
-    , fs::path const& path_dir_root
-    , fs::path const& path_file_program
-    , Args&&... args)
-  : m_path_file_program(path_file_program)
-  , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
-  , m_is_root(is_root)
+// run() {{{
+inline void Bwrap::run()
 {
-  // Configure some environment variables
-  m_env["TERM"] = "xterm";
-
-  if ( struct passwd *pw = getpwuid(getuid()); pw )
-  {
-    m_env["HOST_USERNAME"] = pw->pw_name;
-  } // if
-
-  if ( char const* env_path = ns_env::get("PATH") )
-  {
-    m_env["PATH"] = std::string{env_path} + ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";
-  } // if
-
-  // Create custom bashrc file
-  if ( const char* env_bashrc_file = ns_env::get("BASHRC_FILE"); env_bashrc_file )
-  {
-    std::ofstream of{env_bashrc_file};
-    if ( of.good() )
-    {
-      of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
-    } // if
-    of.close();
-  } // if
-
-  // Check if root exists and is a directory
-  ethrow_if(not fs::is_directory(path_dir_root)
-    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
-  );
-
-  if ( is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
-  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
-  ns_vector::push_back(m_args, "--dev", "/dev");
-  ns_vector::push_back(m_args, "--proc", "/proc");
-  ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
-  ns_vector::push_back(m_args, "--bind", "/sys", "/sys");
-  ns_vector::push_back(m_args, "--bind-try", "/etc/group", "/etc/group");
-
-  set_xdg_runtime_dir();
-  bind_root();
-  bind_home();
-  bind_media();
-  bind_audio();
-  bind_wayland();
-  bind_xorg();
-  bind_dbus_user();
-  bind_dbus_system();
-  bind_udev();
-  bind_input();
-  bind_usb();
-  bind_network();
-  bind_gpu();
-  bind_runtime_mounts();
-
   // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
   ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
@@ -321,7 +303,7 @@ inline Bwrap::Bwrap(bool is_root
   } // for
 
   subprocess.spawn(true);
-} // Bwrap() }}}
+} // run() }}}
 
 } // namespace ns_bwrap
 

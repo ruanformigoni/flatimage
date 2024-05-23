@@ -30,6 +30,8 @@ add_executable(boot boot.cpp)
 target_link_libraries(boot PRIVATE
   argparse::argparse 
   nlohmann_json::nlohmann_json
+  /usr/lib/libext2fs.a
+  /usr/lib/libcom_err.a
 )
-target_compile_options(boot PRIVATE -Wall -Os -Wextra)
+target_compile_options(boot PRIVATE -static -Wall -Os -Wextra)
 target_link_options(boot PRIVATE -static)

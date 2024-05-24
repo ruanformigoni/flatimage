@@ -6,13 +6,16 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <type_traits>
+#include <variant>
 
 namespace ns_concept
 {
 template<typename T>
 concept Enum = std::is_enum_v<T>;
+
+template <typename T>
+concept Variant = requires(T){ std::variant_size_v<T>; };
 
 template<typename T, typename U>
 concept SameAs = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;

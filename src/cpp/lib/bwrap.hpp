@@ -107,7 +107,7 @@ class Bwrap
     Bwrap(ns_config::FlatimageConfig const& config
       , Permissions const& permissions
       , fs::path const& path_file_program
-      , Args&&... args);
+      , std::vector<std::string> const& args);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
     Bwrap& bind_home(fs::path const& path_dir_home);
     Bwrap& bind_media();
@@ -130,9 +130,9 @@ template<ns_concept::AsString... Args>
 inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
     , Permissions const& permissions
     , fs::path const& path_file_program
-    , Args&&... args)
+    , std::vector<std::string> const& args)
   : m_path_file_program(path_file_program)
-  , m_path_file_program_args(std::vector<std::string>{ns_string::to_string(args)...})
+  , m_path_file_program_args(args)
 {
   // Configure some environment variables
   m_env["TERM"] = "xterm";

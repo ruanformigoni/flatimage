@@ -8,13 +8,15 @@
 
 #include "../cpp/units.hpp"
 #include "../cpp/config.hpp"
-#include "../cpp/lib/log.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/std/env.hpp"
+#include "../cpp/std/variant.hpp"
+#include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"
 #include "../cpp/lib/bwrap.hpp"
+#include "../cpp/lib/parser.hpp"
 
 namespace fs = std::filesystem;
 
@@ -39,7 +41,7 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
 } // copy_tools() }}}
 
 // main() {{{
-int main()
+int main(int argc, char** argv)
 {
   // Set logger level
   if ( ns_env::exists("FIM_DEBUG", "1") )
@@ -85,7 +87,32 @@ int main()
   permissions.set_usb(ns_bwrap::PermissionType::RO);
   permissions.set_gpu(ns_bwrap::PermissionType::RO);
   permissions.set_network(ns_bwrap::PermissionType::RO);
-  ns_bwrap::Bwrap(config, permissions, config.path_dir_temp_bin / "bash").run();
+
+  // Parse args
+  std::optional<ns_parser::CmdType> opt_cmd = ns_parser::parse(argc, argv);
+
+  // Check if any was passed
+  if ( not opt_cmd ) { return EXIT_SUCCESS; } // if
+
+  // Execute a command as a regular user
+  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*opt_cmd) )
+  {
+    ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
+  } // if
+  // Execute a command as root
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
+  {
+    config.is_root = true;
+    ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
+  } // if
+  // Resize the image to contain at least the provided free space
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
+  {
+    config.is_root = true;
+    // Keep at least the provided slack amount of extra free space
+    ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
+  } // if
+
 
   return EXIT_SUCCESS;
 } // main() }}}

@@ -22,13 +22,11 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 endif()
 
 # External libraries
-find_package(argparse REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 # # Main executable
 add_executable(boot boot.cpp)
 target_link_libraries(boot PRIVATE
-  argparse::argparse 
   nlohmann_json::nlohmann_json
   /usr/lib/libext2fs.a
   /usr/lib/libcom_err.a

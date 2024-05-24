@@ -36,6 +36,7 @@ inline std::string cmd_error(std::string_view str)
 } // namespace
 
 
+// Cmds {{{
 struct CmdRoot
 {
   std::string program;
@@ -54,7 +55,9 @@ struct CmdResize
 };
 
 using CmdType = std::variant<CmdRoot,CmdExec,CmdResize>;
+// }}}
 
+// parse() {{{
 inline std::optional<CmdType> parse(int argc, char** argv)
 {
   ireturn_if(argc < 2, "No command specified", std::nullopt);
@@ -97,7 +100,7 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       return CmdType(CmdResize(size));
     }
   );
-} // function: parse
+} // parse() }}}
 
 } // namespace ns_parser
 

@@ -5,13 +5,15 @@
 
 #pragma once
 
-#include <algorithm>
 #include <functional>
 #include <optional>
+
+#include "../macro.hpp"
 
 namespace ns_match
 {
 
+// class compare {{{
 template<typename T, template<typename U> typename Comp = std::equal_to>
 class compare
 {
@@ -26,33 +28,34 @@ class compare
     {
       return Comp<U>()(u, reference_t.get());
     }
-}; // function: compare
+}; // }}}
 
-// Deduction guide
+// deduction guide class compare {{{
 template<typename T, template<typename U> typename Comp = std::equal_to>
 compare(T&&) -> compare<std::decay_t<T>, Comp>;
+// }}}
 
+// operator>> {{{
 template<typename T, typename U>
 decltype(auto) operator>>(compare<T> const& partial_eq, U const& u)
 {
   // Make it lazy
   return [&](auto&& e) { return (partial_eq(e))? std::make_optional<U>(u) : std::nullopt; };
-}
+} // }}}
 
+// operator>>= {{{
 template<typename T, typename U>
 decltype(auto) operator>>=(compare<T> const& partial_eq, U const& u)
 {
-  using ReturnType = decltype(u());
   // Make it lazy
-  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<ReturnType>(u()) : std::nullopt; };
-}
+  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<decltype(u())>(u()) : std::nullopt; };
+} // }}}
 
+// match() {{{
 template<typename T, typename... Args>
 inline decltype(auto) match(T&& t, Args&&... args)
 {
-  using ReturnType = decltype(std::get<0>(std::forward_as_tuple(args...))(t));
-
-  ReturnType result = std::nullopt;
+  decltype(std::get<0>(std::forward_as_tuple(args...))(t)) result = std::nullopt;
 
   // Lambda to check and return std::optional if it has a value
   auto check_and_return = [&](auto&& arg) -> bool
@@ -64,8 +67,11 @@ inline decltype(auto) match(T&& t, Args&&... args)
   // Use fold expression to evaluate each argument
   (check_and_return(args) || ...);
 
+  // Check if has a match
+  ethrow_if(not result.has_value(), "Could not match '{}'"_fmt(t));
+
   return result;
-} // function: match
+} // match() }}}
 
 } // namespace ns_match
 

@@ -98,8 +98,10 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
 
   // Check if filesystem already has the requested minimum free space
   ireturn_if (blocks_free_curr >= blocks_free_min
-    , "Filesystem already '{}' MiB of free space ({}% more than requested)"_fmt(ns_units::from_bytes(size_free).to_mebibytes()
-    , (1 - static_cast<long double>(blocks_free_min) / blocks_free_curr) * 100.0)
+    , "Filesystem already '{}' MiB of free space ({} MiB more than requested)"_fmt(
+        ns_units::from_bytes(blocks_free_curr * block_size).to_mebibytes()
+      , ns_units::from_bytes(blocks_free_curr * block_size).to_mebibytes()
+      - ns_units::from_bytes(blocks_free_min * block_size).to_mebibytes())
   );
 
   // Check filesystem

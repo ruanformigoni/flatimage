@@ -70,9 +70,6 @@ int main(int argc, char** argv)
     , ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
   );
 
-  // Mount filesystem as RW
-  ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
-
   // Run bwrap
   ns_bwrap::Permissions permissions;
   permissions.set_home(ns_bwrap::PermissionType::RO);
@@ -97,18 +94,23 @@ int main(int argc, char** argv)
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*opt_cmd) )
   {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Execute specified command
     ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
   {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Execute specified command as 'root'
     config.is_root = true;
     ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
   {
-    config.is_root = true;
     // Keep at least the provided slack amount of extra free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if

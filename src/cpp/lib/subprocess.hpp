@@ -217,12 +217,8 @@ inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdou
     close(id_pipe);
   };
 
-  auto thread_stdout = std::thread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
-  auto thread_stderr = std::thread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
-
-  // Joins the spawned threads to keep reading stdout and stderr
-  thread_stdout.join();
-  thread_stderr.join();
+  auto thread_stdout = std::jthread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
+  auto thread_stderr = std::jthread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
 
   // Wait for child process to finish
   int status;

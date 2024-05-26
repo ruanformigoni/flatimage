@@ -10,7 +10,7 @@
 #include <string>
 
 #include "match.hpp"
-#include "../permissions.hpp"
+#include "../config/permissions.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
 #include "../enum.hpp"
@@ -72,7 +72,7 @@ ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
 struct CmdPerms
 {
   CmdPermsOp op;
-  std::set<ns_permissions::Permission> permissions;
+  std::set<ns_config::ns_permissions::Permission> permissions;
 };
 
 using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms>;
@@ -134,7 +134,7 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
-        , [&](auto&& e){ cmd_perms.permissions.insert(ns_permissions::Permission(e)); }
+        , [&](auto&& e){ cmd_perms.permissions.insert(ns_config::ns_permissions::Permission(e)); }
       );
       return CmdType(cmd_perms);
     }

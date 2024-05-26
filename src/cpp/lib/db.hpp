@@ -106,7 +106,11 @@ class Db
     // Modifying
     template<ns_concept::StringRepresentable T>
     bool erase(T&& t);
+    template<ns_concept::Iterable T>
+    bool erase(T&& t);
     template<ns_concept::StringRepresentable T>
+    Db& insert_if_not_exists(T&& t);
+    template<ns_concept::Iterable T>
     Db& insert_if_not_exists(T&& t);
 
     // Operators
@@ -264,6 +268,13 @@ bool Db::erase(T&& t)
   return json.erase(key) == 1;
 } // erase() }}}
 
+// erase() {{{
+template<ns_concept::Iterable T>
+bool Db::erase(T&& t)
+{
+  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return erase(std::forward<E>(e)); });
+} // erase() }}}
+
 // insert_if_not_exists() {{{
 template<ns_concept::StringRepresentable T>
 Db& Db::insert_if_not_exists(T&& t)
@@ -277,8 +288,15 @@ Db& Db::insert_if_not_exists(T&& t)
     json.push_back(key);
   } // if
   return *this;
-  // else
-} // operator|= }}}
+} // insert_if_not_exists() }}}
+
+// insert_if_not_exists() {{{
+template<ns_concept::Iterable T>
+Db& Db::insert_if_not_exists(T&& t)
+{
+  std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ insert_if_not_exists(e); });
+  return *this;
+} // insert_if_not_exists() }}}
 
 // operator::string() {{{
 inline Db::operator std::string() const

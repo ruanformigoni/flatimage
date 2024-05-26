@@ -114,10 +114,4 @@ inline void print_if(bool cond, Args&&... args)
   } // if
 } // print_if() }}}
 
-namespace ns_common
-{
-
-
-} // namespace ns_common
-
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

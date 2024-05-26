@@ -111,7 +111,7 @@ int main(int argc, char** argv)
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
   {
-    // Keep at least the provided slack amount of extra free space
+    // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if
 

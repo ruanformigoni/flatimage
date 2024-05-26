@@ -103,7 +103,7 @@ class Bwrap
     void set_xdg_runtime_dir();
 
   public:
-    template<ns_concept::AsString... Args>
+    template<ns_concept::StringRepresentable... Args>
     Bwrap(ns_config::FlatimageConfig const& config
       , Permissions const& permissions
       , fs::path const& path_file_program
@@ -126,7 +126,7 @@ class Bwrap
 }; // class: Bwrap
 
 // Bwrap() {{{
-template<ns_concept::AsString... Args>
+template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
     , Permissions const& permissions
     , fs::path const& path_file_program

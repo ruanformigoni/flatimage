@@ -76,7 +76,7 @@ inline decltype(auto) operator ""_throw(const char* str, size_t)
 // }}}
 
 // print() {{{
-template<ns_concept::AsString T, typename... Args>
+template<ns_concept::StringRepresentable T, typename... Args>
 inline void print(std::ostream& os, T&& t, Args&&... args)
 {
   if constexpr ( sizeof...(args) > 0 )
@@ -90,8 +90,8 @@ inline void print(std::ostream& os, T&& t, Args&&... args)
 } // print() }}}
 
 // print() {{{
-template<ns_concept::AsString T, typename... Args>
-requires ( ( ns_concept::AsString<Args> or ns_concept::IterableConst<Args> ) and ... )
+template<ns_concept::StringRepresentable T, typename... Args>
+requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
 inline void print(T&& t, Args&&... args)
 {
   if constexpr ( sizeof...(args) > 0 )

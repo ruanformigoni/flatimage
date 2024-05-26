@@ -61,7 +61,7 @@ inline fs::path file(const char* name)
 
 // set() {{{
 // Sets an environment variable
-template<ns_concept::AsString T, ns_concept::AsString U>
+template<ns_concept::StringRepresentable T, ns_concept::StringRepresentable U>
 void set(T&& name, U&& value, Replace replace)
 {
   ns_log::debug("ENV: {} -> {}", name , value);

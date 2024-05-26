@@ -68,15 +68,15 @@ class Subprocess
     std::optional<int> with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2]);
     void with_pipes_child(pid_t pid, int pipestdout[2], int pipestderr[2]);
   public:
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     Subprocess(T&& t);
 
     Subprocess& env_clear();
 
-    template<ns_concept::AsString K, ns_concept::AsString V>
+    template<ns_concept::StringRepresentable K, ns_concept::StringRepresentable V>
     Subprocess& with_var(K&& k, V&& v);
 
-    template<ns_concept::AsString K>
+    template<ns_concept::StringRepresentable K>
     Subprocess& rm_var(K&& k);
 
     template<typename... T>
@@ -98,7 +98,7 @@ class Subprocess
 }; // Subprocess }}}
 
 // Subprocess::Subprocess {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 Subprocess::Subprocess(T&& t)
   : m_program(ns_string::to_string(t))
   , m_with_piped_outputs(false)
@@ -120,7 +120,7 @@ inline Subprocess& Subprocess::env_clear()
 } // env_clear() }}}
 
 // with_var() {{{
-template<ns_concept::AsString K, ns_concept::AsString V>
+template<ns_concept::StringRepresentable K, ns_concept::StringRepresentable V>
 Subprocess& Subprocess::with_var(K&& k, V&& v)
 {
   rm_var(k);
@@ -129,7 +129,7 @@ Subprocess& Subprocess::with_var(K&& k, V&& v)
 } // with_var() }}}
 
 // rm_var() {{{
-template<ns_concept::AsString K>
+template<ns_concept::StringRepresentable K>
 Subprocess& Subprocess::rm_var(K&& k)
 {
   // Find variable
@@ -170,7 +170,7 @@ Subprocess& Subprocess::with_args(T&& t)
   {
     std::copy(t.begin(), t.end(), std::back_inserter(m_args));
   } // else if
-  else if constexpr ( ns_concept::AsString<T> )
+  else if constexpr ( ns_concept::StringRepresentable<T> )
   {
     this->m_args.push_back(ns_string::to_string(std::forward<T>(t)));
   } // else if

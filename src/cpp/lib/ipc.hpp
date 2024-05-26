@@ -45,7 +45,7 @@ class Ipc
     static Ipc guest(fs::path path_file);
     static Ipc host(fs::path path_file);
     // Send/Recv Operations
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     void send(T&& t);
     std::optional<std::string> recv();
 
@@ -131,7 +131,7 @@ inline Ipc::~Ipc()
 } // Ipc::~Ipc() }}}
 
 // Ipc::send() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 void Ipc::send(T&& t)
 {
   std::string data = ns_string::to_string(t);

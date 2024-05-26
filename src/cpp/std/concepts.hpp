@@ -58,7 +58,7 @@ concept StreamInsertable = requires(T t, std::ostream& os)
 };
 
 template<typename T>
-concept AsString = StringConvertible<T> or StringConstructible<T> or Numeric<T> or StreamInsertable<T>;
+concept StringRepresentable = StringConvertible<T> or StringConstructible<T> or Numeric<T> or StreamInsertable<T>;
 
 } // namespace ns_concept
 

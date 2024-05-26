@@ -99,14 +99,14 @@ class Db
 
     // Access
     decltype(auto) items() const;
-    template<bool _throw = true, ns_concept::AsString T>
+    template<bool _throw = true, ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
     bool empty() const;
 
     // Modifying
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     bool erase(T&& t);
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     Db& insert_if_not_exists(T&& t);
 
     // Operators
@@ -114,11 +114,11 @@ class Db
     operator json_t() const;
     Db operator=(Db const&) = delete;
     Db operator=(Db&&) = delete;
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     Db const& operator[](T&& t) const;
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     Db operator()(T&& t);
-    template<ns_concept::AsString T>
+    template<ns_concept::StringRepresentable T>
     T operator=(T&& t);
 }; //
 
@@ -225,7 +225,7 @@ inline decltype(auto) Db::items() const
 } // items() }}}
 
 // contains() {{{
-template<bool _throw, ns_concept::AsString T>
+template<bool _throw, ns_concept::StringRepresentable T>
 bool Db::contains(T&& t) const
 {
   auto&& json = data();
@@ -247,7 +247,7 @@ inline bool Db::empty() const
 } // empty() }}}
 
 // erase() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 bool Db::erase(T&& t)
 {
   json_t& json = data();
@@ -268,7 +268,7 @@ bool Db::erase(T&& t)
 } // erase() }}}
 
 // insert_if_not_exists() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 Db& Db::insert_if_not_exists(T&& t)
 {
   std::string key = ns_string::to_string(t);
@@ -297,7 +297,7 @@ inline Db::operator json_t() const
 
 // operator[] {{{
 // Key exists and is accessed
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 Db const& Db::operator[](T&& t) const
 {
   std::string key = ns_string::to_string(t);
@@ -327,7 +327,7 @@ Db const& Db::operator[](T&& t) const
 
 // operator() {{{
 // Key exists or is created, and is accessed
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 Db Db::operator()(T&& t)
 {
   std::string key = ns_string::to_string(t);
@@ -347,19 +347,19 @@ Db Db::operator()(T&& t)
   return Db{std::reference_wrapper<json_t>(json[key])};
 } // operator() }}}
 
-// operator=(ns_concept::AsString) {{{
-template<ns_concept::AsString T>
+// operator=(ns_concept::StringRepresentable) {{{
+template<ns_concept::StringRepresentable T>
 T Db::operator=(T&& t)
 {
   std::string key = ns_string::to_string(t);
   data() = key;
   return key;
-} // operator=(ns_concept::AsString) }}}
+} // operator=(ns_concept::StringRepresentable) }}}
 
 //class: Db }}}
 
 // from_file() {{{
-template<ns_concept::AsString T, typename F>
+template<ns_concept::StringRepresentable T, typename F>
 void from_file(T&& t, F&& f, Mode mode)
 {
   // Create DB
@@ -369,7 +369,7 @@ void from_file(T&& t, F&& f, Mode mode)
 } // function: from_file }}}
 
 // to_file() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 void to_file(Db const& json, T&& t)
 {
   std::ofstream ofile_json{t};

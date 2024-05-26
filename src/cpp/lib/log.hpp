@@ -65,24 +65,24 @@ inline void set_level(Level level)
 } // info
 
 template<typename... Args>
-requires ( ( ns_concept::AsString<Args> or ns_concept::IterableConst<Args> ) and ... )
-void info(ns_concept::AsString auto&& format, Args&&... args)
+requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+void info(ns_concept::StringRepresentable auto&& format, Args&&... args)
 {
   print(instance.m_os, "I::{}\n"_fmt(format), args...);
   print_if((instance.m_level >= Level::VERBOSE), "I::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // info
 
 template<typename... Args>
-requires ( ( ns_concept::AsString<Args> or ns_concept::IterableConst<Args> ) and ... )
-void error(ns_concept::AsString auto&& format, Args&&... args)
+requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+void error(ns_concept::StringRepresentable auto&& format, Args&&... args)
 {
   print(instance.m_os, "E::{}\n"_fmt(format), args...);
   print("E::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // error
 
 template<typename... Args>
-requires ( ( ns_concept::AsString<Args> or ns_concept::IterableConst<Args> ) and ... )
-void debug(ns_concept::AsString auto&& format, Args&&... args)
+requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+void debug(ns_concept::StringRepresentable auto&& format, Args&&... args)
 {
   print(instance.m_os, "D::{}\n"_fmt(format), args...);
   print_if((instance.m_level >= Level::DEBUG), "D::{}\n"_fmt(format), std::forward<Args>(args)...);

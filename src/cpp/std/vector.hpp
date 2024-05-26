@@ -17,7 +17,7 @@ inline void push_back(R& r, Args&&... args)
   ( r.push_back(std::forward<Args>(args)), ... );
 } // push_back
 
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 inline std::vector<std::string> from_string(T&& t, char delimiter)
 {
   std::vector<std::string> tokens;

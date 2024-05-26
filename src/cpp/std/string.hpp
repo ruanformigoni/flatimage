@@ -72,7 +72,7 @@ inline auto to_tuple(Args&&... args)
 } // to_tuple() }}}
 
 // to_lower() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 std::string to_lower(T&& t)
 {
   std::string ret = to_string(t);
@@ -81,7 +81,7 @@ std::string to_lower(T&& t)
 } // to_lower() }}}
 
 // to_upper() {{{
-template<ns_concept::AsString T>
+template<ns_concept::StringRepresentable T>
 std::string to_upper(T&& t)
 {
   std::string ret = to_string(t);

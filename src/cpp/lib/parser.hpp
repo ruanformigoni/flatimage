@@ -10,6 +10,7 @@
 #include <string>
 
 #include "match.hpp"
+#include "../permissions.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
 #include "../enum.hpp"
@@ -66,13 +67,12 @@ struct CmdResize
   uint64_t size;
 };
 
-ENUM(Perms,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,GPU,NETWORK);
-ENUM(PermsOp,SET,ADD,DEL,LIST);
+ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
 
 struct CmdPerms
 {
-  PermsOp op;
-  std::set<Perms> permissions;
+  CmdPermsOp op;
+  std::set<ns_permissions::Permission> permissions;
 };
 
 using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms>;
@@ -123,9 +123,9 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare(std::string_view("fim-perms")) >>= [&]
     {
       // Check if is list subcommand
-      PermsOp op = PermsOp(argv[2]);
+      CmdPermsOp op = CmdPermsOp(argv[2]);
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
-      if ( op == PermsOp::LIST )
+      if ( op == CmdPermsOp::LIST )
       {
         return CmdType(CmdPerms{ .op = op, .permissions = {} });
       } // if
@@ -133,7 +133,9 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       ethrow_if(argc < 4, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
       CmdPerms cmd_perms;
       cmd_perms.op = op;
-      std::ranges::for_each(ns_vector::from_string(argv[3], ','), [&](auto&& e){ cmd_perms.permissions.insert(Perms(e)); });
+      std::ranges::for_each(ns_vector::from_string(argv[3], ',')
+        , [&](auto&& e){ cmd_perms.permissions.insert(ns_permissions::Permission(e)); }
+      );
       return CmdType(cmd_perms);
     }
   );

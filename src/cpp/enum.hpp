@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include <stdexcept>
+#include <sstream>
 #include <algorithm>
+#include <ranges>
 
 // Get size of __VA_ARGS__
 #define VA_SIZE(...) VA_SIZE_(__VA_ARGS__,VA_SIZE_RSEQ())

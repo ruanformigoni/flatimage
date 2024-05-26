@@ -11,13 +11,13 @@
 #include "../cpp/units.hpp"
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/variant.hpp"
+#include "../cpp/std/functional.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"
 #include "../cpp/lib/bwrap.hpp"
 #include "../cpp/lib/parser.hpp"
-#include "../cpp/lib/db.hpp"
 
 namespace fs = std::filesystem;
 
@@ -71,21 +71,6 @@ int main(int argc, char** argv)
     , ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
   );
 
-  // Run bwrap
-  ns_bwrap::Permissions permissions;
-  permissions.set_home(ns_bwrap::PermissionType::RO);
-  permissions.set_media(ns_bwrap::PermissionType::RO);
-  permissions.set_audio(ns_bwrap::PermissionType::RO);
-  permissions.set_wayland(ns_bwrap::PermissionType::RO);
-  permissions.set_xorg(ns_bwrap::PermissionType::RO);
-  permissions.set_dbus_user(ns_bwrap::PermissionType::RO);
-  permissions.set_dbus_system(ns_bwrap::PermissionType::RO);
-  permissions.set_udev(ns_bwrap::PermissionType::RO);
-  permissions.set_input(ns_bwrap::PermissionType::RO);
-  permissions.set_usb(ns_bwrap::PermissionType::RO);
-  permissions.set_gpu(ns_bwrap::PermissionType::RO);
-  permissions.set_network(ns_bwrap::PermissionType::RO);
-
   // Parse args
   std::optional<ns_parser::CmdType> opt_cmd = ns_parser::parse(argc, argv);
 
@@ -98,7 +83,7 @@ int main(int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command
-    ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args).run();
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
@@ -107,7 +92,7 @@ int main(int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
-    ns_bwrap::Bwrap(config, permissions, cmd->program, cmd->args).run();
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args).run();
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
@@ -123,27 +108,14 @@ int main(int argc, char** argv)
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_perms.parent_path());
     // Determine open mode
-    ns_db::Mode mode =
-        (cmd->op == ns_parser::PermsOp::SET)? ns_db::Mode::CREATE
-      : (cmd->op == ns_parser::PermsOp::LIST)? ns_db::Mode::READ
-      : ns_db::Mode::UPDATE_OR_CREATE;
-    // Write new permissions
-    ns_db::from_file(config.path_file_config_perms, [&](ns_db::Db& db)
+    switch( cmd->op )
     {
-      switch ( cmd->op )
-      {
-        case ns_parser::PermsOp::ADD:
-        case ns_parser::PermsOp::SET:
-          std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.insert_if_not_exists(e); });
-          break;
-        case ns_parser::PermsOp::DEL:
-          std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.erase(e); });
-          break;
-        case ns_parser::PermsOp::LIST:
-          std::for_each(db.cbegin(), db.cend(), [&](auto&& e){ print("{}\n", e); });
-          break;
-      } // switch
-    }, mode);
+      case ns_parser::CmdPermsOp::ADD: ns_permissions::add(config, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::SET: ns_permissions::set(config, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::DEL: ns_permissions::del(config, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_permissions::get(config), ns_functional::Print{});
+      break;
+    } // switch
   } // if
 
 

@@ -13,6 +13,7 @@
 
 #include "../macro.hpp"
 #include "../config.hpp"
+#include "../permissions.hpp"
 
 #include "../std/vector.hpp"
 
@@ -105,7 +106,6 @@ class Bwrap
   public:
     template<ns_concept::StringRepresentable... Args>
     Bwrap(ns_config::FlatimageConfig const& config
-      , Permissions const& permissions
       , fs::path const& path_file_program
       , std::vector<std::string> const& args);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
@@ -128,7 +128,6 @@ class Bwrap
 // Bwrap() {{{
 template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
-    , Permissions const& permissions
     , fs::path const& path_file_program
     , std::vector<std::string> const& args)
   : m_path_file_program(path_file_program)
@@ -174,32 +173,6 @@ inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
   // Make filesystems accessible from the guest
   bind_runtime_mounts(config.path_dir_mounts, config.path_dir_runtime_mounts);
 
-  // Configure bindings
-  ns_common::call_if(not config.is_root && permissions.home().is_ro(), [&]{ bind_home(config.path_dir_host_home); });
-  ns_common::call_if(permissions.media().is_ro()       , [&]{ bind_media(); });
-  ns_common::call_if(permissions.audio().is_ro()       , [&]{ bind_audio(); });
-  ns_common::call_if(permissions.wayland().is_ro()     , [&]{ bind_wayland(); });
-  ns_common::call_if(permissions.xorg().is_ro()        , [&]{ bind_xorg(); });
-  ns_common::call_if(permissions.dbus_user().is_ro()   , [&]{ bind_dbus_user(); });
-  ns_common::call_if(permissions.dbus_system().is_ro() , [&]{ bind_dbus_system(); });
-  ns_common::call_if(permissions.udev().is_ro()        , [&]{ bind_udev(); });
-  ns_common::call_if(permissions.input().is_ro()       , [&]{ bind_input(); });
-  ns_common::call_if(permissions.usb().is_ro()         , [&]{ bind_usb(); });
-  ns_common::call_if(permissions.gpu().is_ro()         , [&]{ bind_gpu(); });
-  ns_common::call_if(permissions.network().is_ro()     , [&]{ bind_network(); });
-
-  ns_log::debug("PERM(HOME)        : {}", permissions.home());
-  ns_log::debug("PERM(MEDIA)       : {}", permissions.media());
-  ns_log::debug("PERM(AUDIO)       : {}", permissions.audio());
-  ns_log::debug("PERM(WAYLAND)     : {}", permissions.wayland());
-  ns_log::debug("PERM(XORG)        : {}", permissions.xorg());
-  ns_log::debug("PERM(DBUS_USER)   : {}", permissions.dbus_user());
-  ns_log::debug("PERM(DBUS_SYSTEM) : {}", permissions.dbus_system());
-  ns_log::debug("PERM(UDEV)        : {}", permissions.udev());
-  ns_log::debug("PERM(INPUT)       : {}", permissions.input());
-  ns_log::debug("PERM(USB)         : {}", permissions.usb());
-  ns_log::debug("PERM(GPU)         : {}", permissions.gpu());
-  ns_log::debug("PERM(NETWORK)     : {}", permissions.network());
 } // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{
@@ -219,6 +192,7 @@ inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
 // bind_home() {{{
 inline Bwrap& Bwrap::bind_home(fs::path const& path_dir_home)
 {
+  ns_log::debug("PERM(HOME)");
   ns_vector::push_back(m_args, "--ro-bind-try", path_dir_home, path_dir_home);
   return *this;
 } // bind_home() }}}
@@ -226,6 +200,7 @@ inline Bwrap& Bwrap::bind_home(fs::path const& path_dir_home)
 // bind_media() {{{
 inline Bwrap& Bwrap::bind_media()
 {
+  ns_log::debug("PERM(MEDIA)");
   ns_vector::push_back(m_args, "--ro-bind-try", "/media", "/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/run/media", "/run/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/mnt", "/mnt");
@@ -235,6 +210,8 @@ inline Bwrap& Bwrap::bind_media()
 // bind_audio() {{{
 inline Bwrap& Bwrap::bind_audio()
 {
+  ns_log::debug("PERM(AUDIO)");
+
   // Try to bind pulse socket
   fs::path path_socket_pulse = m_path_dir_xdg_runtime / "pulse/native";
   ns_vector::push_back(m_args, "--bind-try", path_socket_pulse, path_socket_pulse);
@@ -256,6 +233,7 @@ inline Bwrap& Bwrap::bind_audio()
 // bind_wayland() {{{
 inline Bwrap& Bwrap::bind_wayland()
 {
+  ns_log::debug("PERM(WAYLAND)");
   // Get WAYLAND_DISPLAY
   const char* env_wayland_display = ns_env::get("WAYLAND_DISPLAY");
   dreturn_if(not env_wayland_display, "WAYLAND_DISPLAY is undefined", *this);
@@ -273,6 +251,7 @@ inline Bwrap& Bwrap::bind_wayland()
 // bind_xorg() {{{
 inline Bwrap& Bwrap::bind_xorg()
 {
+  ns_log::debug("PERM(XORG)");
   // Get DISPLAY
   const char* env_display = ns_env::get("DISPLAY");
   dreturn_if(not env_display, "DISPLAY is undefined", *this);
@@ -292,6 +271,7 @@ inline Bwrap& Bwrap::bind_xorg()
 // bind_dbus_user() {{{
 inline Bwrap& Bwrap::bind_dbus_user()
 {
+  ns_log::debug("PERM(DBUS_USER)");
   // Get DBUS_SESSION_BUS_ADDRESS
   const char* env_dbus_session_bus_address = ns_env::get("DBUS_SESSION_BUS_ADDRESS");
   dreturn_if(not env_dbus_session_bus_address, "DBUS_SESSION_BUS_ADDRESS is undefined", *this);
@@ -322,6 +302,7 @@ inline Bwrap& Bwrap::bind_dbus_user()
 // bind_dbus_system() {{{
 inline Bwrap& Bwrap::bind_dbus_system()
 {
+  ns_log::debug("PERM(DBUS_SYSTEM)");
   ns_vector::push_back(m_args, "--bind-try", "/run/dbus/system_bus_socket", "/run/dbus/system_bus_socket");
   return *this;
 } // bind_dbus_system() }}}
@@ -329,6 +310,7 @@ inline Bwrap& Bwrap::bind_dbus_system()
 // bind_udev() {{{
 inline Bwrap& Bwrap::bind_udev()
 {
+  ns_log::debug("PERM(UDEV)");
   ns_vector::push_back(m_args, "--bind-try", "/run/udev", "/run/udev");
   return *this;
 } // bind_udev() }}}
@@ -336,6 +318,7 @@ inline Bwrap& Bwrap::bind_udev()
 // bind_input() {{{
 inline Bwrap& Bwrap::bind_input()
 {
+  ns_log::debug("PERM(INPUT)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/input", "/dev/input");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/uinput", "/dev/uinput");
   return *this;
@@ -344,6 +327,7 @@ inline Bwrap& Bwrap::bind_input()
 // bind_usb() {{{
 inline Bwrap& Bwrap::bind_usb()
 {
+  ns_log::debug("PERM(USB)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/bus/usb", "/dev/bus/usb");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/usb", "/dev/usb");
   return *this;
@@ -352,6 +336,7 @@ inline Bwrap& Bwrap::bind_usb()
 // bind_network() {{{
 inline Bwrap& Bwrap::bind_network()
 {
+  ns_log::debug("PERM(NETWORK)");
   ns_vector::push_back(m_args, "--bind-try", "/etc/host.conf", "/etc/host.conf");
   ns_vector::push_back(m_args, "--bind-try", "/etc/hosts", "/etc/hosts");
   ns_vector::push_back(m_args, "--bind-try", "/etc/nsswitch.conf", "/etc/nsswitch.conf");
@@ -362,6 +347,7 @@ inline Bwrap& Bwrap::bind_network()
 // bind_gpu() {{{
 inline Bwrap& Bwrap::bind_gpu()
 {
+  ns_log::debug("PERM(GPU)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/dri", "/dev/dri");
   // TODO Nvidia symlinks
   return *this;
@@ -377,6 +363,25 @@ inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::pa
 // run() {{{
 inline void Bwrap::run()
 {
+  ns_config::FlatimageConfig config = ns_config::configure();
+  std::set<ns_permissions::Permission> permissions = ns_permissions::get(config);
+
+  // Configure bindings
+  ns_common::call_if(not config.is_root && permissions.contains(ns_permissions::Permission::HOME)
+    , [&]{ bind_home(config.path_dir_host_home);
+  });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::MEDIA)       , [&]{ bind_media(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::AUDIO)       , [&]{ bind_audio(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::XORG)        , [&]{ bind_xorg(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::GPU)         , [&]{ bind_gpu(); });
+  ns_common::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network(); });
+
   // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
   ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");

@@ -6,9 +6,14 @@
 
 #pragma once
 
+#include <set>
+#include <string>
+
 #include "match.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
+#include "../enum.hpp"
+#include "../std/vector.hpp"
 
 namespace ns_parser
 {
@@ -25,6 +30,12 @@ inline const char* str_exec_usage = "Executes the command as a regular user\n"
 inline const char* str_resize_usage = "Resizes the free space of the image to match the provided value\n"
 "   Usage: fim-resize size[M,G]\n"
 "   Example: fim-resize 500M\n";
+inline const char* str_perms_usage = "Edit current permissions for the flatimage\n"
+"   Usage: fim-perms add perm\n"
+"          fim-perms del perm\n"
+"          fim-perms set perm1,perm2,perm3,...\n"
+"   Permissions: home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
+"   Example: fim-perms add home\n";
 
 inline std::string cmd_error(std::string_view str)
 {
@@ -54,7 +65,16 @@ struct CmdResize
   uint64_t size;
 };
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize>;
+ENUM(Perms,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,GPU,NETWORK);
+ENUM(PermsOp,SET,ADD,DEL);
+
+struct CmdPerms
+{
+  PermsOp op;
+  std::set<Perms> permissions;
+};
+
+using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms>;
 // }}}
 
 // parse() {{{
@@ -69,17 +89,17 @@ inline std::optional<CmdType> parse(int argc, char** argv)
   return ns_match::match(std::string_view{argv[1]},
     ns_match::compare(std::string_view("fim-exec")) >>= [&]
     {
-      ethrow_if(argc < 3, cmd_error(str_exec_usage));
+      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_exec_usage)), "Incorrect number of arguments"));
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare(std::string_view("fim-root")) >>= [&]
     {
-      ethrow_if(argc < 3, cmd_error(str_root_usage));
+      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_root_usage)), "Incorrect number of arguments"));
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare(std::string_view("fim-resize")) >>= [&]
     {
-      ethrow_if(argc < 3, cmd_error(str_resize_usage));
+      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_resize_usage)), "Incorrect number of arguments"));
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -98,6 +118,16 @@ inline std::optional<CmdType> parse(int argc, char** argv)
         throw std::runtime_error(cmd_error(str_resize_usage));
       } // else
       return CmdType(CmdResize(size));
+    },
+    ns_match::compare(std::string_view("fim-perms")) >>= [&]
+    {
+      // Check argument length
+      ethrow_if(argc < 4, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
+      CmdPerms cmd_perms;
+      cmd_perms.op = PermsOp(argv[2]);
+      std::vector<std::string> vec_str_perms = ns_vector::from_string(argv[3], ',');
+      std::ranges::for_each(vec_str_perms, [&](auto&& e){ cmd_perms.permissions.insert(Perms(e)); });
+      return CmdType(cmd_perms);
     }
   );
 } // parse() }}}

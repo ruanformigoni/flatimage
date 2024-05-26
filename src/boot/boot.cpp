@@ -17,6 +17,7 @@
 #include "../cpp/lib/ext2/size.hpp"
 #include "../cpp/lib/bwrap.hpp"
 #include "../cpp/lib/parser.hpp"
+#include "../cpp/lib/db.hpp"
 
 namespace fs = std::filesystem;
 
@@ -113,6 +114,33 @@ int main(int argc, char** argv)
   {
     // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
+  } // if
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*opt_cmd) )
+  {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Create config dir if not exists
+    fs::create_directories(config.path_file_config_perms.parent_path());
+    // Write new permissions
+    ns_db::from_file(config.path_file_config_perms, [&](ns_db::Db& db)
+    {
+      switch ( cmd->op )
+      {
+        case ns_parser::PermsOp::ADD:
+          std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.insert_if_not_exists(e); });
+          break;
+        case ns_parser::PermsOp::DEL:
+          std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.erase(e); });
+          break;
+        case ns_parser::PermsOp::SET:
+          db = std::vector(cmd->permissions.begin(), cmd->permissions.end());
+          break;
+      } // switch
+    }, ns_db::Mode::UPDATE_OR_CREATE);
+    for (auto&& permission : cmd->permissions)
+    {
+      print("Permission: {}\n", permission);
+    } // for
   } // if
 
 

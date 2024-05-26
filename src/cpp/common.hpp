@@ -91,6 +91,7 @@ inline void print(std::ostream& os, T&& t, Args&&... args)
 
 // print() {{{
 template<ns_concept::AsString T, typename... Args>
+requires ( ( ns_concept::AsString<Args> or ns_concept::IterableConst<Args> ) and ... )
 inline void print(T&& t, Args&&... args)
 {
   if constexpr ( sizeof...(args) > 0 )

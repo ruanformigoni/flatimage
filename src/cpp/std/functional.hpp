@@ -3,6 +3,8 @@
 // @file        : functional
 ///
 
+#pragma once
+
 #include "../common.hpp"
 #include "string.hpp"
 #include "concepts.hpp"
@@ -19,6 +21,23 @@ struct Print
     print("{}\n", ns_string::to_string(t));
   }
 };
+
+// call_if() {{{
+template<std::regular_invocable F>
+inline auto call_if(bool cond, F&& f)
+{
+  if ( not cond ) { return std::nullopt; }
+
+  if constexpr ( std::is_void_v<decltype(f())> )
+  {
+    f();
+    return std::nullopt;
+  } // if
+  else
+  {
+    return std::make_optional(f());
+  } // else
+} // call_if() }}}
 
 } // namespace ns_functional
 

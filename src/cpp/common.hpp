@@ -117,22 +117,6 @@ inline void print_if(bool cond, Args&&... args)
 namespace ns_common
 {
 
-// call_if() {{{
-template<typename F>
-inline auto call_if(bool cond, F&& f)
-{
-  if ( not cond ) { return std::nullopt; }
-
-  if constexpr ( std::is_void_v<decltype(f())> )
-  {
-    f();
-    return std::nullopt;
-  } // if
-  else
-  {
-    return std::make_optional(f());
-  } // else
-} // call_if() }}}
 
 } // namespace ns_common
 

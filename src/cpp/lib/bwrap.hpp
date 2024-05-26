@@ -16,6 +16,7 @@
 #include "../permissions.hpp"
 
 #include "../std/vector.hpp"
+#include "../std/functional.hpp"
 
 namespace ns_bwrap
 {
@@ -27,80 +28,26 @@ namespace fs = std::filesystem;
 
 }
 
-enum class PermissionType { RW, RO, DENY, };
-
-struct Permission
-{
-  private:
-    PermissionType m_permission;
-  public:
-    Permission(PermissionType permission)
-      : m_permission(permission) {};
-    bool is_rw() { return m_permission == PermissionType::RW; }
-    bool is_ro() { return m_permission == PermissionType::RO; }
-    bool is_deny() { return m_permission == PermissionType::DENY; }
-    operator std::string()
-    {
-      return
-        (m_permission == PermissionType::DENY)? std::string{"DENY"}
-      : (m_permission == PermissionType::RO)? std::string{"RO"}
-      : std::string{"RW"};
-    } // operator std::string()
-};
-
-class Permissions
-{
-  private:
-    Permission m_home        = PermissionType::DENY;
-    Permission m_media       = PermissionType::DENY;
-    Permission m_audio       = PermissionType::DENY;
-    Permission m_wayland     = PermissionType::DENY;
-    Permission m_xorg        = PermissionType::DENY;
-    Permission m_dbus_user   = PermissionType::DENY;
-    Permission m_dbus_system = PermissionType::DENY;
-    Permission m_udev        = PermissionType::DENY;
-    Permission m_input       = PermissionType::DENY;
-    Permission m_usb         = PermissionType::DENY;
-    Permission m_gpu         = PermissionType::DENY;
-    Permission m_network     = PermissionType::DENY;
-
-  public:
-    // Setters
-    void set_home(Permission const& permission) { m_home = permission; };
-    void set_media(Permission const& permission) { m_media = permission; };
-    void set_audio(Permission const& permission) { m_audio = permission; };
-    void set_wayland(Permission const& permission) { m_wayland = permission; };
-    void set_xorg(Permission const& permission) { m_xorg = permission; };
-    void set_dbus_user(Permission const& permission) { m_dbus_user = permission; };
-    void set_dbus_system(Permission const& permission) { m_dbus_system = permission; };
-    void set_udev(Permission const& permission) { m_udev = permission; };
-    void set_input(Permission const& permission) { m_input = permission; };
-    void set_usb(Permission const& permission) { m_usb = permission; };
-    void set_gpu(Permission const& permission) { m_gpu = permission; };
-    void set_network(Permission const& permission) { m_network = permission; };
-    // Getters
-    Permission home() const { return m_home; };
-    Permission media() const { return m_media; };
-    Permission audio() const { return m_audio; };
-    Permission wayland() const { return m_wayland; };
-    Permission xorg() const { return m_xorg; };
-    Permission dbus_user() const { return m_dbus_user; };
-    Permission dbus_system() const { return m_dbus_system; };
-    Permission udev() const { return m_udev; };
-    Permission input() const { return m_input; };
-    Permission usb() const { return m_usb; };
-    Permission gpu() const { return m_gpu; };
-    Permission network() const { return m_network; };
-};
-
 class Bwrap
 {
   private:
+    // Program to run and its arguments
     fs::path m_path_file_program;
-    fs::path m_path_dir_xdg_runtime;
     std::vector<std::string> m_path_file_program_args;
+
+    // XDG_RUNTIME_DIR
+    fs::path m_path_dir_xdg_runtime;
+
+    // HOME directory of the host
+    fs::path m_path_dir_host_home;
+
+    // Arguments and environment to bwrap
     std::vector<std::string> m_args;
     std::unordered_map<std::string, std::string> m_env;
+
+    // Run bwrap with uid and gid equal to 0
+    bool m_is_root;
+
     void set_xdg_runtime_dir();
 
   public:
@@ -109,7 +56,7 @@ class Bwrap
       , fs::path const& path_file_program
       , std::vector<std::string> const& args);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
-    Bwrap& bind_home(fs::path const& path_dir_home);
+    Bwrap& bind_home();
     Bwrap& bind_media();
     Bwrap& bind_audio();
     Bwrap& bind_wayland();
@@ -122,7 +69,7 @@ class Bwrap
     Bwrap& bind_network();
     Bwrap& bind_gpu();
     Bwrap& bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts);
-    void run();
+    void run(std::set<ns_permissions::Permission> const& permissions);
 }; // class: Bwrap
 
 // Bwrap() {{{
@@ -132,6 +79,8 @@ inline Bwrap::Bwrap(ns_config::FlatimageConfig const& config
     , std::vector<std::string> const& args)
   : m_path_file_program(path_file_program)
   , m_path_file_program_args(args)
+  , m_path_dir_host_home(config.path_dir_host_home)
+  , m_is_root(config.is_root)
 {
   // Configure some environment variables
   m_env["TERM"] = "xterm";
@@ -190,10 +139,11 @@ inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
 } // bind_root() }}}
 
 // bind_home() {{{
-inline Bwrap& Bwrap::bind_home(fs::path const& path_dir_home)
+inline Bwrap& Bwrap::bind_home()
 {
+  if ( m_is_root ) { return *this; }
   ns_log::debug("PERM(HOME)");
-  ns_vector::push_back(m_args, "--ro-bind-try", path_dir_home, path_dir_home);
+  ns_vector::push_back(m_args, "--ro-bind-try", m_path_dir_host_home, m_path_dir_host_home);
   return *this;
 } // bind_home() }}}
 
@@ -361,31 +311,27 @@ inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::pa
 } // bind_runtime_mounts() }}}
 
 // run() {{{
-inline void Bwrap::run()
+inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
 {
-  ns_config::FlatimageConfig config = ns_config::configure();
-  std::set<ns_permissions::Permission> permissions = ns_permissions::get(config);
-
   // Configure bindings
-  ns_common::call_if(not config.is_root && permissions.contains(ns_permissions::Permission::HOME)
-    , [&]{ bind_home(config.path_dir_host_home);
-  });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::MEDIA)       , [&]{ bind_media(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::AUDIO)       , [&]{ bind_audio(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::XORG)        , [&]{ bind_xorg(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::GPU)         , [&]{ bind_gpu(); });
-  ns_common::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network(); });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::HOME)        , [&]{ bind_home(); });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::MEDIA)       , [&]{ bind_media()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::AUDIO)       , [&]{ bind_audio()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland()     ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::XORG)        , [&]{ bind_xorg()        ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user()   ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system() ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev()        ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb()         ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::GPU)         , [&]{ bind_gpu()         ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network()     ; });
 
   // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
   ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
 
+  // Run Bwrap
   auto subprocess = ns_subprocess::Subprocess(*opt_path_file_bwrap)
     .with_args(m_args)
     .with_args(m_path_file_program)

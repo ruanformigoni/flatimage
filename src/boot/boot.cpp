@@ -115,32 +115,35 @@ int main(int argc, char** argv)
     // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if
+  // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*opt_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_perms.parent_path());
+    // Determine open mode
+    ns_db::Mode mode =
+        (cmd->op == ns_parser::PermsOp::SET)? ns_db::Mode::CREATE
+      : (cmd->op == ns_parser::PermsOp::LIST)? ns_db::Mode::READ
+      : ns_db::Mode::UPDATE_OR_CREATE;
     // Write new permissions
     ns_db::from_file(config.path_file_config_perms, [&](ns_db::Db& db)
     {
       switch ( cmd->op )
       {
         case ns_parser::PermsOp::ADD:
+        case ns_parser::PermsOp::SET:
           std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.insert_if_not_exists(e); });
           break;
         case ns_parser::PermsOp::DEL:
           std::ranges::for_each(cmd->permissions, [&](auto&& e){ db.erase(e); });
           break;
-        case ns_parser::PermsOp::SET:
-          db = std::vector(cmd->permissions.begin(), cmd->permissions.end());
+        case ns_parser::PermsOp::LIST:
+          std::for_each(db.cbegin(), db.cend(), [&](auto&& e){ print("{}\n", e); });
           break;
       } // switch
-    }, ns_db::Mode::UPDATE_OR_CREATE);
-    for (auto&& permission : cmd->permissions)
-    {
-      print("Permission: {}\n", permission);
-    } // for
+    }, mode);
   } // if
 
 

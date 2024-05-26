@@ -150,10 +150,7 @@ inline Db::Db(fs::path t, Mode mode)
 
   auto f_create = [&]
   {
-    // Print file name
-    ns_log::info('i', "Creating db file {}", t);
-    // Create empty json
-    m_json = json_t::parse("{}");
+    ns_log::info('i', "Creating empty db file {}", t);
   };
 
   auto f_read = [&] -> bool

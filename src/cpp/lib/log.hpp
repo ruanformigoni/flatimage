@@ -64,25 +64,25 @@ inline void set_level(Level level)
   instance.m_level = level;
 } // info
 
-template<typename... Args>
+template<ns_concept::StringRepresentable T, typename... Args>
 requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void info(ns_concept::StringRepresentable auto&& format, Args&&... args)
+void info(T&& format, Args&&... args)
 {
   print(instance.m_os, "I::{}\n"_fmt(format), args...);
   print_if((instance.m_level >= Level::VERBOSE), "I::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // info
 
-template<typename... Args>
+template<ns_concept::StringRepresentable T, typename... Args>
 requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void error(ns_concept::StringRepresentable auto&& format, Args&&... args)
+void error(T&& format, Args&&... args)
 {
   print(instance.m_os, "E::{}\n"_fmt(format), args...);
   print("E::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // error
 
-template<typename... Args>
+template<ns_concept::StringRepresentable T, typename... Args>
 requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void debug(ns_concept::StringRepresentable auto&& format, Args&&... args)
+void debug(T&& format, Args&&... args)
 {
   print(instance.m_os, "D::{}\n"_fmt(format), args...);
   print_if((instance.m_level >= Level::DEBUG), "D::{}\n"_fmt(format), std::forward<Args>(args)...);

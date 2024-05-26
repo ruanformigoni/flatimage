@@ -34,6 +34,7 @@ inline const char* str_perms_usage = "Edit current permissions for the flatimage
 "   Usage: fim-perms add perm\n"
 "          fim-perms del perm\n"
 "          fim-perms set perm1,perm2,perm3,...\n"
+"          fim-perms list\n"
 "   Permissions: home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
 "   Example: fim-perms add home\n";
 
@@ -66,7 +67,7 @@ struct CmdResize
 };
 
 ENUM(Perms,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,GPU,NETWORK);
-ENUM(PermsOp,SET,ADD,DEL);
+ENUM(PermsOp,SET,ADD,DEL,LIST);
 
 struct CmdPerms
 {
@@ -121,12 +122,18 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     },
     ns_match::compare(std::string_view("fim-perms")) >>= [&]
     {
-      // Check argument length
+      // Check if is list subcommand
+      PermsOp op = PermsOp(argv[2]);
+      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
+      if ( op == PermsOp::LIST )
+      {
+        return CmdType(CmdPerms{ .op = op, .permissions = {} });
+      } // if
+      // Check if is other command with valid args
       ethrow_if(argc < 4, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
       CmdPerms cmd_perms;
-      cmd_perms.op = PermsOp(argv[2]);
-      std::vector<std::string> vec_str_perms = ns_vector::from_string(argv[3], ',');
-      std::ranges::for_each(vec_str_perms, [&](auto&& e){ cmd_perms.permissions.insert(Perms(e)); });
+      cmd_perms.op = op;
+      std::ranges::for_each(ns_vector::from_string(argv[3], ','), [&](auto&& e){ cmd_perms.permissions.insert(Perms(e)); });
       return CmdType(cmd_perms);
     }
   );

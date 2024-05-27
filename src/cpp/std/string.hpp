@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 #include <format>
+#include <vector>
 
 #include "concepts.hpp"
 
@@ -88,6 +89,23 @@ std::string to_upper(T&& t)
   std::ranges::for_each(ret, [](auto& c){ c = std::toupper(c); });
   return ret;
 } // to_upper() }}}
+
+// to_pair() {{{
+template<ns_concept::StringRepresentable T>
+std::pair<T,T> to_pair(T&& t, char delimiter)
+{
+  std::vector<T> tokens;
+  std::string token;
+  std::istringstream stream_token(ns_string::to_string(t));
+
+  while (std::getline(stream_token, token, delimiter))
+  {
+    tokens.push_back(token);
+  } // while
+
+  ethrow_if(tokens.size() != 2, "Pair from '{}' with delimiter '{}' could not split to 2 elements", t, delimiter);
+  return std::make_pair(tokens.front(), tokens.back());
+} // to_pair() }}}
 
 // from_container() {{{
 template<typename T>

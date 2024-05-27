@@ -80,17 +80,17 @@ inline FlatimageSetup setup()
   setup.is_debug = ns_env::exists("FIM_DEBUG", "1");
 
   // Paths in /tmp
-  setup.offset_ext2   = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
-  setup.path_dir_global     = ns_env::get_or_throw("FIM_DIR_GLOBAL");
-  setup.path_dir_mounts     = ns_env::get_or_throw("FIM_DIR_MOUNTS");
-  setup.path_dir_mount_ext2 = ns_env::get_or_throw("FIM_DIR_MOUNT");
-  setup.path_dir_temp       = ns_env::get_or_throw("FIM_DIR_TEMP");
-  setup.path_dir_temp_bin   = ns_env::get_or_throw("FIM_DIR_TEMP_BIN");
-  setup.path_file_binary    = ns_env::get_or_throw("FIM_FILE_BINARY");
-  setup.path_dir_binary     = setup.path_file_binary.parent_path();
-  setup.path_file_bashrc    = setup.path_dir_temp / ".bashrc";
-  setup.path_file_bash      = setup.path_dir_temp_bin / "bash";
-  setup.path_dir_mounts_dwarfs = setup.path_dir_mounts / "dwarfs";
+  setup.offset_ext2               = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
+  setup.path_dir_global           = ns_env::get_or_throw("FIM_DIR_GLOBAL");
+  setup.path_dir_mounts           = ns_env::get_or_throw("FIM_DIR_MOUNTS");
+  setup.path_dir_mount_ext2       = ns_env::get_or_throw("FIM_DIR_MOUNT");
+  setup.path_dir_temp             = ns_env::get_or_throw("FIM_DIR_TEMP");
+  setup.path_dir_temp_bin         = ns_env::get_or_throw("FIM_DIR_TEMP_BIN");
+  setup.path_file_binary          = ns_env::get_or_throw("FIM_FILE_BINARY");
+  setup.path_dir_binary           = setup.path_file_binary.parent_path();
+  setup.path_file_bashrc          = setup.path_dir_temp / ".bashrc";
+  setup.path_file_bash            = setup.path_dir_temp_bin / "bash";
+  setup.path_dir_mounts_dwarfs    = setup.path_dir_mounts / "dwarfs";
   setup.path_dir_mounts_overlayfs = setup.path_dir_mounts / "overlayfs";
 
   // Paths inside the ext2 filesystem
@@ -105,6 +105,7 @@ inline FlatimageSetup setup()
   setup.path_dir_host_home = ns_env::get_or_throw("HOME");
   setup.path_dir_host_config = setup.path_file_binary.parent_path()
     / (std::string{"."} + setup.path_file_binary.filename().c_str() + ".config");
+  ns_env::set("FIM_DIR_HOST_CONFIG", setup.path_dir_host_config, ns_env::Replace::Y);
   setup.path_dir_host_overlayfs = setup.path_dir_host_config / "overlays";
 
   // Paths only available inside the container (runtime)

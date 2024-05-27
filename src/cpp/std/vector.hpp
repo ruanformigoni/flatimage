@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "concepts.hpp"
 #include "string.hpp"
 

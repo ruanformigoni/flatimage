@@ -10,11 +10,12 @@
 #include <string>
 
 #include "match.hpp"
-#include "../config/permissions.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
 #include "../enum.hpp"
 #include "../std/vector.hpp"
+#include "../std/functional.hpp"
+#include "../config/permissions.hpp"
 
 namespace ns_parser
 {
@@ -38,6 +39,14 @@ inline const char* str_perms_usage = "Edit current permissions for the flatimage
 "          fim-perms list\n"
 "   Permissions: home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
 "   Example: fim-perms add home\n";
+inline const char* str_env_usage = "Edit current permissions for the flatimage\n"
+"   Usage: fim-env add key value\n"
+"          fim-env del key\n"
+"          fim-env set 'key1=value1' 'key2=value2' 'keyn=valuen'...\n"
+"          fim-env list\n"
+"   Example: fim-env add 'HOME=$FIM_DIR_HOST_CONFIG/home'\n"
+"   Example: fim-env add 'PS1=my-app> '\n"
+"   Example: fim-env add 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'\n";
 
 inline std::string cmd_error(std::string_view str)
 {
@@ -68,14 +77,20 @@ struct CmdResize
 };
 
 ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
-
 struct CmdPerms
 {
   CmdPermsOp op;
   std::set<ns_config::ns_permissions::Permission> permissions;
 };
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms>;
+ENUM(CmdEnvOp,SET,ADD,DEL,LIST);
+struct CmdEnv
+{
+  CmdEnvOp op;
+  std::vector<std::string> environment;
+};
+
+using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv>;
 // }}}
 
 // parse() {{{
@@ -120,11 +135,12 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       } // else
       return CmdType(CmdResize(size));
     },
+    // Configure permissions for the container
     ns_match::compare(std::string_view("fim-perms")) >>= [&]
     {
       // Check if is list subcommand
-      CmdPermsOp op = CmdPermsOp(argv[2]);
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
+      CmdPermsOp op = CmdPermsOp(argv[2]);
       if ( op == CmdPermsOp::LIST )
       {
         return CmdType(CmdPerms{ .op = op, .permissions = {} });
@@ -137,6 +153,23 @@ inline std::optional<CmdType> parse(int argc, char** argv)
         , [&](auto&& e){ cmd_perms.permissions.insert(ns_config::ns_permissions::Permission(e)); }
       );
       return CmdType(cmd_perms);
+    },
+    // Configure environment
+    ns_match::compare(std::string_view("fim-env")) >>= [&]
+    {
+      // Check if is list subcommand
+      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_env_usage)), "Incorrect number of arguments"));
+      CmdEnvOp op = CmdEnvOp(argv[2]);
+      if ( op == CmdEnvOp::LIST )
+      {
+        return CmdType(CmdEnv{ .op = op, .environment = {} });
+      } // if
+      // Check if is other command with valid args
+      ethrow_if(argc < 4, (ns_log::error(cmd_error(str_env_usage)), "Incorrect number of arguments"));
+      return CmdType(CmdEnv({
+        .op = op,
+        .environment = std::vector<std::string>(argv+3, argv+argc)
+      }));
     }
   );
 } // parse() }}}

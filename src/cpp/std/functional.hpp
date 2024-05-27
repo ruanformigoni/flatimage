@@ -12,13 +12,15 @@
 namespace ns_functional
 {
 
+// struct PrintLn {{{
 struct PrintLn
 {
   template<typename T>
   requires ( ns_concept::StringRepresentable<T> or ns_concept::IterableConst<T> )
   void operator()(T&& t) { print("{}\n", ns_string::to_string(t)); }
-};
+}; // }}}
 
+// class PushBack {{{
 template<ns_concept::Iterable R>
 class PushBack
 {
@@ -28,8 +30,9 @@ class PushBack
     PushBack(R& r) : ref_container(r) {}
     template<typename... Args>
     void operator()(Args&&... args) { ( ref_container.get().push_back(std::forward<Args>(args)), ... ); }
-};
+}; // }}}
 
+// class StartsWith {{{
 template<ns_concept::StringRepresentable S>
 class StartsWith
 {
@@ -39,7 +42,7 @@ class StartsWith
     StartsWith(S&& s) : str(ns_string::to_string(std::forward<S>(s))) {}
     template<typename T>
     bool operator()(T&& t) { return ns_string::to_string(t).starts_with(str); }
-};
+}; // }}}
 
 // call_if() {{{
 template<std::regular_invocable F>

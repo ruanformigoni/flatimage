@@ -85,7 +85,7 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
   , m_is_root(config.is_root)
 {
   // Push passed environment
-  std::ranges::for_each(program_env, ns_functional::PushBack(m_program_env));
+  std::ranges::for_each(program_env, [&](auto&& e){ ns_log::info("ENV: {}", e); m_program_env.push_back(e); });
 
   // Configure some environment variables
   m_program_env.push_back("TERM=xterm");

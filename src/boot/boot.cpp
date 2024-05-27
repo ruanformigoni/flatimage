@@ -14,6 +14,7 @@
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/variant.hpp"
 #include "../cpp/std/functional.hpp"
+#include "../cpp/std/exception.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
@@ -85,7 +86,9 @@ int main(int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args, {}).run(ns_config::ns_permissions::get(config));
+    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); }); 
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); }); 
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
@@ -94,7 +97,9 @@ int main(int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args, {}).run(ns_config::ns_permissions::get(config));
+    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); }); 
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); }); 
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )

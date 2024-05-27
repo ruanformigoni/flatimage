@@ -50,7 +50,7 @@ inline auto call_if(bool cond, F&& f)
 {
   if ( not cond ) { return std::nullopt; }
 
-  if constexpr ( std::is_void_v<decltype(f())> )
+  if constexpr ( std::is_void_v<std::invoke_result_t<F>> )
   {
     f();
     return std::nullopt;

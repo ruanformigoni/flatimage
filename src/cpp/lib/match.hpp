@@ -48,7 +48,7 @@ template<typename T, typename U>
 decltype(auto) operator>>=(compare<T> const& partial_eq, U const& u)
 {
   // Make it lazy
-  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<decltype(u())>(u()) : std::nullopt; };
+  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt; };
 } // }}}
 
 // match() {{{

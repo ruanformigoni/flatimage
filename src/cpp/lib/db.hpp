@@ -15,6 +15,7 @@
 #include "../common.hpp"
 #include "../macro.hpp"
 #include "../enum.hpp"
+#include "../std/functional.hpp"
 
 namespace ns_db
 {
@@ -110,15 +111,22 @@ class Db
 
     // Modifying
     template<ns_concept::StringRepresentable T>
-    bool erase(T&& t);
+    bool obj_erase(T&& t);
     template<ns_concept::Iterable T>
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-    bool erase(T&& t);
+    bool obj_erase(T&& t);
     template<ns_concept::StringRepresentable T>
-    Db& insert_if_not_exists(T&& t);
+    bool array_erase(T&& t);
     template<ns_concept::Iterable T>
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-    Db& insert_if_not_exists(T&& t);
+    bool array_erase(T&& t);
+    template<ns_concept::StringRepresentable T, std::predicate<std::string> F>
+    bool array_erase_if(T&& t, F&& f);
+    template<ns_concept::StringRepresentable T>
+    Db& array_insert_unique(T&& t);
+    template<ns_concept::Iterable T>
+    requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
+    Db& array_insert_unique(T&& t);
 
     // Operators
     operator std::string() const;
@@ -276,38 +284,58 @@ std::vector<T> Db::as_vector() const
   return vector;
 } // as_vec() }}}
 
-// erase() {{{
+// obj_erase() {{{
 template<ns_concept::StringRepresentable T>
-bool Db::erase(T&& t)
+bool Db::obj_erase(T&& t)
 {
+  std::string key = ns_string::to_string(t);
   json_t& json = data();
-
-  auto key = ns_string::to_string(t);
-
-  if ( json.is_array() )
-  {
-    // Search in array & erase if there is a match
-    auto it_search = std::find(json.begin(), json.end(), key);
-    if ( it_search == json.end() ) { return false; }
-    json.erase(std::distance(json.begin(), it_search));
-    return true;
-  }
-
-  // When key was found, returns 1
+  ethrow_if(not json.is_object(), "Trying to erase a non-object entry");
   return json.erase(key) == 1;
-} // erase() }}}
+} // obj_erase() }}}
 
-// erase() {{{
+// obj_erase() {{{
 template<ns_concept::Iterable T>
 requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-bool Db::erase(T&& t)
+bool Db::obj_erase(T&& t)
 {
   return std::ranges::all_of(t, [&]<typename E>(E&& e){ return erase(std::forward<E>(e)); });
-} // erase() }}}
+} // obj_erase() }}}
 
-// insert_if_not_exists() {{{
+// array_erase() {{{
 template<ns_concept::StringRepresentable T>
-Db& Db::insert_if_not_exists(T&& t)
+bool Db::array_erase(T&& t)
+{
+  std::string key = ns_string::to_string(t);
+  json_t& json = data();
+  ethrow_if(not json.is_array(), "Trying to erase a non-array entry");
+  auto it_search = std::find(json.begin(), json.end(), key);
+  if ( it_search == json.end() ) { return false; }
+  json.erase(std::distance(json.begin(), it_search));
+  return true;
+} // array_erase() }}}
+
+// array_erase() {{{
+template<ns_concept::Iterable T>
+requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
+bool Db::array_erase(T&& t)
+{
+  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return this->array_erase(std::forward<E>(e)); });
+} // array_erase() }}}
+
+// array_erase_if() {{{
+template<ns_concept::StringRepresentable T, std::predicate<std::string> F>
+bool Db::array_erase_if(T&& t, F&& f)
+{
+  std::string key = ns_string::to_string(t);
+  json_t& json = data();
+  ethrow_if(not json.is_array(), "Trying to erase a non-array entry");
+  json.erase(std::remove_if(json.begin(), json.end(), f), json.end());
+} // array_erase_if() }}}
+
+// array_insert_unique() {{{
+template<ns_concept::StringRepresentable T>
+Db& Db::array_insert_unique(T&& t)
 {
   auto& json = data();
   std::string key = ns_string::to_string(t);
@@ -318,16 +346,16 @@ Db& Db::insert_if_not_exists(T&& t)
     json.push_back(key);
   } // if
   return *this;
-} // insert_if_not_exists() }}}
+} // array_insert_unique() }}}
 
-// insert_if_not_exists() {{{
+// array_insert_unique() {{{
 template<ns_concept::Iterable T>
 requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-Db& Db::insert_if_not_exists(T&& t)
+Db& Db::array_insert_unique(T&& t)
 {
-  std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ insert_if_not_exists(e); });
+  std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ array_insert_unique(e); });
   return *this;
-} // insert_if_not_exists() }}}
+} // array_insert_unique() }}}
 
 // operator::string() {{{
 inline Db::operator std::string() const

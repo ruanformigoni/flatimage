@@ -30,6 +30,17 @@ class PushBack
     void operator()(Args&&... args) { ( ref_container.get().push_back(std::forward<Args>(args)), ... ); }
 };
 
+template<ns_concept::StringRepresentable S>
+class StartsWith
+{
+  private:
+    std::string str;
+  public:
+    StartsWith(S&& s) : str(ns_string::to_string(std::forward<S>(s))) {}
+    template<typename T>
+    bool operator()(T&& t) { return str.starts_with(ns_string::to_string(t)); }
+};
+
 // call_if() {{{
 template<std::regular_invocable F>
 inline auto call_if(bool cond, F&& f)

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <variant>
 
 #include "log.hpp"
@@ -102,15 +103,21 @@ class Db
     template<bool _throw = true, ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
     bool empty() const;
+    template<typename T = std::string>
+    std::set<T> as_set() const;
+    template<typename T = std::string>
+    std::vector<T> as_vector() const;
 
     // Modifying
     template<ns_concept::StringRepresentable T>
     bool erase(T&& t);
     template<ns_concept::Iterable T>
+    requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
     bool erase(T&& t);
     template<ns_concept::StringRepresentable T>
     Db& insert_if_not_exists(T&& t);
     template<ns_concept::Iterable T>
+    requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
     Db& insert_if_not_exists(T&& t);
 
     // Operators
@@ -123,8 +130,8 @@ class Db
     template<ns_concept::StringRepresentable T>
     Db operator()(T&& t);
     template<ns_concept::StringRepresentable T>
-    T operator=(T&& t);
-}; //
+    std::remove_cvref_t<T> operator=(T&& t);
+}; // class: Db }}}
 
 // Constructors {{{
 inline Db::Db(std::reference_wrapper<json_t> json)
@@ -247,6 +254,28 @@ inline bool Db::empty() const
   return data().empty();
 } // empty() }}}
 
+// as_set() {{{
+template<typename T>
+std::set<T> Db::as_set() const
+{
+  json_t& json = data();
+  ethrow_if(not json.is_array(), "Tried to access non-array as array in DB");
+  std::set<T> set;
+  std::for_each(json.begin(), json.end(), [&](std::string e){ set.insert(T{e}); });
+  return set;
+} // as_set() }}}
+
+// as_vec() {{{
+template<typename T>
+std::vector<T> Db::as_vector() const
+{
+  json_t& json = data();
+  ethrow_if(not json.is_array(), "Tried to access non-array as array in DB");
+  std::vector<T> vector;
+  std::for_each(json.begin(), json.end(), [&](std::string e){ vector.insert(T{e}); });
+  return vector;
+} // as_vec() }}}
+
 // erase() {{{
 template<ns_concept::StringRepresentable T>
 bool Db::erase(T&& t)
@@ -270,6 +299,7 @@ bool Db::erase(T&& t)
 
 // erase() {{{
 template<ns_concept::Iterable T>
+requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
 bool Db::erase(T&& t)
 {
   return std::ranges::all_of(t, [&]<typename E>(E&& e){ return erase(std::forward<E>(e)); });
@@ -279,8 +309,8 @@ bool Db::erase(T&& t)
 template<ns_concept::StringRepresentable T>
 Db& Db::insert_if_not_exists(T&& t)
 {
-  std::string key = ns_string::to_string(t);
   auto& json = data();
+  std::string key = ns_string::to_string(t);
   if ( std::find_if(json.cbegin()
     , json.cend()
     , [&](auto&& e){ return std::string{e} == key; }) == json.cend() )
@@ -292,6 +322,7 @@ Db& Db::insert_if_not_exists(T&& t)
 
 // insert_if_not_exists() {{{
 template<ns_concept::Iterable T>
+requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
 Db& Db::insert_if_not_exists(T&& t)
 {
   std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ insert_if_not_exists(e); });
@@ -364,14 +395,12 @@ Db Db::operator()(T&& t)
 
 // operator=(ns_concept::StringRepresentable) {{{
 template<ns_concept::StringRepresentable T>
-T Db::operator=(T&& t)
+std::remove_cvref_t<T> Db::operator=(T&& t)
 {
   std::string key = ns_string::to_string(t);
   data() = key;
   return key;
 } // operator=(ns_concept::StringRepresentable) }}}
-
-//class: Db }}}
 
 // from_file() {{{
 template<ns_concept::StringRepresentable T, typename F>

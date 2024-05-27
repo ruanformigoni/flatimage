@@ -12,14 +12,22 @@
 namespace ns_functional
 {
 
-struct Print
+struct PrintLn
 {
   template<typename T>
   requires ( ns_concept::StringRepresentable<T> or ns_concept::IterableConst<T> )
-  void operator()(T&& t)
-  {
-    print("{}\n", ns_string::to_string(t));
-  }
+  void operator()(T&& t) { print("{}\n", ns_string::to_string(t)); }
+};
+
+template<ns_concept::Iterable R>
+class PushBack
+{
+  private:
+    std::reference_wrapper<R> ref_container;
+  public:
+    PushBack(R& r) : ref_container(r) {}
+    template<typename... Args>
+    void operator()(Args&&... args) { ( ref_container.get().push_back(std::forward<Args>(args)), ... ); }
 };
 
 // call_if() {{{

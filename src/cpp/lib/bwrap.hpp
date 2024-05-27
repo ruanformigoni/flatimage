@@ -31,9 +31,10 @@ namespace fs = std::filesystem;
 class Bwrap
 {
   private:
-    // Program to run and its arguments
+    // Program to run, its arguments and environment
     fs::path m_path_file_program;
-    std::vector<std::string> m_path_file_program_args;
+    std::vector<std::string> m_program_args;
+    std::vector<std::string> m_program_env;
 
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
@@ -43,7 +44,6 @@ class Bwrap
 
     // Arguments and environment to bwrap
     std::vector<std::string> m_args;
-    std::unordered_map<std::string, std::string> m_env;
 
     // Run bwrap with uid and gid equal to 0
     bool m_is_root;
@@ -54,7 +54,8 @@ class Bwrap
     template<ns_concept::StringRepresentable... Args>
     Bwrap(ns_setup::FlatimageSetup const& config
       , fs::path const& path_file_program
-      , std::vector<std::string> const& args);
+      , std::vector<std::string> const& program_args
+      , std::vector<std::string> const& program_env);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
     Bwrap& bind_home();
     Bwrap& bind_media();
@@ -76,18 +77,22 @@ class Bwrap
 template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
     , fs::path const& path_file_program
-    , std::vector<std::string> const& args)
+    , std::vector<std::string> const& program_args
+    , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
-  , m_path_file_program_args(args)
+  , m_program_args(program_args)
   , m_path_dir_host_home(config.path_dir_host_home)
   , m_is_root(config.is_root)
 {
+  // Push passed environment
+  std::ranges::for_each(program_env, ns_functional::PushBack(m_program_env));
+
   // Configure some environment variables
-  m_env["TERM"] = "xterm";
+  m_program_env.push_back("TERM=xterm");
 
   if ( struct passwd *pw = getpwuid(getuid()); pw )
   {
-    m_env["HOST_USERNAME"] = pw->pw_name;
+    m_program_env.push_back("HOST_USERNAME=pw->pw_name");
   } // if
 
   // Create custom bashrc file
@@ -127,8 +132,10 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
 {
-  m_env["XDG_RUNTIME_DIR"] = "/run/user/{}"_fmt(ns_env::get_or_else("XDG_RUNTIME_DIR", ns_string::to_string(getuid())));
-  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_env["XDG_RUNTIME_DIR"]);
+  std::string xdg_runtime_dir = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}" + ns_string::to_string(getuid()));
+  ns_log::info("XDG_RUNTIME_DIR: {}", xdg_runtime_dir);
+  m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(xdg_runtime_dir));
+  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", xdg_runtime_dir);
 } // set_xdg_runtime_dir() }}}
 
 // bind_root() {{{
@@ -314,7 +321,7 @@ inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::pa
 inline void Bwrap::run(std::set<ns_config::ns_permissions::Permission> const& permissions)
 {
   // Configure bindings
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::HOME)        , [&]{ bind_home(); });
+  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::HOME)        , [&]{ bind_home()        ; });
   ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::MEDIA)       , [&]{ bind_media()       ; });
   ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::AUDIO)       , [&]{ bind_audio()       ; });
   ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland()     ; });
@@ -332,17 +339,12 @@ inline void Bwrap::run(std::set<ns_config::ns_permissions::Permission> const& pe
   ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
 
   // Run Bwrap
-  auto subprocess = ns_subprocess::Subprocess(*opt_path_file_bwrap)
+  ns_subprocess::Subprocess(*opt_path_file_bwrap)
     .with_args(m_args)
     .with_args(m_path_file_program)
-    .with_args(m_path_file_program_args);
-
-  for (auto&& [k,v] : m_env)
-  {
-    subprocess.with_var(k, v);
-  } // for
-
-  subprocess.spawn(true);
+    .with_args(m_program_args)
+    .with_env(m_program_env)
+    .spawn();
 } // run() }}}
 
 } // namespace ns_bwrap

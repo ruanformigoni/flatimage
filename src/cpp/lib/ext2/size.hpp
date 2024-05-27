@@ -114,7 +114,7 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
     .with_piped_outputs()
     .with_args(path_file_image.string() + "?offset=" + ns_string::to_string(offset))
     .with_args(blocks_new)
-    .spawn(true);
+    .spawn();
 
   // Check filesystem
   ns_check::check_force(path_file_image, offset);

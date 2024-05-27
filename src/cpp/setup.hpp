@@ -51,7 +51,8 @@ struct FlatimageSetup
 
   fs::path path_dir_static;
   fs::path path_file_config;
-  fs::path path_file_config_perms;
+  fs::path path_file_config_environment;
+  fs::path path_file_config_permissions;
   fs::path path_dir_dwarfs;
   fs::path path_dir_hooks;
 
@@ -93,11 +94,12 @@ inline FlatimageSetup setup()
   setup.path_dir_mounts_overlayfs = setup.path_dir_mounts / "overlayfs";
 
   // Paths inside the ext2 filesystem
-  setup.path_dir_static        = setup.path_dir_mount_ext2 / "fim/static";
-  setup.path_file_config       = setup.path_dir_mount_ext2 / "fim/config.json";
-  setup.path_file_config_perms = setup.path_dir_mount_ext2 / "fim/config/perms.json";
-  setup.path_dir_dwarfs        = setup.path_dir_mount_ext2 / "fim/dwarfs";
-  setup.path_dir_hooks         = setup.path_dir_mount_ext2 / "fim/hooks";
+  setup.path_dir_static              = setup.path_dir_mount_ext2 / "fim/static";
+  setup.path_file_config             = setup.path_dir_mount_ext2 / "fim/config.json";
+  setup.path_file_config_environment = setup.path_dir_mount_ext2 / "fim/config/environment.json";
+  setup.path_file_config_permissions = setup.path_dir_mount_ext2 / "fim/config/permissions.json";
+  setup.path_dir_dwarfs              = setup.path_dir_mount_ext2 / "fim/dwarfs";
+  setup.path_dir_hooks               = setup.path_dir_mount_ext2 / "fim/hooks";
 
   // Paths on the host machine
   setup.path_dir_host_home = ns_env::get_or_throw("HOME");

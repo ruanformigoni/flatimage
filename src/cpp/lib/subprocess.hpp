@@ -27,7 +27,7 @@ namespace
 
 namespace fs = std::filesystem;
 
-} // namespace 
+} // namespace
 
 // search_path() {{{
 inline std::optional<std::string> search_path(std::string const& s)
@@ -66,7 +66,7 @@ class Subprocess
     bool m_with_piped_outputs;
 
     std::optional<int> with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2]);
-    void with_pipes_child(pid_t pid, int pipestdout[2], int pipestderr[2]);
+    void with_pipes_child(int pipestdout[2], int pipestderr[2]);
   public:
     template<ns_concept::StringRepresentable T>
     Subprocess(T&& t);
@@ -86,6 +86,13 @@ class Subprocess
     template<typename T>
     Subprocess& with_args(T&& t);
 
+    template<typename... T>
+    requires (sizeof...(T) > 1)
+    Subprocess& with_env(T&&... t);
+
+    template<typename T>
+    Subprocess& with_env(T&& t);
+
     Subprocess& with_piped_outputs();
 
     template<typename F>
@@ -94,7 +101,7 @@ class Subprocess
     template<typename F>
     Subprocess& with_stderr_handle(F&& f);
 
-    std::optional<int> spawn(bool wait = false);
+    std::optional<int> spawn();
 }; // Subprocess }}}
 
 // Subprocess::Subprocess {{{
@@ -144,7 +151,7 @@ Subprocess& Subprocess::rm_var(K&& k)
   if ( it != std::ranges::end(m_env) )
   {
     ns_log::debug("Erased var entry: {}", *it);
-    m_env.erase(it); 
+    m_env.erase(it);
   } // if
 
   return *this;
@@ -181,6 +188,38 @@ Subprocess& Subprocess::with_args(T&& t)
 
   return *this;
 } // with_args }}}
+
+// with_env() {{{
+template<typename... T>
+requires (sizeof...(T) > 1)
+Subprocess& Subprocess::with_env(T&&... t)
+{
+  return ( with_env(std::forward<T>(t)), ... );
+} // with_env }}}
+
+// with_env() {{{
+template<typename T>
+Subprocess& Subprocess::with_env(T&& t)
+{
+  if constexpr ( ns_concept::SameAs<T, std::string> )
+  {
+    this->m_env.push_back(std::forward<T>(t));
+  } // if
+  else if constexpr ( ns_concept::IterableConst<T> )
+  {
+    std::copy(t.begin(), t.end(), std::back_inserter(m_env));
+  } // else if
+  else if constexpr ( ns_concept::StringRepresentable<T> )
+  {
+    this->m_env.push_back(ns_string::to_string(std::forward<T>(t)));
+  } // else if
+  else
+  {
+    static_assert(false, "Could not determine argument type");
+  } // else
+
+  return *this;
+} // with_env }}}
 
 // with_piped_outputs() {{{
 inline Subprocess& Subprocess::with_piped_outputs()
@@ -227,7 +266,7 @@ inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdou
 } // with_pipes_parent() }}}
 
 // with_pipes_child() {{{
-inline void Subprocess::with_pipes_child(pid_t pid, int pipestdout[2], int pipestderr[2])
+inline void Subprocess::with_pipes_child(int pipestdout[2], int pipestderr[2])
 {
   // Close read end
   ereturn_if(close(pipestdout[0]) == -1, "pipestdout[0]: {}"_fmt(strerror(errno)));
@@ -259,7 +298,7 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
 } // with_stderr_handle }}}
 
 // spawn() {{{
-inline std::optional<int> Subprocess::spawn(bool wait)
+inline std::optional<int> Subprocess::spawn()
 {
   // Log
   ns_log::debug("Spawn command: {}", m_args);
@@ -292,7 +331,7 @@ inline std::optional<int> Subprocess::spawn(bool wait)
   if ( m_with_piped_outputs && pid == 0)
   {
     // this is non-blocking, setup pipes and perform execve afterwards
-    with_pipes_child(pid, pipestdout, pipestderr);
+    with_pipes_child(pipestdout, pipestderr);
   } // else
 
   // No custom pipe, wait for child to exit
@@ -323,7 +362,7 @@ inline std::optional<int> Subprocess::spawn(bool wait)
   envp_custom[m_env.size()] = nullptr;
 
   // Perform execve
-  int ret = execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
+  execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
 
   // Log error
   ns_log::error("execve() failed: ", strerror(errno));

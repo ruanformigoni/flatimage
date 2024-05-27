@@ -20,29 +20,24 @@ ENUM(Permission,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,INP
 template<ns_concept::Iterable R>
 inline void set(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_perms, ns_db::Mode::CREATE).insert_if_not_exists(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::CREATE).insert_if_not_exists(r);
 }
 
 template<ns_concept::Iterable R>
 inline void add(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_perms, ns_db::Mode::UPDATE_OR_CREATE).insert_if_not_exists(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).insert_if_not_exists(r);
 }
 
 template<ns_concept::Iterable R>
 inline void del(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_perms, ns_db::Mode::UPDATE).erase(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE).erase(r);
 }
 
 inline std::set<Permission> get(ns_setup::FlatimageSetup const& config)
 {
-  std::set<Permission> permissions;
-  ns_db::from_file(config.path_file_config_perms, [&](ns_db::Db& db)
-  {
-    std::for_each(db.cbegin(), db.cend(), [&](auto&& e){ permissions.insert(Permission(std::string{e})); });
-  }, ns_db::Mode::READ);
-  return permissions;
+  return ns_db::Db(config.path_file_config_permissions, ns_db::Mode::READ).as_set<Permission>();
 }
 
 } // namespace ns_config::ns_permissions

@@ -9,6 +9,8 @@
 #include "../cpp/units.hpp"
 #include "../cpp/setup.hpp"
 #include "../cpp/units.hpp"
+#include "../cpp/config/permissions.hpp"
+#include "../cpp/config/environment.hpp"
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/variant.hpp"
 #include "../cpp/std/functional.hpp"
@@ -83,7 +85,7 @@ int main(int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args).run(ns_config::ns_permissions::get(config));
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args, {}).run(ns_config::ns_permissions::get(config));
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
@@ -92,7 +94,7 @@ int main(int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args).run(ns_config::ns_permissions::get(config));
+    ns_bwrap::Bwrap(config, cmd->program, cmd->args, {}).run(ns_config::ns_permissions::get(config));
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
@@ -106,14 +108,14 @@ int main(int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists
-    fs::create_directories(config.path_file_config_perms.parent_path());
+    fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
     switch( cmd->op )
     {
       case ns_parser::CmdPermsOp::ADD: ns_config::ns_permissions::add(config, cmd->permissions); break;
       case ns_parser::CmdPermsOp::SET: ns_config::ns_permissions::set(config, cmd->permissions); break;
       case ns_parser::CmdPermsOp::DEL: ns_config::ns_permissions::del(config, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_config::ns_permissions::get(config), ns_functional::Print{});
+      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_config::ns_permissions::get(config), ns_functional::PrintLn{});
       break;
     } // switch
   } // if

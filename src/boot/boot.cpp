@@ -86,8 +86,8 @@ int main(int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command
-    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); }); 
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); }); 
+    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Execute a command as root
@@ -97,8 +97,8 @@ int main(int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
-    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); }); 
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); }); 
+    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Resize the image to contain at least the provided free space

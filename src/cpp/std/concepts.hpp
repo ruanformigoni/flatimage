@@ -11,6 +11,19 @@
 
 namespace ns_concept
 {
+
+namespace
+{
+
+template<typename T, template<typename...> typename U>
+inline constexpr bool is_instance_of_v = std::false_type {};
+
+template<template<typename...> typename U, typename... Args>
+inline constexpr bool is_instance_of_v<U<Args...>,U> = std::true_type {};
+
+} // namespace
+
+
 template<typename T>
 concept Enum = std::is_enum_v<T>;
 
@@ -19,6 +32,9 @@ concept Variant = requires(T){ std::variant_size_v<T>; };
 
 template<typename T, typename U>
 concept SameAs = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
+
+template<typename T, template<typename...> typename U>
+concept IsInstanceOf = is_instance_of_v<T, U>;
 
 template<typename T>
 concept Iterable = requires(T t)

@@ -103,17 +103,17 @@ inline std::optional<CmdType> parse(int argc, char** argv)
   using VecArgs = std::vector<std::string>;
 
   return ns_match::match(std::string_view{argv[1]},
-    ns_match::compare(std::string_view("fim-exec")) >>= [&]
+    ns_match::compare("fim-exec") >>= [&]
     {
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_exec_usage)), "Incorrect number of arguments"));
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
-    ns_match::compare(std::string_view("fim-root")) >>= [&]
+    ns_match::compare("fim-root") >>= [&]
     {
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_root_usage)), "Incorrect number of arguments"));
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
-    ns_match::compare(std::string_view("fim-resize")) >>= [&]
+    ns_match::compare("fim-resize") >>= [&]
     {
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_resize_usage)), "Incorrect number of arguments"));
       // Get size string
@@ -136,7 +136,7 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       return CmdType(CmdResize(size));
     },
     // Configure permissions for the container
-    ns_match::compare(std::string_view("fim-perms")) >>= [&]
+    ns_match::compare("fim-perms") >>= [&]
     {
       // Check if is list subcommand
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
@@ -155,7 +155,7 @@ inline std::optional<CmdType> parse(int argc, char** argv)
       return CmdType(cmd_perms);
     },
     // Configure environment
-    ns_match::compare(std::string_view("fim-env")) >>= [&]
+    ns_match::compare("fim-env") >>= [&]
     {
       // Check if is list subcommand
       ethrow_if(argc < 3, (ns_log::error(cmd_error(str_env_usage)), "Incorrect number of arguments"));

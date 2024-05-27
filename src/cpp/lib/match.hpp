@@ -14,45 +14,45 @@ namespace ns_match
 {
 
 // class compare {{{
-template<typename T, template<typename U> typename Comp = std::equal_to>
+template<typename T>
 class compare
 {
   private:
     std::reference_wrapper<T> reference_t;
   public:
     // Constructor
-    compare(T&& t) : reference_t(t) {}
+    compare(T& t) : reference_t(t) {}
     // Comparison
-    template<typename U>
+    template<typename U, std::predicate<U,T> Comp = std::equal_to<>>
+    requires std::is_default_constructible_v<Comp>
     bool operator()(U&& u) const
     {
-      return Comp<U>()(u, reference_t.get());
+      return Comp{}(std::forward<U>(u), reference_t.get());
     }
 }; // }}}
 
-// deduction guide class compare {{{
-template<typename T, template<typename U> typename Comp = std::equal_to>
-compare(T&&) -> compare<std::decay_t<T>, Comp>;
-// }}}
-
 // operator>> {{{
 template<typename T, typename U>
-decltype(auto) operator>>(compare<T> const& partial_eq, U const& u)
+requires std::is_default_constructible_v<U>
+decltype(auto) operator>>(compare<T> const& partial_comp, U const& u)
 {
   // Make it lazy
-  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<U>(u) : std::nullopt; };
+  return [&](auto&& e) { return (partial_comp(e))? std::make_optional<U>(u) : std::nullopt; };
 } // }}}
 
 // operator>>= {{{
 template<typename T, typename U>
-decltype(auto) operator>>=(compare<T> const& partial_eq, U const& u)
+requires std::regular_invocable<U> and (not std::is_void_v<std::invoke_result_t<U>>)
+decltype(auto) operator>>=(compare<T> const& partial_comp, U const& u)
 {
   // Make it lazy
-  return [&](auto&& e) { return (partial_eq(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt; };
+  return [&](auto&& e) { return (partial_comp(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt; };
 } // }}}
 
 // match() {{{
 template<typename T, typename... Args>
+requires ( std::is_invocable_v<Args,T> and ... )
+and ( ns_concept::IsInstanceOf<std::invoke_result_t<Args,T>, std::optional> and ... )
 inline decltype(auto) match(T&& t, Args&&... args)
 {
   decltype(std::get<0>(std::forward_as_tuple(args...))(t)) result = std::nullopt;

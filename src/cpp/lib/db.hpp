@@ -15,7 +15,6 @@
 #include "../common.hpp"
 #include "../macro.hpp"
 #include "../enum.hpp"
-#include "../std/functional.hpp"
 
 namespace ns_db
 {
@@ -116,17 +115,17 @@ class Db
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
     bool obj_erase(T&& t);
     template<ns_concept::StringRepresentable T>
-    bool array_erase(T&& t);
+    bool set_erase(T&& t);
     template<ns_concept::Iterable T>
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-    bool array_erase(T&& t);
-    template<ns_concept::StringRepresentable T, std::predicate<std::string> F>
-    bool array_erase_if(T&& t, F&& f);
+    bool set_erase(T&& t);
+    template<std::predicate<std::string> F>
+    void set_erase_if(F&& f);
     template<ns_concept::StringRepresentable T>
-    Db& array_insert_unique(T&& t);
+    Db& set_insert(T&& t);
     template<ns_concept::Iterable T>
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-    Db& array_insert_unique(T&& t);
+    Db& set_insert(T&& t);
 
     // Operators
     operator std::string() const;
@@ -280,7 +279,7 @@ std::vector<T> Db::as_vector() const
   json_t& json = data();
   ethrow_if(not json.is_array(), "Tried to access non-array as array in DB");
   std::vector<T> vector;
-  std::for_each(json.begin(), json.end(), [&](std::string e){ vector.insert(T{e}); });
+  std::for_each(json.begin(), json.end(), [&](std::string e){ vector.push_back(T{e}); });
   return vector;
 } // as_vec() }}}
 
@@ -302,9 +301,9 @@ bool Db::obj_erase(T&& t)
   return std::ranges::all_of(t, [&]<typename E>(E&& e){ return erase(std::forward<E>(e)); });
 } // obj_erase() }}}
 
-// array_erase() {{{
+// set_erase() {{{
 template<ns_concept::StringRepresentable T>
-bool Db::array_erase(T&& t)
+bool Db::set_erase(T&& t)
 {
   std::string key = ns_string::to_string(t);
   json_t& json = data();
@@ -313,29 +312,28 @@ bool Db::array_erase(T&& t)
   if ( it_search == json.end() ) { return false; }
   json.erase(std::distance(json.begin(), it_search));
   return true;
-} // array_erase() }}}
+} // set_erase() }}}
 
-// array_erase() {{{
+// set_erase() {{{
 template<ns_concept::Iterable T>
 requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-bool Db::array_erase(T&& t)
+bool Db::set_erase(T&& t)
 {
-  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return this->array_erase(std::forward<E>(e)); });
-} // array_erase() }}}
+  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return this->set_erase(std::forward<E>(e)); });
+} // set_erase() }}}
 
-// array_erase_if() {{{
-template<ns_concept::StringRepresentable T, std::predicate<std::string> F>
-bool Db::array_erase_if(T&& t, F&& f)
+// set_erase_if() {{{
+template<std::predicate<std::string> F>
+void Db::set_erase_if(F&& f)
 {
-  std::string key = ns_string::to_string(t);
   json_t& json = data();
   ethrow_if(not json.is_array(), "Trying to erase a non-array entry");
   json.erase(std::remove_if(json.begin(), json.end(), f), json.end());
-} // array_erase_if() }}}
+} // set_erase_if() }}}
 
-// array_insert_unique() {{{
+// set_insert() {{{
 template<ns_concept::StringRepresentable T>
-Db& Db::array_insert_unique(T&& t)
+Db& Db::set_insert(T&& t)
 {
   auto& json = data();
   std::string key = ns_string::to_string(t);
@@ -346,16 +344,16 @@ Db& Db::array_insert_unique(T&& t)
     json.push_back(key);
   } // if
   return *this;
-} // array_insert_unique() }}}
+} // set_insert() }}}
 
-// array_insert_unique() {{{
+// set_insert() {{{
 template<ns_concept::Iterable T>
 requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-Db& Db::array_insert_unique(T&& t)
+Db& Db::set_insert(T&& t)
 {
-  std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ array_insert_unique(e); });
+  std::for_each(t.cbegin(), t.cend(), [&](auto&& e){ set_insert(e); });
   return *this;
-} // array_insert_unique() }}}
+} // set_insert() }}}
 
 // operator::string() {{{
 inline Db::operator std::string() const

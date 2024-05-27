@@ -20,19 +20,19 @@ ENUM(Permission,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,INP
 template<ns_concept::Iterable R>
 inline void set(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::CREATE).array_insert_unique(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::CREATE).set_insert(r);
 }
 
 template<ns_concept::Iterable R>
 inline void add(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).array_insert_unique(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).set_insert(r);
 }
 
 template<ns_concept::Iterable R>
 inline void del(ns_setup::FlatimageSetup const& config, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE).array_erase(r);
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE).set_erase(r);
 }
 
 inline std::set<Permission> get(ns_setup::FlatimageSetup const& config)

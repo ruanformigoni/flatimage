@@ -119,6 +119,23 @@ int main(int argc, char** argv)
       break;
     } // switch
   } // if
+  // Configure environment
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*opt_cmd) )
+  {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Create config dir if not exists
+    fs::create_directories(config.path_file_config_environment.parent_path());
+    // Determine open mode
+    switch( cmd->op )
+    {
+      case ns_parser::CmdEnvOp::ADD: ns_config::ns_environment::add(config, cmd->environment); break;
+      case ns_parser::CmdEnvOp::SET: ns_config::ns_environment::set(config, cmd->environment); break;
+      case ns_parser::CmdEnvOp::DEL: ns_config::ns_environment::del(config, cmd->environment); break;
+      case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{});
+      break;
+    } // switch
+  } // if
 
 
   return EXIT_SUCCESS;

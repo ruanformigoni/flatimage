@@ -38,7 +38,7 @@ class StartsWith
   public:
     StartsWith(S&& s) : str(ns_string::to_string(std::forward<S>(s))) {}
     template<typename T>
-    bool operator()(T&& t) { return str.starts_with(ns_string::to_string(t)); }
+    bool operator()(T&& t) { return ns_string::to_string(t).starts_with(str); }
 };
 
 // call_if() {{{

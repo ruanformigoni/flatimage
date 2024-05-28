@@ -120,8 +120,7 @@ int main(int argc, char** argv)
       case ns_parser::CmdPermsOp::ADD: ns_config::ns_permissions::add(config, cmd->permissions); break;
       case ns_parser::CmdPermsOp::SET: ns_config::ns_permissions::set(config, cmd->permissions); break;
       case ns_parser::CmdPermsOp::DEL: ns_config::ns_permissions::del(config, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_config::ns_permissions::get(config), ns_functional::PrintLn{});
-      break;
+      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_config::ns_permissions::get(config), ns_functional::PrintLn{}); break;
     } // switch
   } // if
   // Configure environment
@@ -137,8 +136,7 @@ int main(int argc, char** argv)
       case ns_parser::CmdEnvOp::ADD: ns_config::ns_environment::add(config, cmd->environment); break;
       case ns_parser::CmdEnvOp::SET: ns_config::ns_environment::set(config, cmd->environment); break;
       case ns_parser::CmdEnvOp::DEL: ns_config::ns_environment::del(config, cmd->environment); break;
-      case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{});
-      break;
+      case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{}); break;
     } // switch
   } // if
 

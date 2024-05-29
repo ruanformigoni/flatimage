@@ -106,6 +106,7 @@ class Db
     template<ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
     bool empty() const;
+    bool as_bool() const;
     template<typename T = std::string>
     std::set<T> as_set() const;
     template<typename T = std::string>
@@ -269,6 +270,14 @@ inline bool Db::empty() const
   return data().empty();
 } // empty() }}}
 
+// as_bool() {{{
+bool Db::as_bool() const
+{
+  json_t& json = data();
+  ethrow_if(not json.is_boolean(), "Tried to access non-array as array in DB");
+  return json;
+} // as_bool() }}}
+
 // as_set() {{{
 template<typename T>
 std::set<T> Db::as_set() const
@@ -280,7 +289,7 @@ std::set<T> Db::as_set() const
   return set;
 } // as_set() }}}
 
-// as_vec() {{{
+// as_vector() {{{
 template<typename T>
 std::vector<T> Db::as_vector() const
 {
@@ -289,7 +298,7 @@ std::vector<T> Db::as_vector() const
   std::vector<T> vector;
   std::for_each(json.begin(), json.end(), [&](std::string e){ vector.push_back(T{e}); });
   return vector;
-} // as_vec() }}}
+} // as_vector() }}}
 
 // obj_erase() {{{
 template<ns_concept::StringRepresentable T>

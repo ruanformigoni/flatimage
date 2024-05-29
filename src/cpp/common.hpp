@@ -114,4 +114,18 @@ inline void print_if(bool cond, Args&&... args)
   } // if
 } // print_if() }}}
 
+// println() {{{
+template<typename T, typename... Args>
+inline void println(std::ostream& os, T&& t, Args&&... args)
+{
+  print(os, ns_string::to_string(std::forward<T>(t)) + "\n", std::forward<Args>(args)...);
+} // println() }}}
+
+// println() {{{
+template<ns_concept::StringRepresentable T, typename... Args>
+inline void println(T&& t, Args&&... args)
+{
+  print(ns_string::to_string(std::forward<T>(t)) + "\n", std::forward<Args>(args)...);
+} // println() }}}
+
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

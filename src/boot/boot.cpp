@@ -45,36 +45,9 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
   } // for
 } // copy_tools() }}}
 
-// main() {{{
-int main(int argc, char** argv)
+// parse_cmds() {{{
+int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
 {
-  // Set logger level
-  if ( ns_env::exists("FIM_DEBUG", "1") )
-  {
-    ns_log::set_level(ns_log::Level::DEBUG);
-  } // if
-
-  // Setup environment variables
-  ns_setup::FlatimageSetup config = ns_setup::setup();
-
-  // Check filesystem
-  ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
-
-  // Mount filesystem as RO
-  ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
-
-  // Copy tools
-  copy_tools(config.path_dir_static, config.path_dir_temp_bin);
-
-  // Un-mount
-  ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);
-
-  // Keep at least the provided slack amount of extra free space
-  ns_ext2::ns_size::resize_free_space(config.path_file_binary
-    , config.offset_ext2
-    , ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
-  );
-
   // Parse args
   std::optional<ns_parser::CmdType> opt_cmd = ns_parser::parse(argc, argv);
 
@@ -149,17 +122,61 @@ int main(int argc, char** argv)
     // Determine open mode
     switch( cmd->op )
     {
-      case ns_parser::CmdDesktopOp::ENABLE: break;
+      case ns_parser::CmdDesktopOp::ENABLE:
+      {
+        auto opt_should_enable = ns_variant::get_if_holds_alternative<bool>(cmd->arg);
+        ethrow_if(not opt_should_enable.has_value(), "Could not convert variant value to boolean");
+        ns_desktop::enable(config.path_file_config_desktop, *opt_should_enable);
+      }
+      break;
       case ns_parser::CmdDesktopOp::SETUP:
       {
-        auto path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
-        ethrow_if(not path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(*path_file_src_json, config.path_file_config_desktop);
+        auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
+        ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
+        ns_desktop::setup(*opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
     } // switch
   } // if
+  
+  return EXIT_SUCCESS;
+} // parse_cmds() }}}
 
+// main() {{{
+int main(int argc, char** argv)
+{
+  // Set logger level
+  if ( ns_env::exists("FIM_DEBUG", "1") )
+  {
+    ns_log::set_level(ns_log::Level::DEBUG);
+  } // if
+
+  // Setup environment variables
+  ns_setup::FlatimageSetup config = ns_setup::setup();
+
+  // Check filesystem
+  ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
+
+  // Mount filesystem as RO
+  ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+
+  // Copy tools
+  copy_tools(config.path_dir_static, config.path_dir_temp_bin);
+
+  // Refresh desktop integration
+  ns_exception::ignore([&]{ ns_desktop::integrate(config.path_file_config_desktop, config.path_file_binary); });
+
+  // Un-mount
+  ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);
+
+  // Keep at least the provided slack amount of extra free space
+  ns_ext2::ns_size::resize_free_space(config.path_file_binary
+    , config.offset_ext2
+    , ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
+  );
+
+  // Parse flatimage command if exists
+  parse_cmds(argc, argv, config);
 
   return EXIT_SUCCESS;
 } // main() }}}

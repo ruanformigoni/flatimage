@@ -62,7 +62,7 @@ inline std::string to_string(T&& t)
     return ss.str();
   } // else if 
   
-  throw std::runtime_error("Cannot convert type to a valid string");
+  throw std::runtime_error(std::string{"Cannot convert valid string, type: "} + typeid(T).name());
 } // to_string() }}}
 
 // to_tuple() {{{

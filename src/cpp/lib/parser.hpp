@@ -23,36 +23,53 @@ namespace ns_parser
 namespace
 {
 
-inline const char* str_app = "Flatimage\n";
+namespace fs = std::filesystem;
+
 inline const char* str_app_descr = "Flatimage - Portable Linux Applications\n";
-inline const char* str_root_usage = "Executes the command as the root user\n"
-"   Usage: fim-root program-name [program-args...]";
-inline const char* str_exec_usage = "Executes the command as a regular user\n"
-"   Usage: fim-exec program-name [program-args...]\n";
-inline const char* str_resize_usage = "Resizes the free space of the image to match the provided value\n"
-"   Usage: fim-resize size[M,G]\n"
-"   Example: fim-resize 500M\n";
-inline const char* str_perms_usage = "Edit current permissions for the flatimage\n"
-"   Usage: fim-perms add perm\n"
-"          fim-perms del perm\n"
-"          fim-perms set perm1,perm2,perm3,...\n"
-"          fim-perms list\n"
-"   Permissions: home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
-"   Example: fim-perms add home\n";
-inline const char* str_env_usage = "Edit current permissions for the flatimage\n"
-"   Usage: fim-env add key value\n"
-"          fim-env del key\n"
-"          fim-env set 'key1=value1' 'key2=value2' 'keyn=valuen'...\n"
-"          fim-env list\n"
-"   Example: fim-env add 'HOME=$FIM_DIR_HOST_CONFIG/home'\n"
-"   Example: fim-env add 'PS1=my-app> '\n"
-"   Example: fim-env add 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'\n";
+inline const char* str_root_usage =
+"fim-root:\n   Executes the command as the root user\n"
+"Usage:\n   fim-root program-name [program-args...]\n"
+"Example:\n   fim-root bash";
+inline const char* str_exec_usage =
+"fim-exec:\n   Executes the command as a regular user\n"
+"Usage:\n   fim-exec program-name [program-args...]\n"
+"Example:\n   fim-exec bash";
+inline const char* str_resize_usage =
+"fim-resize:\n   Resizes the free space of the image to have at least the provided value\n"
+"Usage:\n   fim-resize [0-9]+<M|G>\n"
+"Example:\n   fim-resize 500M";
+inline const char* str_perms_usage =
+"fim-perms:\n   Edit current permissions for the flatimage\n"
+"Usage:\n   fim-perms add|del|set <perms>...\n"
+"   fim-perms list\n"
+"Permissions:\n   home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
+"Example:\n   fim-perms add home,media";
+inline const char* str_env_usage =
+"fim-env:\n   Edit current permissions for the flatimage\n"
+"Usage:\n   fim-env add|set <'key=value'>...\n"
+"   fim-env del <key>\n"
+"   fim-env list\n"
+"Example:\n   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'";
+inline const char* str_desktop_usage =
+"fim-desktop:\n   Configure the desktop integration\n"
+"Usage:\n   fim-desktop setup <json-file>\n"
+"   fim-desktop enable <1|0>\n"
+"Example:\n   fim-desktop setup ./desktop.json";
 
 inline std::string cmd_error(std::string_view str)
 {
   std::stringstream ss;
-  ss << str_app << str_app_descr << str;
+  ss << str_app_descr << str;
   return ss.str();
+}
+
+inline void check_or_print_and_throw(bool cond, std::string_view msg_err, std::string_view msg_exception)
+{
+  if ( not cond )
+  {
+    print("{}\n", msg_err);
+    throw std::runtime_error(msg_exception.data());
+  } // if
 }
 
 } // namespace
@@ -90,7 +107,14 @@ struct CmdEnv
   std::vector<std::string> environment;
 };
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv>;
+ENUM(CmdDesktopOp,SETUP,ENABLE);
+struct CmdDesktop
+{
+  CmdDesktopOp op;
+  std::variant<fs::path,bool> arg;
+};
+
+using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop>;
 // }}}
 
 // parse() {{{
@@ -105,17 +129,17 @@ inline std::optional<CmdType> parse(int argc, char** argv)
   return ns_match::match(std::string_view{argv[1]},
     ns_match::compare("fim-exec") >>= [&]
     {
-      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_exec_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 3, cmd_error(str_exec_usage), "Incorrect number of arguments");
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-root") >>= [&]
     {
-      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_root_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 3, cmd_error(str_root_usage), "Incorrect number of arguments");
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-resize") >>= [&]
     {
-      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_resize_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 3, cmd_error(str_resize_usage), "Incorrect number of arguments");
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -139,14 +163,13 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare("fim-perms") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 3, cmd_error(str_perms_usage), "Incorrect number of arguments");
+      // Get op
       CmdPermsOp op = CmdPermsOp(argv[2]);
-      if ( op == CmdPermsOp::LIST )
-      {
-        return CmdType(CmdPerms{ .op = op, .permissions = {} });
-      } // if
+      // Check if is list
+      qreturn_if( op == CmdPermsOp::LIST,  CmdType(CmdPerms{ .op = op, .permissions = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc < 4, (ns_log::error(cmd_error(str_perms_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 4, cmd_error(str_perms_usage), "Incorrect number of arguments");
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
@@ -158,18 +181,34 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare("fim-env") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc < 3, (ns_log::error(cmd_error(str_env_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 3, cmd_error(str_env_usage), "Incorrect number of arguments");
+      // Get op
       CmdEnvOp op = CmdEnvOp(argv[2]);
-      if ( op == CmdEnvOp::LIST )
-      {
-        return CmdType(CmdEnv{ .op = op, .environment = {} });
-      } // if
+      // Check if is list
+      qreturn_if( op == CmdEnvOp::LIST,  CmdType(CmdEnv{ .op = op, .environment = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc < 4, (ns_log::error(cmd_error(str_env_usage)), "Incorrect number of arguments"));
+      check_or_print_and_throw(argc >= 4, cmd_error(str_env_usage), "Incorrect number of arguments");
       return CmdType(CmdEnv({
         .op = op,
         .environment = std::vector<std::string>(argv+3, argv+argc)
       }));
+    },
+    // Configure environment
+    ns_match::compare("fim-desktop") >>= [&]
+    {
+      // Check if is other command with valid args
+      check_or_print_and_throw(argc >= 4, cmd_error(str_desktop_usage), "Incorrect number of arguments");
+      CmdDesktopOp op = CmdDesktopOp(argv[2]);
+      // If is enable, should be either 0 or 1
+      ethrow_if((op == CmdDesktopOp::ENABLE
+        and std::string_view{argv[3]} != "0"
+        and std::string_view{argv[3]} != "1"),
+        "Invalid value for enable, should be either 0 or 1"
+      );
+      CmdDesktop cmd;
+      cmd.op = op;
+      if ( op == CmdDesktopOp::SETUP ) { cmd.arg = fs::path{argv[3]}; } else { cmd.arg = std::string_view(argv[3]) == "1"; }
+      return CmdType(cmd);
     }
   );
 } // parse() }}}

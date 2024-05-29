@@ -20,7 +20,8 @@ namespace ns_log
 enum class Level : int
 {
   QUIET,
-  VERBOSE,
+  ERROR,
+  INFO,
   DEBUG,
 };
 
@@ -42,12 +43,15 @@ inline Logger::Logger()
   // Dir to self
   fs::path path_file_self = ns_fs::ns_path::file_self()._ret;
 
-  m_level = Level::DEBUG;
+  m_level = Level::QUIET;
 
   // File to save logs into
   m_file = fs::path{path_file_self.string() + ".log"};
 
-  "Logger file: {}\n"_print(m_file);
+  if ( const char* var = std::getenv("FIM_DEBUG"); var && std::string_view{var} == "1" )
+  {
+    "Logger file: {}\n"_print(m_file);
+  } // if
 
   // File output stream
   m_os = std::ofstream{m_file};
@@ -69,7 +73,7 @@ requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<
 void info(T&& format, Args&&... args)
 {
   print(instance.m_os, "I::{}\n"_fmt(format), args...);
-  print_if((instance.m_level >= Level::VERBOSE), "I::{}\n"_fmt(format), std::forward<Args>(args)...);
+  print_if((instance.m_level >= Level::INFO), "I::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // info
 
 template<ns_concept::StringRepresentable T, typename... Args>
@@ -77,7 +81,7 @@ requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<
 void error(T&& format, Args&&... args)
 {
   print(instance.m_os, "E::{}\n"_fmt(format), args...);
-  print("E::{}\n"_fmt(format), std::forward<Args>(args)...);
+  print_if((instance.m_level >= Level::ERROR), "E::{}\n"_fmt(format), std::forward<Args>(args)...);
 } // error
 
 template<ns_concept::StringRepresentable T, typename... Args>

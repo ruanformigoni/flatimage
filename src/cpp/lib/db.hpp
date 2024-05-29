@@ -100,7 +100,7 @@ class Db
 
     // Access
     decltype(auto) items() const;
-    template<bool _throw = true, ns_concept::StringRepresentable T>
+    template<ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
     bool empty() const;
     template<typename T = std::string>
@@ -157,11 +157,7 @@ inline Db::Db(fs::path t, Mode mode)
     // Read to string
     std::string contents = ns_string::to_string(f.rdbuf());
     // Validate contents
-    if ( ! json_t::accept(contents) )
-    {
-      // Failed to parse
-      "Failed to parse db '{}', will create if mode is write"_throw(name_file);
-    } // if
+    ithrow_if(not json_t::accept(contents), "Failed to parse db '{}'"_fmt(name_file));
     // Parse contents
     return json_t::parse(contents);
   };
@@ -240,19 +236,10 @@ inline decltype(auto) Db::items() const
 } // items() }}}
 
 // contains() {{{
-template<bool _throw, ns_concept::StringRepresentable T>
+template<ns_concept::StringRepresentable T>
 bool Db::contains(T&& t) const
 {
-  auto&& json = data();
-
-  if ( json.contains(t) )
-  {
-    return true;
-  } // if
-
-  if constexpr ( _throw ) { "'{}' not found in json"_throw(t); } // if
-
-  return false;
+  return data().contains(t);
 } // contains() }}}
 
 // empty() {{{

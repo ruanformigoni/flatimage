@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <filesystem>
 
+#include "desktop/desktop.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/setup.hpp"
 #include "../cpp/units.hpp"

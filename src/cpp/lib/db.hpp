@@ -99,6 +99,9 @@ class Db
     ~Db();
 
     // Access
+    bool is_array() const;
+    bool is_object() const;
+    bool is_string() const;
     decltype(auto) items() const;
     template<ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
@@ -137,7 +140,7 @@ class Db
     template<ns_concept::StringRepresentable T>
     Db operator()(T&& t);
     template<ns_concept::StringRepresentable T>
-    std::remove_cvref_t<T> operator=(T&& t);
+    auto operator=(T&& t) -> std::string;
 }; // class: Db }}}
 
 // Constructors {{{
@@ -228,6 +231,24 @@ inline json_t& Db::data() const
 {
   return const_cast<Db*>(this)->data();
 } // data() const }}}
+
+// is_array() {{{
+inline bool Db::is_array() const
+{
+  return data().is_array();
+} // is_array() }}}
+
+// is_object() {{{
+inline bool Db::is_object() const
+{
+  return data().is_object();
+} // is_object() }}}
+
+// is_string() {{{
+inline bool Db::is_string() const
+{
+  return data().is_string();
+} // is_string() }}}
 
 // items() {{{
 inline decltype(auto) Db::items() const
@@ -408,11 +429,9 @@ Db Db::operator()(T&& t)
 
 // operator=(ns_concept::StringRepresentable) {{{
 template<ns_concept::StringRepresentable T>
-std::remove_cvref_t<T> Db::operator=(T&& t)
+auto Db::operator=(T&& t) -> std::string
 {
-  std::string key = ns_string::to_string(t);
-  data() = key;
-  return key;
+  return data() = ns_string::to_string(t);
 } // operator=(ns_concept::StringRepresentable) }}}
 
 // from_file() {{{

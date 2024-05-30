@@ -9,7 +9,8 @@ RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/reposit
 RUN apk update && apk upgrade
 RUN apk add --no-cache build-base git libbsd-dev py3-pip cmake clang clang-dev \
   make e2fsprogs-dev e2fsprogs-libs e2fsprogs-static libcom_err musl musl-dev \
-  bash pcre-tools
+  bash pcre-tools boost-dev libjpeg-turbo-dev libjpeg-turbo-static libpng-dev \
+  libpng-static zlib-static
 
 # Install conan
 RUN python3 -m venv /conan
@@ -17,8 +18,9 @@ RUN . /conan/bin/activate && pip3 install conan
 ENV CONAN "/conan/bin/conan"
 
 # Copy boot directory
-COPY ./src /src
-WORKDIR /src/boot
+ARG FIM_DIR
+COPY . $FIM_DIR
+WORKDIR $FIM_DIR/src/boot
 
 # Compile
 RUN "$CONAN" profile detect

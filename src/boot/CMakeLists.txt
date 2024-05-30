@@ -23,13 +23,22 @@ endif()
 
 # External libraries
 find_package(nlohmann_json REQUIRED)
+find_package(expected-lite REQUIRED)
+find_package(Boost REQUIRED)
+find_package(JPEG REQUIRED)
+find_package(PNG REQUIRED)
+find_package(ZLIB REQUIRED)
 
 # # Main executable
 add_executable(boot boot.cpp)
 target_link_libraries(boot PRIVATE
   nlohmann_json::nlohmann_json
+  nonstd::expected-lite
+  /usr/lib/libturbojpeg.a
+  /usr/lib/libpng.a
   /usr/lib/libext2fs.a
   /usr/lib/libcom_err.a
+  /lib/libz.a
 )
-target_compile_options(boot PRIVATE -static -Wall -Os -Wextra)
+target_compile_options(boot PRIVATE -g -rdynamic -static -Wall -Os -Wextra)
 target_link_options(boot PRIVATE -static)

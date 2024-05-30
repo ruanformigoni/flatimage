@@ -13,6 +13,7 @@
 #include "../common.hpp"
 #include "../std/concepts.hpp"
 #include "../std/filesystem.hpp"
+#include "../std/exception.hpp"
 
 namespace ns_log
 {
@@ -90,6 +91,16 @@ void debug(T&& format, Args&&... args)
 {
   print(instance.m_os, "D::{}\n"_fmt(format), args...);
   print_if((instance.m_level >= Level::DEBUG), "D::{}\n"_fmt(format), std::forward<Args>(args)...);
+} // debug
+
+template<typename F, typename... Args>
+requires std::is_invocable_v<F, Args...>
+void exception(F&& f, Args... args)
+{
+  if (auto expected = ns_exception::to_expected(f, std::forward<Args>(args)...); not expected )
+  {
+    error(expected.error());
+  } // if
 } // debug
 
 } // namespace ns_log

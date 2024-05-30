@@ -141,7 +141,7 @@ class Db
     template<ns_concept::StringRepresentable T>
     Db operator()(T&& t);
     template<ns_concept::StringRepresentable T>
-    auto operator=(T&& t) -> std::string;
+    decltype(auto) operator=(T&& t);
 }; // class: Db }}}
 
 // Constructors {{{
@@ -154,7 +154,7 @@ inline Db::Db(fs::path t, Mode mode)
   : m_path_file_db(t)
   , m_mode(mode)
 {
-  ns_log::info('i', "Open file '{}' as '{}'", m_path_file_db, mode);
+  ns_log::info("Open file '{}' as '{}'", m_path_file_db, mode);
 
   auto f_parse_file = [](std::string const& name_file, std::ifstream const& f)
   {
@@ -168,7 +168,7 @@ inline Db::Db(fs::path t, Mode mode)
 
   auto f_create = [&]
   {
-    ns_log::info('i', "Creating empty db file {}", t);
+    ns_log::info("Creating empty db file {}", t);
   };
 
   auto f_read = [&] -> bool
@@ -274,7 +274,7 @@ inline bool Db::empty() const
 bool Db::as_bool() const
 {
   json_t& json = data();
-  ethrow_if(not json.is_boolean(), "Tried to access non-array as array in DB");
+  ethrow_if(not json.is_boolean(), "Tried to access non-boolean as boolean in DB");
   return json;
 } // as_bool() }}}
 
@@ -438,9 +438,9 @@ Db Db::operator()(T&& t)
 
 // operator=(ns_concept::StringRepresentable) {{{
 template<ns_concept::StringRepresentable T>
-auto Db::operator=(T&& t) -> std::string
+decltype(auto) Db::operator=(T&& t)
 {
-  return data() = ns_string::to_string(t);
+  return data() = t;
 } // operator=(ns_concept::StringRepresentable) }}}
 
 // from_file() {{{

@@ -30,9 +30,9 @@ namespace fs = std::filesystem;
 void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bin)
 {
   // Check if path_dir_tools exists and is directory
-  ereturn_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
+  ethrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
   // Check if path_dir_temp_bin exists and is directory
-  ereturn_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
+  ethrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
   // Copy programs
   for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
     | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
@@ -138,7 +138,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
       break;
     } // switch
   } // if
-  
+
   return EXIT_SUCCESS;
 } // parse_cmds() }}}
 
@@ -161,10 +161,14 @@ int main(int argc, char** argv)
   ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
 
   // Copy tools
-  copy_tools(config.path_dir_static, config.path_dir_temp_bin);
+  ns_log::exception(FW_ARGS(copy_tools), config.path_dir_static, config.path_dir_temp_bin);
 
   // Refresh desktop integration
-  ns_exception::ignore([&]{ ns_desktop::integrate(config.path_file_config_desktop, config.path_file_binary); });
+  ns_log::exception(FW_ARGS(ns_desktop::integrate)
+    , config.path_file_config_desktop
+    , config.path_file_binary
+    , config.path_dir_mount_ext2
+  );
 
   // Un-mount
   ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);
@@ -176,7 +180,7 @@ int main(int argc, char** argv)
   );
 
   // Parse flatimage command if exists
-  parse_cmds(argc, argv, config);
+  ns_log::exception(FW_ARGS(parse_cmds), argc, argv, config);
 
   return EXIT_SUCCESS;
 } // main() }}}

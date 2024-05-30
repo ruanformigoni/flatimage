@@ -14,20 +14,21 @@ namespace ns_match
 {
 
 // class compare {{{
-template<typename T>
+template<typename... Args>
 class compare
 {
   private:
-    std::reference_wrapper<T> reference_t;
+    std::tuple<std::reference_wrapper<Args>...> m_tuple;
   public:
     // Constructor
-    compare(T& t) : reference_t(t) {}
+    compare(Args&... args) : m_tuple(std::reference_wrapper(args)...) {}
     // Comparison
-    template<typename U, std::predicate<U,T> Comp = std::equal_to<>>
+    template<typename U, typename Comp = std::equal_to<>>
     requires std::is_default_constructible_v<Comp>
+    and ( std::predicate<Comp,U,Args> and ... )
     bool operator()(U&& u) const
     {
-      return Comp{}(std::forward<U>(u), reference_t.get());
+      return ( Comp{}(std::forward<U>(u), std::get<std::reference_wrapper<Args>>(m_tuple).get()) or ... );
     }
 }; // }}}
 
@@ -41,12 +42,25 @@ decltype(auto) operator>>(compare<T> const& partial_comp, U const& u)
 } // }}}
 
 // operator>>= {{{
-template<typename T, typename U>
-requires std::regular_invocable<U> and (not std::is_void_v<std::invoke_result_t<U>>)
-decltype(auto) operator>>=(compare<T> const& partial_comp, U const& u)
+template<typename... T, typename U>
+decltype(auto) operator>>=(compare<T...> const& partial_comp, U const& u)
 {
   // Make it lazy
-  return [&](auto&& e) { return (partial_comp(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt; };
+  return [&](auto&& e)
+  {
+    if constexpr ( std::regular_invocable<U> and std::is_void_v<std::invoke_result_t<U>> )
+    {
+      return (partial_comp(e))? (u(), std::make_optional(true)) : std::nullopt;
+    } // if
+    else if constexpr ( std::regular_invocable<U> )
+    {
+      return (partial_comp(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt;
+    } // else if
+    else
+    {
+      return (partial_comp(e))? u : std::nullopt;
+    } // else if
+  };
 } // }}}
 
 // match() {{{

@@ -89,7 +89,7 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   ns_log::debug("Current  blocks total  : {} ", blocks_total);
   ns_log::debug("Current  blocks free   : {}", blocks_free_curr);
   ns_log::debug("Target   blocks total  : {} ", blocks_new);
-  ns_log::debug("Target   blocks free   : {}",  blocks_free_min - blocks_free_curr);
+  ns_log::debug("Target   blocks free   : {}",  blocks_free_min);
   ns_log::debug("Current  size   total  : {} MiB", ns_units::from_bytes(size_total).to_mebibytes());
   ns_log::debug("Current  size   free   : {} MiB", ns_units::from_bytes(size_free).to_mebibytes());
   ns_log::debug("Target   size   total  : {} MiB", ns_units::from_bytes(blocks_new * block_size).to_mebibytes());

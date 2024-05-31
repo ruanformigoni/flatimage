@@ -109,37 +109,28 @@ using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDeskto
 // }}}
 
 // parse() {{{
-inline std::optional<CmdType> parse(int argc, char** argv)
+inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
 {
-  ireturn_if(argc < 2, "No command specified", std::nullopt);
+  qreturn_if(argc < 2, nonstd::unexpected_type("No command specified"));
 
-  ireturn_if(not std::string_view{argv[1]}.starts_with("fim-"), "Not a flatimage command, ignore", std::nullopt);
-
-  auto f_throw_if = [&](bool cond, std::string_view msg_err, std::string_view msg_exception)
-  {
-    if ( not cond )
-    {
-      print("{}\n", msg_err);
-      throw std::runtime_error(msg_exception.data());
-    } // if
-  };
+  qreturn_if(not std::string_view{argv[1]}.starts_with("fim-"), nonstd::unexpected_type("Not a flatimage command, ignore"));
 
   using VecArgs = std::vector<std::string>;
 
   return ns_match::match(std::string_view{argv[1]},
     ns_match::compare("fim-exec") >>= [&]
     {
-      f_throw_if(argc >= 3, cmd_error(str_exec_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 3, (cmd_error(str_exec_usage), "Incorrect number of arguments"));
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-root") >>= [&]
     {
-      f_throw_if(argc >= 3, cmd_error(str_root_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 3, (cmd_error(str_root_usage), "Incorrect number of arguments"));
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-resize") >>= [&]
     {
-      f_throw_if(argc >= 3, cmd_error(str_resize_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 3, (cmd_error(str_resize_usage), "Incorrect number of arguments"));
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -163,13 +154,13 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare("fim-perms") >>= [&]
     {
       // Check if is list subcommand
-      f_throw_if(argc >= 3, cmd_error(str_perms_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 3, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
       // Get op
       CmdPermsOp op = CmdPermsOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdPermsOp::LIST,  CmdType(CmdPerms{ .op = op, .permissions = {} }));
       // Check if is other command with valid args
-      f_throw_if(argc >= 4, cmd_error(str_perms_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 4, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
@@ -181,13 +172,13 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare("fim-env") >>= [&]
     {
       // Check if is list subcommand
-      f_throw_if(argc >= 3, cmd_error(str_env_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 3, (cmd_error(str_env_usage), "Incorrect number of arguments"));
       // Get op
       CmdEnvOp op = CmdEnvOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdEnvOp::LIST,  CmdType(CmdEnv{ .op = op, .environment = {} }));
       // Check if is other command with valid args
-      f_throw_if(argc >= 4, cmd_error(str_env_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 4, (cmd_error(str_env_usage), "Incorrect number of arguments"));
       return CmdType(CmdEnv({
         .op = op,
         .environment = std::vector<std::string>(argv+3, argv+argc)
@@ -197,7 +188,7 @@ inline std::optional<CmdType> parse(int argc, char** argv)
     ns_match::compare("fim-desktop") >>= [&]
     {
       // Check if is other command with valid args
-      f_throw_if(argc >= 4, cmd_error(str_desktop_usage), "Incorrect number of arguments");
+      ethrow_if(argc >= 4, (cmd_error(str_desktop_usage), "Incorrect number of arguments"));
       CmdDesktopOp op = CmdDesktopOp(argv[2]);
       // If is enable, should be either 0 or 1
       ethrow_if((op == CmdDesktopOp::ENABLE

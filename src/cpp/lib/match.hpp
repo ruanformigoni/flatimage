@@ -65,26 +65,33 @@ decltype(auto) operator>>=(compare<T...> const& partial_comp, U const& u)
 
 // match() {{{
 template<typename T, typename... Args>
-requires ( std::is_invocable_v<Args,T> and ... )
+requires ( sizeof...(Args) > 0 )
+and ( std::is_invocable_v<Args,T> and ... )
 and ( ns_concept::IsInstanceOf<std::invoke_result_t<Args,T>, std::optional> and ... )
-inline decltype(auto) match(T&& t, Args&&... args)
+inline auto match(T&& t, Args&&... args) -> nonstd::expected<
+    typename std::invoke_result_t<std::tuple_element_t<0,std::tuple<Args...>>, T>::value_type
+  , std::string>
 {
-  decltype(std::get<0>(std::forward_as_tuple(args...))(t)) result = std::nullopt;
+  std::invoke_result_t<std::tuple_element_t<0,std::tuple<Args...>>, T> result = std::nullopt;
 
-  // Lambda to check and return std::optional if it has a value
-  auto check_and_return = [&](auto&& arg) -> bool
+  try
   {
-    result = arg(t);
-    return result.has_value();
-  };
-
-  // Use fold expression to evaluate each argument
-  (check_and_return(args) || ...);
+    // Use fold expression to evaluate each argument
+    ((result = args(t), result.has_value()) || ...);
+  } // try
+  catch(std::exception const& e)
+  {
+    return nonstd::unexpected_type(e.what());
+  } // catch
+  catch(...)
+  {
+    return nonstd::unexpected_type("Caught unknown exception in match");
+  } // catch
 
   // Check if has a match
-  ethrow_if(not result.has_value(), "Could not match '{}'"_fmt(t));
+  if (result.has_value()) { return *result; } // if
 
-  return result;
+  return nonstd::unexpected_type("Could not match '{}'"_fmt(t));
 } // match() }}}
 
 } // namespace ns_match

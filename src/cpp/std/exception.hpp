@@ -49,14 +49,34 @@ auto to_expected(F&& f) -> nonstd::expected<std::invoke_result_t<F>, std::string
   try { return f(); } catch (std::exception const& e) { return e.what(); }
 } // function: to_optional
 
-template<typename T = std::true_type, typename F, typename... Args>
+template<typename F, typename... Args>
 requires std::is_invocable_v<F, Args...>
-nonstd::expected<T, std::string> to_expected(F&& f, Args&&... args)
+and std::is_void_v<std::invoke_result_t<F, Args...>>
+auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::true_type, std::string>
 {
   try
   {
     f(std::forward<Args>(args)...);
     return std::true_type{};
+  }
+  catch (std::exception const& e)
+  {
+    return nonstd::unexpected_type(std::string{e.what()});
+  }
+  catch (...)
+  {
+    return nonstd::unexpected_type(std::string{"Exception does not inherit from std::exception"});
+  }
+} // function: to_optional
+
+template<typename F, typename... Args>
+requires std::is_invocable_v<F, Args...>
+and (not std::is_void_v<std::invoke_result_t<F, Args...>>)
+auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::invoke_result_t<F,Args...>, std::string>
+{
+  try
+  {
+    return f(std::forward<Args>(args)...);
   }
   catch (std::exception const& e)
   {

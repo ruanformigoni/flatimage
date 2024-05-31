@@ -30,9 +30,9 @@ namespace fs = std::filesystem;
 void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bin)
 {
   // Check if path_dir_tools exists and is directory
-  ethrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
+  qthrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
   // Check if path_dir_temp_bin exists and is directory
-  ethrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
+  qthrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
   // Copy programs
   for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
     | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
@@ -49,13 +49,13 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
 int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
 {
   // Parse args
-  std::optional<ns_parser::CmdType> opt_cmd = ns_parser::parse(argc, argv);
+  auto expected_cmd = ns_parser::parse(argc, argv);
 
   // Check if any was passed
-  if ( not opt_cmd ) { return EXIT_SUCCESS; } // if
+  qthrow_if(not expected_cmd, expected_cmd.error());
 
   // Execute a command as a regular user
-  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*opt_cmd) )
+  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*expected_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -65,7 +65,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Execute a command as root
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*opt_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*expected_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -76,13 +76,13 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Resize the image to contain at least the provided free space
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*opt_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*expected_cmd) )
   {
     // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if
   // Configure permissions
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*opt_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*expected_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -98,7 +98,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     } // switch
   } // if
   // Configure environment
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*opt_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*expected_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -113,7 +113,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
       case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{}); break;
     } // switch
   } // if
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*opt_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*expected_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -125,14 +125,14 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
       case ns_parser::CmdDesktopOp::ENABLE:
       {
         auto opt_should_enable = ns_variant::get_if_holds_alternative<bool>(cmd->arg);
-        ethrow_if(not opt_should_enable.has_value(), "Could not convert variant value to boolean");
+        qthrow_if(not opt_should_enable.has_value(), "Could not convert variant value to boolean");
         ns_desktop::enable(config.path_file_config_desktop, *opt_should_enable);
       }
       break;
       case ns_parser::CmdDesktopOp::SETUP:
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
-        ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
+        qthrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
         ns_desktop::setup(*opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;

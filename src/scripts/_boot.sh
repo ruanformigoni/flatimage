@@ -1100,8 +1100,8 @@ function _exec()
         if [[ -d "$src" ]]; then mkdir -pv "$src"; continue; fi
         # Symlink otherwise
         mkdir -pv "$(dirname "$linkname")" || true
-        ln -sfnTv "$FIM_DIR_RUNTIME_HOST/$src" "$linkname" || true
-        _msg "NVIDIA symlink '$linkname' -> '$FIM_DIR_RUNTIME_HOST/$src'"
+        ln -sfnTv "$FIM_DIR_RUNTIME_HOST/$(readlink -f "$src")" "$linkname" || true
+        _msg "NVIDIA symlink '$linkname' -> '$FIM_DIR_RUNTIME_HOST/$(readlink -f "$src")'"
       done &>"$FIM_STREAM" || true
     fi
   fi

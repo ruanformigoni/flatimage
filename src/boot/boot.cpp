@@ -142,8 +142,8 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
   return EXIT_SUCCESS;
 } // parse_cmds() }}}
 
-// main() {{{
-int main(int argc, char** argv)
+// boot() {{{
+void boot(int argc, char** argv)
 {
   // Set logger level
   if ( ns_env::exists("FIM_DEBUG", "1") )
@@ -161,14 +161,14 @@ int main(int argc, char** argv)
   ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
 
   // Copy tools
-  ns_log::exception(FW_ARGS(copy_tools), config.path_dir_static, config.path_dir_temp_bin);
+  ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_temp_bin); });
 
   // Refresh desktop integration
-  ns_log::exception(FW_ARGS(ns_desktop::integrate)
-    , config.path_file_config_desktop
+  ns_log::exception([&]{ ns_desktop::integrate(
+      config.path_file_config_desktop
     , config.path_file_binary
-    , config.path_dir_mount_ext2
-  );
+    , config.path_dir_mount_ext2);
+  });
 
   // Un-mount
   ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);
@@ -180,9 +180,13 @@ int main(int argc, char** argv)
   );
 
   // Parse flatimage command if exists
-  ns_log::exception(FW_ARGS(parse_cmds), argc, argv, config);
+  ns_log::exception([&]{ parse_cmds(argc, argv, config); });
+} // boot() }}}
 
-  return EXIT_SUCCESS;
+// main() {{{
+int main(int argc, char** argv)
+{
+  return ns_log::exception([&]{ boot(argc, argv); });
 } // main() }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

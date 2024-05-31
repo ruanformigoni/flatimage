@@ -95,12 +95,14 @@ void debug(T&& format, Args&&... args)
 
 template<typename F, typename... Args>
 requires std::is_invocable_v<F, Args...>
-void exception(F&& f, Args... args)
+int exception(F&& f, Args... args)
 {
   if (auto expected = ns_exception::to_expected(f, std::forward<Args>(args)...); not expected )
   {
     error(expected.error());
+    return EXIT_FAILURE;
   } // if
+  return EXIT_SUCCESS;
 } // debug
 
 } // namespace ns_log

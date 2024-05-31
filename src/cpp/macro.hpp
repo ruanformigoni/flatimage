@@ -7,18 +7,6 @@
 
 #include "lib/log.hpp"
 
-#define FW_ARGS(FN) \
-  []<typename... T>(T&&... t) { FN(std::forward<T>(t)...); }
-
-#define FW1(FN) \
-  []<typename T>(T&& t) { FN(std::forward<T>(t)); }
-
-#define FW2(FN) \
-  []<typename T, typename U>(T&& t, U&& u) { FN(std::forward<T>(t), std::forward<U>(u)); }
-
-#define FW3(FN) \
-  []<typename T, typename U, typename V>(T&& t, U&& u, V&& v) { FN(std::forward<T>(t), std::forward<U>(u), std::forward<V>(v)); }
-
 // Throw
 #define qthrow_if(cond, msg) \
   if (cond) { throw std::runtime_error(msg); }

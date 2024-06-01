@@ -1100,6 +1100,8 @@ function _exec()
         if [[ -d "$src" ]]; then mkdir -pv "$src"; continue; fi
         # Symlink otherwise
         mkdir -pv "$(dirname "$linkname")" || true
+        # It is significantly faster to erase the link prior to executing 'ln' on debian
+        rm -f "$linkname"
         ln -sfnTv "$FIM_DIR_RUNTIME_HOST/$(readlink -f "$src")" "$linkname" || true
         _msg "NVIDIA symlink '$linkname' -> '$FIM_DIR_RUNTIME_HOST/$(readlink -f "$src")'"
       done &>"$FIM_STREAM" || true

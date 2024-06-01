@@ -46,7 +46,7 @@ template<std::regular_invocable F>
 requires (not std::is_void_v<std::invoke_result_t<F>>)
 auto to_expected(F&& f) -> nonstd::expected<std::invoke_result_t<F>, std::string>
 {
-  try { return f(); } catch (std::exception const& e) { return e.what(); }
+  try { return f(); } catch (std::exception const& e) { return nonstd::unexpected_type(e.what()); }
 } // function: to_optional
 
 template<typename F, typename... Args>

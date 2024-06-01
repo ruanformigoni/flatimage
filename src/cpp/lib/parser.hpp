@@ -10,6 +10,7 @@
 #include <string>
 
 #include "match.hpp"
+#include "../../boot/desktop/desktop.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
 #include "../enum.hpp"
@@ -53,8 +54,9 @@ inline const char* str_env_usage =
 inline const char* str_desktop_usage =
 "fim-desktop:\n   Configure the desktop integration\n"
 "Usage:\n   fim-desktop setup <json-file>\n"
-"   fim-desktop enable <1|0>\n"
-"Example:\n   fim-desktop setup ./desktop.json";
+"   fim-desktop enable <items...>\n"
+"items:\n   entry,mimetype,icon\n"
+"Example:\n   fim-desktop setup entry,mimetype,icon";
 
 inline std::string cmd_error(std::string_view str)
 {
@@ -102,7 +104,7 @@ ENUM(CmdDesktopOp,SETUP,ENABLE);
 struct CmdDesktop
 {
   CmdDesktopOp op;
-  std::variant<fs::path,bool> arg;
+  std::variant<fs::path,std::set<ns_desktop::EnableItem>> arg;
 };
 
 using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop>;
@@ -120,17 +122,17 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
   return ns_match::match(std::string_view{argv[1]},
     ns_match::compare("fim-exec") >>= [&]
     {
-      ethrow_if(argc >= 3, (cmd_error(str_exec_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 3, (cmd_error(str_exec_usage), "Incorrect number of arguments"));
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-root") >>= [&]
     {
-      ethrow_if(argc >= 3, (cmd_error(str_root_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 3, (cmd_error(str_root_usage), "Incorrect number of arguments"));
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::compare("fim-resize") >>= [&]
     {
-      ethrow_if(argc >= 3, (cmd_error(str_resize_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 3, (cmd_error(str_resize_usage), "Incorrect number of arguments"));
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -154,13 +156,13 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
     ns_match::compare("fim-perms") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc >= 3, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 3, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
       // Get op
       CmdPermsOp op = CmdPermsOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdPermsOp::LIST,  CmdType(CmdPerms{ .op = op, .permissions = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc >= 4, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 4, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
@@ -172,13 +174,13 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
     ns_match::compare("fim-env") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc >= 3, (cmd_error(str_env_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 3, (cmd_error(str_env_usage), "Incorrect number of arguments"));
       // Get op
       CmdEnvOp op = CmdEnvOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdEnvOp::LIST,  CmdType(CmdEnv{ .op = op, .environment = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc >= 4, (cmd_error(str_env_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 4, (cmd_error(str_env_usage), "Incorrect number of arguments"));
       return CmdType(CmdEnv({
         .op = op,
         .environment = std::vector<std::string>(argv+3, argv+argc)
@@ -188,17 +190,22 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
     ns_match::compare("fim-desktop") >>= [&]
     {
       // Check if is other command with valid args
-      ethrow_if(argc >= 4, (cmd_error(str_desktop_usage), "Incorrect number of arguments"));
+      ethrow_if(argc < 4, (cmd_error(str_desktop_usage), "Incorrect number of arguments"));
       CmdDesktopOp op = CmdDesktopOp(argv[2]);
-      // If is enable, should be either 0 or 1
-      ethrow_if((op == CmdDesktopOp::ENABLE
-        and std::string_view{argv[3]} != "0"
-        and std::string_view{argv[3]} != "1"),
-        "Invalid value for enable, should be either 0 or 1"
-      );
       CmdDesktop cmd;
       cmd.op = op;
-      if ( op == CmdDesktopOp::SETUP ) { cmd.arg = fs::path{argv[3]}; } else { cmd.arg = std::string_view(argv[3]) == "1"; }
+      if ( op == CmdDesktopOp::SETUP )
+      {
+        cmd.arg = fs::path{argv[3]};
+      }
+      else
+      {
+        // Get comma separated argument list
+        auto vec_strs = ns_vector::from_string(std::string_view(argv[3]), ',');
+        std::set<ns_desktop::EnableItem> set_enum;
+        std::ranges::transform(vec_strs, std::inserter(set_enum, set_enum.end()), [](auto&& e){ return ns_desktop::EnableItem(e); });
+        cmd.arg = set_enum;
+      }
       return CmdType(cmd);
     }
   );

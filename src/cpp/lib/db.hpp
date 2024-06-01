@@ -140,7 +140,8 @@ class Db
     Db const& operator[](T&& t) const;
     template<ns_concept::StringRepresentable T>
     Db operator()(T&& t);
-    template<ns_concept::StringRepresentable T>
+    template<typename T>
+    requires ns_concept::StringRepresentable<T> or ns_concept::Iterable<T>
     decltype(auto) operator=(T&& t);
 }; // class: Db }}}
 
@@ -154,7 +155,7 @@ inline Db::Db(fs::path t, Mode mode)
   : m_path_file_db(t)
   , m_mode(mode)
 {
-  ns_log::info("Open file '{}' as '{}'", m_path_file_db, mode);
+  ns_log::debug("Open file '{}' as '{}'", m_path_file_db, mode);
 
   auto f_parse_file = [](std::string const& name_file, std::ifstream const& f)
   {
@@ -168,7 +169,7 @@ inline Db::Db(fs::path t, Mode mode)
 
   auto f_create = [&]
   {
-    ns_log::info("Creating empty db file {}", t);
+    ns_log::debug("Creating empty db file {}", t);
   };
 
   auto f_read = [&] -> bool
@@ -437,7 +438,8 @@ Db Db::operator()(T&& t)
 } // operator() }}}
 
 // operator=(ns_concept::StringRepresentable) {{{
-template<ns_concept::StringRepresentable T>
+template<typename T>
+requires ns_concept::StringRepresentable<T> or ns_concept::Iterable<T>
 decltype(auto) Db::operator=(T&& t)
 {
   return data() = t;

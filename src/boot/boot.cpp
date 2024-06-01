@@ -30,9 +30,9 @@ namespace fs = std::filesystem;
 void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bin)
 {
   // Check if path_dir_tools exists and is directory
-  qthrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
+  ethrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
   // Check if path_dir_temp_bin exists and is directory
-  qthrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
+  ethrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
   // Copy programs
   for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
     | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
@@ -52,7 +52,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
   auto expected_cmd = ns_parser::parse(argc, argv);
 
   // Check if any was passed
-  qthrow_if(not expected_cmd, expected_cmd.error());
+  ethrow_if(not expected_cmd, expected_cmd.error());
 
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*expected_cmd) )
@@ -124,15 +124,15 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     {
       case ns_parser::CmdDesktopOp::ENABLE:
       {
-        auto opt_should_enable = ns_variant::get_if_holds_alternative<bool>(cmd->arg);
-        qthrow_if(not opt_should_enable.has_value(), "Could not convert variant value to boolean");
+        auto opt_should_enable = ns_variant::get_if_holds_alternative<std::set<ns_desktop::EnableItem>>(cmd->arg);
+        ethrow_if(not opt_should_enable.has_value(), "Could not get items to configure desktop integration");
         ns_desktop::enable(config.path_file_config_desktop, *opt_should_enable);
       }
       break;
       case ns_parser::CmdDesktopOp::SETUP:
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
-        qthrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
+        ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
         ns_desktop::setup(*opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
@@ -180,13 +180,15 @@ void boot(int argc, char** argv)
   );
 
   // Parse flatimage command if exists
-  ns_log::exception([&]{ parse_cmds(argc, argv, config); });
+  parse_cmds(argc, argv, config);
 } // boot() }}}
 
 // main() {{{
 int main(int argc, char** argv)
 {
-  return ns_log::exception([&]{ boot(argc, argv); });
+  auto expected = ns_log::exception([&]{ boot(argc, argv); });
+  ireturn_if(not expected, "Program exited with error: {}"_fmt(expected.error()), EXIT_FAILURE);
+  return EXIT_SUCCESS;
 } // main() }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

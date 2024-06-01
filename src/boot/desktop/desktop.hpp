@@ -188,13 +188,26 @@ void integrate_icons(Desktop const& desktop, fs::path const& path_dir_home)
 
 } // namespace
 
+ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
+
 // integrate() {{{
 inline void integrate(fs::path const& path_file_json
   , fs::path const& path_file_binary
   , fs::path const& path_dir_mount_ext2)
 {
   // Check if is enabled
-  ireturn_if(ns_db::Db(path_file_json, ns_db::Mode::READ)["enable"].as_bool() != true, "Desktop integration is disabled");
+  auto expected_enable_item = ns_exception::to_expected([&]
+  {
+    return ns_db::Db(path_file_json, ns_db::Mode::READ)["enable"].as_vector();
+  });
+  ethrow_if(not expected_enable_item, expected_enable_item.error());
+
+  // Get expected items
+  std::set<EnableItem> set_enable_items;
+  std::ranges::transform(*expected_enable_item
+    , std::inserter(set_enable_items, set_enable_items.begin())
+    , [](auto&& e){ return EnableItem(e); }
+  );
 
   // Get desktop info
   Desktop desktop = Desktop(path_file_json, path_dir_mount_ext2);
@@ -204,13 +217,25 @@ inline void integrate(fs::path const& path_file_json
   ethrow_if(not HOME, "Environment variable HOME is not set");
 
   // Create desktop entry
-  integrate_desktop_entry(desktop, HOME, path_file_binary);
+  if(set_enable_items.contains(EnableItem::ENTRY))
+  {
+    ns_log::info("Integrating desktop entry...");
+    integrate_desktop_entry(desktop, HOME, path_file_binary);
+  } // if
 
   // Create and update mime
-  integrate_mime_database(desktop, HOME, path_file_binary);
+  if(set_enable_items.contains(EnableItem::MIMETYPE))
+  {
+    ns_log::info("Integrating mime database...");
+    integrate_mime_database(desktop, HOME, path_file_binary);
+  } // if
 
   // Create desktop icons
-  integrate_icons(desktop, HOME);
+  if(set_enable_items.contains(EnableItem::ICON))
+  {
+    ns_log::info("Integrating desktop icons...");
+    integrate_icons(desktop, HOME);
+  } // if
 } // integrate() }}}
 
 // setup() {{{
@@ -228,9 +253,11 @@ inline void setup(fs::path const& path_file_json_src, fs::path const& path_file_
 } // setup() }}}
 
 // enable() {{{
-inline void enable(fs::path const& path_file_json, bool should_enable)
+inline void enable(fs::path const& path_file_json, std::set<EnableItem> set_enable_items)
 {
-  ns_db::Db(path_file_json, ns_db::Mode::UPDATE)("enable") = should_enable;
+  std::vector<std::string> vec_enable_items;
+  std::ranges::transform(set_enable_items, std::back_inserter(vec_enable_items), [](auto&& e){ return std::string{e}; });
+  ns_db::Db(path_file_json, ns_db::Mode::UPDATE_OR_CREATE)("enable") = vec_enable_items;
 } // enable() }}}
 
 } // namespace ns_desktop

@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "lib/log.hpp"
-
 // Throw
 #define qthrow_if(cond, msg) \
   if (cond) { throw std::runtime_error(msg); }

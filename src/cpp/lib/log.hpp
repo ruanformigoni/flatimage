@@ -5,13 +5,11 @@
 
 #pragma once
 
-#include <format>
-#include <iostream>
 #include <filesystem>
 #include <fstream>
 
 #include "../common.hpp"
-#include "../std/concepts.hpp"
+#include "../std/concept.hpp"
 #include "../std/filesystem.hpp"
 #include "../std/exception.hpp"
 
@@ -42,13 +40,16 @@ struct Logger
 inline Logger::Logger()
 {
   // Dir to self
-  fs::path path_file_self = ns_fs::ns_path::file_self()._ret;
+  auto expected_path_file_self = ns_filesystem::ns_path::file_self();
+  if(not expected_path_file_self)
+  {
+    throw std::runtime_error(expected_path_file_self.error());
+  } // if
 
   m_level = Level::QUIET;
 
   // File to save logs into
-  m_file = fs::path{path_file_self.string() + ".log"};
-
+  m_file = fs::path{expected_path_file_self->string() + ".log"};
   if ( const char* var = std::getenv("FIM_DEBUG"); var && std::string_view{var} == "1" )
   {
     "Logger file: {}\n"_print(m_file);

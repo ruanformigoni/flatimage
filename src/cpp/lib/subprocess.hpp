@@ -15,8 +15,8 @@
 #include <ranges>
 #include <thread>
 
-#include "../macro.hpp"
 #include "../lib/env.hpp"
+#include "../macro.hpp"
 #include "../std/vector.hpp"
 
 namespace ns_subprocess

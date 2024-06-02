@@ -14,7 +14,7 @@
 #include "log.hpp"
 #include "../common.hpp"
 #include "../macro.hpp"
-#include "../enum.hpp"
+#include "../std/enum.hpp"
 
 namespace ns_db
 {

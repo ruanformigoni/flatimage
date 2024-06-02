@@ -8,7 +8,6 @@
 
 #include "desktop/desktop.hpp"
 #include "../cpp/units.hpp"
-#include "../cpp/setup.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/std/env.hpp"
 #include "../cpp/std/variant.hpp"
@@ -21,6 +20,7 @@
 #include "../cpp/lib/bwrap.hpp"
 
 #include "parser.hpp"
+#include "setup.hpp"
 #include "config/environment.hpp"
 
 namespace fs = std::filesystem;
@@ -57,9 +57,17 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
+    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
+    ns_bwrap::Bwrap(config.is_root
+      , config.path_dir_mount_ext2
+      , config.path_dir_runtime_host
+      , config.path_dir_mounts
+      , config.path_dir_runtime_mounts
+      , config.path_dir_host_home
+      , config.path_file_bashrc
+      , cmd->program
+      , cmd->args, environment).run(permissions);
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
@@ -68,9 +76,17 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
-    ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
+    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
+    ns_bwrap::Bwrap(config.is_root
+      , config.path_dir_mount_ext2
+      , config.path_dir_runtime_host
+      , config.path_dir_mounts
+      , config.path_dir_runtime_mounts
+      , config.path_dir_host_home
+      , config.path_file_bashrc
+      , cmd->program
+      , cmd->args, environment).run(permissions);
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
@@ -88,10 +104,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Determine open mode
     switch( cmd->op )
     {
-      case ns_parser::CmdPermsOp::ADD: ns_bwrap::ns_permissions::add(config, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::SET: ns_bwrap::ns_permissions::set(config, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::DEL: ns_bwrap::ns_permissions::del(config, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::LIST: std::ranges::for_each(ns_bwrap::ns_permissions::get(config), ns_functional::PrintLn{}); break;
+      case ns_parser::CmdPermsOp::ADD: ns_bwrap::ns_permissions::add(config.path_file_config_permissions, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::SET: ns_bwrap::ns_permissions::set(config.path_file_config_permissions, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::DEL: ns_bwrap::ns_permissions::del(config.path_file_config_permissions, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::LIST:
+        std::ranges::for_each(ns_bwrap::ns_permissions::get(config.path_file_config_permissions), ns_functional::PrintLn{}); break;
     } // switch
   } // if
   // Configure environment
@@ -104,10 +121,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Determine open mode
     switch( cmd->op )
     {
-      case ns_parser::CmdEnvOp::ADD: ns_config::ns_environment::add(config, cmd->environment); break;
-      case ns_parser::CmdEnvOp::SET: ns_config::ns_environment::set(config, cmd->environment); break;
-      case ns_parser::CmdEnvOp::DEL: ns_config::ns_environment::del(config, cmd->environment); break;
-      case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{}); break;
+      case ns_parser::CmdEnvOp::ADD: ns_config::ns_environment::add(config.path_file_config_environment, cmd->environment); break;
+      case ns_parser::CmdEnvOp::SET: ns_config::ns_environment::set(config.path_file_config_environment, cmd->environment); break;
+      case ns_parser::CmdEnvOp::DEL: ns_config::ns_environment::del(config.path_file_config_environment, cmd->environment); break;
+      case ns_parser::CmdEnvOp::LIST:
+        std::ranges::for_each(ns_config::ns_environment::get(config.path_file_config_environment), ns_functional::PrintLn{}); break;
     } // switch
   } // if
   // Configure desktop integration
@@ -167,9 +185,19 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Append argv args
     if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
     // Execute default command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
-    ns_bwrap::Bwrap(config, cmd_exec.program, cmd_exec.args, environment).run(permissions);
+    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_permissions); });
+    ns_bwrap::Bwrap(config.is_root
+      , config.path_dir_mount_ext2
+      , config.path_dir_runtime_host
+      , config.path_dir_mounts
+      , config.path_dir_runtime_mounts
+      , config.path_dir_host_home
+      , config.path_file_bashrc
+      , cmd_exec.program
+      , cmd_exec.args
+      , environment)
+      .run(permissions);
   } // else if
 
   return EXIT_SUCCESS;

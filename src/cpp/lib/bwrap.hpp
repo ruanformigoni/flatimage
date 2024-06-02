@@ -13,7 +13,6 @@
 #include "db.hpp"
 
 #include "../macro.hpp"
-#include "../setup.hpp"
 
 #include "../std/vector.hpp"
 #include "../std/functional.hpp"
@@ -35,26 +34,26 @@ namespace ns_permissions
 ENUM(Permission,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,INPUT,GPU,NETWORK);
 
 template<ns_concept::Iterable R>
-inline void set(ns_setup::FlatimageSetup const& config, R&& r)
+inline void set(fs::path const& path_file_config_permissions, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::CREATE).set_insert(r);
+  ns_db::Db(path_file_config_permissions, ns_db::Mode::CREATE).set_insert(r);
 }
 
 template<ns_concept::Iterable R>
-inline void add(ns_setup::FlatimageSetup const& config, R&& r)
+inline void add(fs::path const& path_file_config_permissions, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).set_insert(r);
+  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).set_insert(r);
 }
 
 template<ns_concept::Iterable R>
-inline void del(ns_setup::FlatimageSetup const& config, R&& r)
+inline void del(fs::path const& path_file_config_permissions, R&& r)
 {
-  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE).set_erase(r);
+  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE).set_erase(r);
 }
 
-inline std::set<Permission> get(ns_setup::FlatimageSetup const& config)
+inline std::set<Permission> get(fs::path const& path_file_config_permissions)
 {
-  return ns_db::Db(config.path_file_config_permissions, ns_db::Mode::READ).as_set<Permission>();
+  return ns_db::Db(path_file_config_permissions, ns_db::Mode::READ).as_set<Permission>();
 }
 
 } // namespace ns_permissions
@@ -83,7 +82,13 @@ class Bwrap
 
   public:
     template<ns_concept::StringRepresentable... Args>
-    Bwrap(ns_setup::FlatimageSetup const& config
+    Bwrap(bool is_root
+      , fs::path const& path_dir_root
+      , fs::path const& path_dir_runtime_host
+      , fs::path const& path_dir_mounts
+      , fs::path const& path_dir_runtime_mounts
+      , fs::path const& path_dir_host_home
+      , fs::path const& path_file_bashrc
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
       , std::vector<std::string> const& program_env);
@@ -106,14 +111,21 @@ class Bwrap
 
 // Bwrap() {{{
 template<ns_concept::StringRepresentable... Args>
-inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
+inline Bwrap::Bwrap(
+      bool is_root
+    , fs::path const& path_dir_root
+    , fs::path const& path_dir_runtime_host
+    , fs::path const& path_dir_mounts
+    , fs::path const& path_dir_runtime_mounts
+    , fs::path const& path_dir_host_home
+    , fs::path const& path_file_bashrc
     , fs::path const& path_file_program
     , std::vector<std::string> const& program_args
     , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
   , m_program_args(program_args)
-  , m_path_dir_host_home(config.path_dir_host_home)
-  , m_is_root(config.is_root)
+  , m_path_dir_host_home(path_dir_host_home)
+  , m_is_root(is_root)
 {
   // Push passed environment
   std::ranges::for_each(program_env, [&](auto&& e){ ns_log::info()("ENV: {}", e); m_program_env.push_back(e); });
@@ -127,22 +139,22 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
   } // if
 
   // Create custom bashrc file
-  std::ofstream of{config.path_file_bashrc};
+  std::ofstream of{path_file_bashrc};
   if ( of.good() )
   {
     of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
   } // if
   of.close();
-  ns_env::set("BASHRC_FILE", config.path_file_bashrc.c_str(), ns_env::Replace::Y);
+  ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
 
   // Check if root exists and is a directory
-  ethrow_if(not fs::is_directory(config.path_dir_mount_ext2)
-    , "'{}' does not exist or is not a directory"_fmt(config.path_dir_mount_ext2)
+  ethrow_if(not fs::is_directory(path_dir_root)
+    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
   );
 
   // Basic bindings
-  if ( config.is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
-  ns_vector::push_back(m_args, "--bind", config.path_dir_mount_ext2, "/");
+  if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
   ns_vector::push_back(m_args, "--dev", "/dev");
   ns_vector::push_back(m_args, "--proc", "/proc");
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
@@ -153,10 +165,10 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
   set_xdg_runtime_dir();
 
   // Make root filesystem accessible from the guest
-  bind_root(config.path_dir_runtime_host);
+  bind_root(path_dir_runtime_host);
 
   // Make filesystems accessible from the guest
-  bind_runtime_mounts(config.path_dir_mounts, config.path_dir_runtime_mounts);
+  bind_runtime_mounts(path_dir_mounts, path_dir_runtime_mounts);
 
 } // Bwrap() }}}
 

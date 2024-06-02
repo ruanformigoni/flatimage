@@ -5,11 +5,9 @@
 
 #pragma once
 
-#include <set>
 #include <ranges>
+#include <filesystem>
 
-#include "../../cpp/enum.hpp"
-#include "../../cpp/setup.hpp"
 #include "../../cpp/std/functional.hpp"
 #include "../../cpp/lib/db.hpp"
 
@@ -18,6 +16,8 @@ namespace ns_config::ns_environment
 
 namespace
 {
+
+namespace fs = std::filesystem;
 
 inline std::vector<std::string> keys(std::vector<std::string> const& entries)
 {
@@ -35,31 +35,31 @@ inline std::vector<std::string> validate(std::vector<std::string> const& entries
 
 } // namespace
 
-inline void del(ns_setup::FlatimageSetup const& config, std::vector<std::string> const& entries)
+inline void del(fs::path const& path_file_config_environment, std::vector<std::string> const& entries)
 {
   for(auto&& entry : entries)
   {
-    ns_db::Db(config.path_file_config_environment, ns_db::Mode::UPDATE).set_erase_if(ns_functional::StartsWith(entry + "="));
+    ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE).set_erase_if(ns_functional::StartsWith(entry + "="));
   } // for
 }
 
-inline void set(ns_setup::FlatimageSetup const& config, std::vector<std::string> entries)
+inline void set(fs::path const& path_file_config_environment, std::vector<std::string> entries)
 {
   entries = validate(entries);
-  del(config, keys(entries));
-  ns_db::Db(config.path_file_config_environment, ns_db::Mode::CREATE).set_insert(entries);
+  del(path_file_config_environment, keys(entries));
+  ns_db::Db(path_file_config_environment, ns_db::Mode::CREATE).set_insert(entries);
 }
 
-inline void add(ns_setup::FlatimageSetup const& config, std::vector<std::string> entries)
+inline void add(fs::path const& path_file_config_environment, std::vector<std::string> entries)
 {
   entries = validate(entries);
-  del(config, keys(entries));
-  ns_db::Db(config.path_file_config_environment, ns_db::Mode::UPDATE_OR_CREATE).set_insert(entries);
+  del(path_file_config_environment, keys(entries));
+  ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE_OR_CREATE).set_insert(entries);
 }
 
-inline std::vector<std::string> get(ns_setup::FlatimageSetup const& config)
+inline std::vector<std::string> get(fs::path const& path_file_config_environment)
 {
-  return ns_db::Db(config.path_file_config_environment, ns_db::Mode::READ).as_vector();
+  return ns_db::Db(path_file_config_environment, ns_db::Mode::READ).as_vector();
 }
 
 } // namespace ns_config::ns_environment

@@ -9,14 +9,14 @@
 #include <set>
 #include <string>
 
-#include "desktop/desktop.hpp"
-
 #include "../cpp/macro.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/std/enum.hpp"
 #include "../cpp/std/vector.hpp"
 #include "../cpp/lib/match.hpp"
 #include "../cpp/lib/bwrap.hpp"
+
+#include "desktop.hpp"
 
 namespace ns_parser
 {

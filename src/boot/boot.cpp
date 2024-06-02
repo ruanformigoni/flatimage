@@ -6,10 +6,9 @@
 #include <unistd.h>
 #include <filesystem>
 
-#include "desktop/desktop.hpp"
 #include "../cpp/units.hpp"
 #include "../cpp/units.hpp"
-#include "../cpp/std/env.hpp"
+#include "../cpp/lib/env.hpp"
 #include "../cpp/std/variant.hpp"
 #include "../cpp/std/functional.hpp"
 #include "../cpp/std/exception.hpp"
@@ -20,6 +19,7 @@
 #include "../cpp/lib/bwrap.hpp"
 
 #include "parser.hpp"
+#include "desktop.hpp"
 #include "setup.hpp"
 #include "config/environment.hpp"
 

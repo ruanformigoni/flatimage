@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <filesystem>
 
-#include "../cpp/std/env.hpp"
+#include "../cpp/lib/env.hpp"
 
 namespace ns_setup
 {

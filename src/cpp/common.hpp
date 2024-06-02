@@ -46,15 +46,6 @@ inline auto operator""_print(const char* c_str, std::size_t)
   };
 }
 
-// Print and exit
-inline auto operator""_exit(const char* c_str, std::size_t)
-{
-  return [=]<typename... Args>(Args&&... args)
-  {
-    std::cerr << std::vformat(c_str, *format_args<Args...>(std::forward<Args>(args)...));
-  };
-}
-
 // Format strings with user-defined literals
 inline decltype(auto) operator ""_fmt(const char* str, size_t)
 {

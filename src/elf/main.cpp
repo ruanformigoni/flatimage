@@ -6,30 +6,23 @@
 // @description : Main elf for fim
 //
 
-#include <sstream>
 #include <algorithm>
-#include <numeric>
 #include <fstream>
-#include <iterator>
 #include <filesystem>
 #include <cstdlib>
 #include <cstring>
-#include <thread>
-#include <optional>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <elf.h>
 #define FMT_HEADER_ONLY
-#include <format>
-#include <iostream>
 #include <memory>
+
+#include "../cpp/common.hpp"
 
 #include "boot.h" // boot script
 #include "killer.h" // cleanup script
-
-#include "../cpp/common.hpp"
 
 #if defined(__LP64__)
 #define ElfW(type) Elf64_ ## type
@@ -55,6 +48,11 @@ namespace fs = std::filesystem;
 using u64 = unsigned long;
 // }}}
 
+// Literals {{{
+auto operator"" _err(const char* c_str, std::size_t)
+{ return [=](auto&&... args){ print(c_str, args...); exit(1); }; }
+// }}}
+
 // fn: create_temp_dir {{{
 std::string create_temp_dir(std::string const& prefix)
 {
@@ -63,7 +61,7 @@ std::string create_temp_dir(std::string const& prefix)
   auto temp_dir_template_cstr = std::unique_ptr<char[]>(new char[temp_dir_template.size() + 1]);
   std::strcpy(temp_dir_template_cstr.get(), temp_dir_template.c_str());
   char* temp_dir_cstr = mkdtemp(temp_dir_template_cstr.get());
-  if (temp_dir_cstr == NULL) { "Failed to create temporary dir {}"_exit(temp_dir_template_cstr.get()); }
+  if (temp_dir_cstr == NULL) { "Failed to create temporary dir {}"_err(temp_dir_template_cstr.get()); }
   return std::string{temp_dir_cstr};
 } // function: create_temp_dir }}}
 
@@ -73,8 +71,8 @@ void write_from_offset(std::string const& f_in_str, std::string const& f_out_str
   std::ifstream f_in{f_in_str, std::ios::binary};
   std::ofstream f_out{f_out_str, std::ios::binary};
 
-  if ( ! f_in.good() ) { "Failed to open startup file {}\n"_exit(f_in_str); }
-  if ( ! f_out.good() ) { "Failed to open target file {}\n"_exit(f_out_str); }
+  if ( ! f_in.good() ) { "Failed to open startup file {}\n"_err(f_in_str); }
+  if ( ! f_out.good() ) { "Failed to open target file {}\n"_err(f_out_str); }
 
   // Calculate the size of the data to read
   u64 size = offset.second - offset.first;
@@ -123,11 +121,11 @@ u64 read_elf_header(const char* elfFile, u64 offset = 0) {
     // finally close the file
     fclose(file);
   }
-  "Could not read elf header from {}"_exit(elfFile); exit(1);
+  "Could not read elf header from {}"_err(elfFile); exit(1);
 } // }}}
 
 // fn: main {{{
-int main(int argc, char** argv)
+int main(int, char** argv)
 {
   // Launch program {{{
   if ( auto str_offset_fs = getenv("FIM_MAIN_LAUNCH") )
@@ -146,20 +144,20 @@ int main(int argc, char** argv)
     // Get base dir
     //
     char* cstr_dir_base = getenv("FIM_DIR_GLOBAL");
-    if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_exit(); }
+    if ( cstr_dir_base == NULL ) { "FIM_DIR_GLOBAL dir variable is empty"_err(); }
 
     //
     // Get bin dir
     //
     char* cstr_dir_temp_bin = getenv("FIM_DIR_TEMP_BIN");
-    if ( cstr_dir_temp_bin == NULL ) { "FIM_DIR_TEMP_BIN dir variable is empty"_exit(); }
+    if ( cstr_dir_temp_bin == NULL ) { "FIM_DIR_TEMP_BIN dir variable is empty"_err(); }
 
     //
     // Create instance dir as $FIM_DIR_TEMP/instance (/tmp/fim/app/xxxx.../instance)
     //
     //// Fetch tempdir location
     char* cstr_dir_temp = getenv("FIM_DIR_TEMP");
-    if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_exit(); }
+    if ( cstr_dir_temp == NULL ) { "Could not open tempdir to mount image\n"_err(); }
     fs::path path_dir_instance_prefix = "{}/{}/"_fmt(cstr_dir_temp, "instance");
     //// Create temp dir to mount filesystems into
     fs::path path_dir_mounts = create_temp_dir(path_dir_instance_prefix);
@@ -223,7 +221,6 @@ int main(int argc, char** argv)
     //
     execve(str_boot_file.c_str(), argv, environ);
   } // }}}
-  
   else // Write Runner {{{
   {
     // This part of the code is executed to write the runner,
@@ -234,7 +231,7 @@ int main(int argc, char** argv)
     // Get path to called executable
     //
     if (!std::filesystem::exists("/proc/self/exe")) {
-      "Error retrieving executable path for self"_exit();
+      "Error retrieving executable path for self"_err();
     }
     auto path_absolute = fs::read_symlink("/proc/self/exe");
 
@@ -245,7 +242,7 @@ int main(int argc, char** argv)
 
     if ( ! fs::exists(str_dir_base) && ! fs::create_directories(str_dir_base) )
     {
-      "Failed to create directory {}"_exit(str_dir_base);
+      "Failed to create directory {}"_err(str_dir_base);
     }
 
     //
@@ -254,7 +251,7 @@ int main(int argc, char** argv)
     std::string str_dir_app = str_dir_base + "/app/";
     if ( ! fs::exists(str_dir_app) && ! fs::create_directories(str_dir_app) )
     {
-      "Failed to create directory {}"_exit(str_dir_app);
+      "Failed to create directory {}"_err(str_dir_app);
     }
 
     // Get some metadata for uniqueness
@@ -263,7 +260,7 @@ int main(int argc, char** argv)
     if (stat(path_absolute.c_str(), &st) == -1)
     {
       perror("stat");
-      "Failed to retrieve size of self '{}'"_exit(path_absolute.c_str());
+      "Failed to retrieve size of self '{}'"_err(path_absolute.c_str());
     }
     // // Stitch all to make the temporary directory name
     std::string str_dir_temp = str_dir_base + "/app/{}_{}"_fmt(COMMIT, TIMESTAMP);
@@ -275,7 +272,7 @@ int main(int argc, char** argv)
     std::string str_dir_temp_bin = str_dir_temp + "/bin/";
     if ( ! fs::exists(str_dir_temp_bin) && ! fs::create_directories(str_dir_temp_bin) )
     {
-      "Failed to create directory {}"_exit(str_dir_temp_bin);
+      "Failed to create directory {}"_err(str_dir_temp_bin);
     }
 
     //

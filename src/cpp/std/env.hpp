@@ -64,7 +64,7 @@ inline fs::path file(const char* name)
 template<ns_concept::StringRepresentable T, ns_concept::StringRepresentable U>
 void set(T&& name, U&& value, Replace replace)
 {
-  ns_log::debug("ENV: {} -> {}", name , value);
+  ns_log::debug()("ENV: {} -> {}", name , value);
   setenv(ns_string::to_string(name).c_str(), ns_string::to_string(value).c_str(), (replace == Replace::Y));
 } // set() }}}
 
@@ -75,7 +75,7 @@ inline void prepend(const char* name, std::string const& extra)
   // Append to var
   if ( const char* var_curr = std::getenv(name); var_curr )
   {
-    ns_log::debug("ENV: {} -> {}", name, extra + var_curr);
+    ns_log::debug()("ENV: {} -> {}", name, extra + var_curr);
     setenv(name, std::string{extra + var_curr}.c_str(), 1);
   } // if
 } // prepend() }}}

@@ -50,6 +50,7 @@ struct FlatimageSetup
   fs::path path_dir_runtime_mounts_overlayfs;
 
   fs::path path_dir_static;
+  fs::path path_file_config_boot;
   fs::path path_file_config_environment;
   fs::path path_file_config_permissions;
   fs::path path_file_config_desktop;
@@ -95,6 +96,7 @@ inline FlatimageSetup setup()
 
   // Paths inside the ext2 filesystem
   setup.path_dir_static              = setup.path_dir_mount_ext2 / "fim/static";
+  setup.path_file_config_boot        = setup.path_dir_mount_ext2 / "fim/config/boot.json";
   setup.path_file_config_environment = setup.path_dir_mount_ext2 / "fim/config/environment.json";
   setup.path_file_config_permissions = setup.path_dir_mount_ext2 / "fim/config/permissions.json";
   setup.path_file_config_desktop     = setup.path_dir_mount_ext2 / "fim/config/desktop.json";

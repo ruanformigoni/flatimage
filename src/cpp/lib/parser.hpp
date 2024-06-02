@@ -10,13 +10,13 @@
 #include <string>
 
 #include "match.hpp"
-#include "../../boot/desktop/desktop.hpp"
 #include "../macro.hpp"
 #include "../units.hpp"
 #include "../enum.hpp"
 #include "../std/vector.hpp"
 #include "../std/functional.hpp"
 #include "../config/permissions.hpp"
+#include "../../boot/desktop/desktop.hpp"
 
 namespace ns_parser
 {
@@ -57,12 +57,16 @@ inline const char* str_desktop_usage =
 "   fim-desktop enable <items...>\n"
 "items:\n   entry,mimetype,icon\n"
 "Example:\n   fim-desktop setup entry,mimetype,icon";
+inline const char* str_boot_usage =
+"fim-boot:\n   Configure the default startup command\n"
+"Usage:\n   fim-boot <command> [args...]\n"
+"Example:\n   fim-boot echo test";
 
-inline std::string cmd_error(std::string_view str)
+inline void cmd_error(std::string_view str)
 {
   std::stringstream ss;
   ss << str_app_descr << str;
-  return ss.str();
+  println(ss.str());
 }
 
 } // namespace
@@ -107,30 +111,40 @@ struct CmdDesktop
   std::variant<fs::path,std::set<ns_desktop::EnableItem>> arg;
 };
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop>;
+struct CmdBoot
+{
+  std::string program;
+  std::vector<std::string> args;
+};
+
+struct CmdNone {};
+
+
+using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop,CmdBoot,CmdNone>;
 // }}}
 
 // parse() {{{
-inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
+inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
 {
-  qreturn_if(argc < 2, nonstd::unexpected_type("No command specified"));
-
-  qreturn_if(not std::string_view{argv[1]}.starts_with("fim-"), nonstd::unexpected_type("Not a flatimage command, ignore"));
-
   using VecArgs = std::vector<std::string>;
 
+  if ( argc < 2 or not std::string_view{argv[1]}.starts_with("fim-"))
+  {
+    return CmdNone{};
+  } // if
+
   return ns_match::match(std::string_view{argv[1]},
-    ns_match::compare("fim-exec") >>= [&]
+    ns_match::equal("fim-exec") >>= [&]
     {
       ethrow_if(argc < 3, (cmd_error(str_exec_usage), "Incorrect number of arguments"));
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
-    ns_match::compare("fim-root") >>= [&]
+    ns_match::equal("fim-root") >>= [&]
     {
       ethrow_if(argc < 3, (cmd_error(str_root_usage), "Incorrect number of arguments"));
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
-    ns_match::compare("fim-resize") >>= [&]
+    ns_match::equal("fim-resize") >>= [&]
     {
       ethrow_if(argc < 3, (cmd_error(str_resize_usage), "Incorrect number of arguments"));
       // Get size string
@@ -148,12 +162,13 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
       } // else
       else
       {
-        throw std::runtime_error(cmd_error(str_resize_usage));
+        cmd_error(str_resize_usage);
+        throw std::runtime_error("Invalid argument for filesystem size");
       } // else
       return CmdType(CmdResize(size));
     },
     // Configure permissions for the container
-    ns_match::compare("fim-perms") >>= [&]
+    ns_match::equal("fim-perms") >>= [&]
     {
       // Check if is list subcommand
       ethrow_if(argc < 3, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
@@ -171,7 +186,7 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
       return CmdType(cmd_perms);
     },
     // Configure environment
-    ns_match::compare("fim-env") >>= [&]
+    ns_match::equal("fim-env") >>= [&]
     {
       // Check if is list subcommand
       ethrow_if(argc < 3, (cmd_error(str_env_usage), "Incorrect number of arguments"));
@@ -187,17 +202,18 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
       }));
     },
     // Configure environment
-    ns_match::compare("fim-desktop") >>= [&]
+    ns_match::equal("fim-desktop") >>= [&]
     {
       // Check if is other command with valid args
-      ethrow_if(argc < 4, (cmd_error(str_desktop_usage), "Incorrect number of arguments"));
+      if ( argc < 4 ) { cmd_error(str_desktop_usage); }
+      ethrow_if(argc < 4, "Incorrect number of arguments");
       CmdDesktopOp op = CmdDesktopOp(argv[2]);
       CmdDesktop cmd;
       cmd.op = op;
       if ( op == CmdDesktopOp::SETUP )
       {
         cmd.arg = fs::path{argv[3]};
-      }
+      } // if
       else
       {
         // Get comma separated argument list
@@ -205,8 +221,19 @@ inline nonstd::expected<CmdType, std::string> parse(int argc, char** argv)
         std::set<ns_desktop::EnableItem> set_enum;
         std::ranges::transform(vec_strs, std::inserter(set_enum, set_enum.end()), [](auto&& e){ return ns_desktop::EnableItem(e); });
         cmd.arg = set_enum;
-      }
+      } // else
       return CmdType(cmd);
+    },
+    // Set the default startup command
+    ns_match::equal("fim-boot", "fim-cmd") >>= [&]
+    {
+      ethrow_if(argc < 3, (cmd_error(str_boot_usage), "Incorrect number of arguments"));
+      return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
+    },
+    // Use the default startup command
+    ns_match::finally() >>= [&]
+    {
+      return CmdType(CmdNone{});
     }
   );
 } // parse() }}}

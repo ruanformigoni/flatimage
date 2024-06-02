@@ -69,36 +69,82 @@ inline void set_level(Level level)
   instance.m_level = level;
 } // info
 
-template<ns_concept::StringRepresentable T, typename... Args>
-requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void info(T&& format, Args&&... args)
+// class: Location {{{
+class Location
 {
-  print(instance.m_os, "I::{}\n"_fmt(format), args...);
-  print_if((instance.m_level >= Level::INFO), "I::{}\n"_fmt(format), std::forward<Args>(args)...);
-} // info
+  private:
+    fs::path m_str_file;
+    uint32_t m_line;
 
-template<ns_concept::StringRepresentable T, typename... Args>
-requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void error(T&& format, Args&&... args)
-{
-  print(instance.m_os, "E::{}\n"_fmt(format), args...);
-  print_if((instance.m_level >= Level::ERROR), "E::{}\n"_fmt(format), std::forward<Args>(args)...);
-} // error
+  public:
+    Location(
+        char const* str_file = __builtin_FILE()
+      , uint32_t line = __builtin_LINE()
+    )
+      : m_str_file(fs::path(str_file).filename())
+      , m_line(line)
+    {}
 
-template<ns_concept::StringRepresentable T, typename... Args>
-requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
-void debug(T&& format, Args&&... args)
+    auto get() const
+    {
+      return "{}::{}"_fmt(m_str_file, m_line);
+    } // get
+}; // class: Location }}}
+
+class info
 {
-  print(instance.m_os, "D::{}\n"_fmt(format), args...);
-  print_if((instance.m_level >= Level::DEBUG), "D::{}\n"_fmt(format), std::forward<Args>(args)...);
-} // debug
+  private:
+    Location m_loc;
+
+  public:
+    info(Location location = {}) : m_loc(location) {}
+    template<ns_concept::StringRepresentable T, typename... Args >
+    requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+    void operator()(T&& format, Args&&... args)
+    {
+      print(instance.m_os, "I::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((instance.m_level >= Level::INFO), "I::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+    } // info
+};
+
+class error
+{
+  private:
+    Location m_loc;
+
+  public:
+    error(Location location = {}) : m_loc(location) {}
+    template<ns_concept::StringRepresentable T, typename... Args>
+    requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+    void operator()(T&& format, Args&&... args)
+    {
+      print(instance.m_os, "E::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((instance.m_level >= Level::ERROR), "E::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+    } // error
+};
+
+class debug
+{
+  private:
+    Location m_loc;
+
+  public:
+    debug(Location location = {}) : m_loc(location) {}
+    template<ns_concept::StringRepresentable T, typename... Args>
+    requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
+    void operator()(T&& format, Args&&... args)
+    {
+      print(instance.m_os, "D::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((instance.m_level >= Level::DEBUG), "D::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+    } // debug
+};
 
 template<typename F, typename... Args>
 requires std::is_invocable_v<F, Args...>
 decltype(auto) exception(F&& f, Args... args)
 {
   auto expected = ns_exception::to_expected(f, std::forward<Args>(args)...);
-  if ( not expected ) { error(expected.error()); }
+  if ( not expected ) { error{}(expected.error()); }
   return expected;
 } // debug
 

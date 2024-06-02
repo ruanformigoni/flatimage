@@ -155,7 +155,7 @@ inline Db::Db(fs::path t, Mode mode)
   : m_path_file_db(t)
   , m_mode(mode)
 {
-  ns_log::debug("Open file '{}' as '{}'", m_path_file_db, mode);
+  ns_log::debug()("Open file '{}' as '{}'", m_path_file_db, mode);
 
   auto f_parse_file = [](std::string const& name_file, std::ifstream const& f)
   {
@@ -169,7 +169,7 @@ inline Db::Db(fs::path t, Mode mode)
 
   auto f_create = [&]
   {
-    ns_log::debug("Creating empty db file {}", t);
+    ns_log::debug()("Creating empty db file {}", t);
   };
 
   auto f_read = [&] -> bool

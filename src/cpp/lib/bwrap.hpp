@@ -85,7 +85,7 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
   , m_is_root(config.is_root)
 {
   // Push passed environment
-  std::ranges::for_each(program_env, [&](auto&& e){ ns_log::info("ENV: {}", e); m_program_env.push_back(e); });
+  std::ranges::for_each(program_env, [&](auto&& e){ ns_log::info()("ENV: {}", e); m_program_env.push_back(e); });
 
   // Configure some environment variables
   m_program_env.push_back("TERM=xterm");
@@ -133,7 +133,7 @@ inline Bwrap::Bwrap(ns_setup::FlatimageSetup const& config
 inline void Bwrap::set_xdg_runtime_dir()
 {
   std::string xdg_runtime_dir = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}" + ns_string::to_string(getuid()));
-  ns_log::info("XDG_RUNTIME_DIR: {}", xdg_runtime_dir);
+  ns_log::info()("XDG_RUNTIME_DIR: {}", xdg_runtime_dir);
   m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(xdg_runtime_dir));
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", xdg_runtime_dir);
 } // set_xdg_runtime_dir() }}}
@@ -149,7 +149,7 @@ inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
 inline Bwrap& Bwrap::bind_home()
 {
   if ( m_is_root ) { return *this; }
-  ns_log::debug("PERM(HOME)");
+  ns_log::debug()("PERM(HOME)");
   ns_vector::push_back(m_args, "--ro-bind-try", m_path_dir_host_home, m_path_dir_host_home);
   return *this;
 } // bind_home() }}}
@@ -157,7 +157,7 @@ inline Bwrap& Bwrap::bind_home()
 // bind_media() {{{
 inline Bwrap& Bwrap::bind_media()
 {
-  ns_log::debug("PERM(MEDIA)");
+  ns_log::debug()("PERM(MEDIA)");
   ns_vector::push_back(m_args, "--ro-bind-try", "/media", "/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/run/media", "/run/media");
   ns_vector::push_back(m_args, "--ro-bind-try", "/mnt", "/mnt");
@@ -167,7 +167,7 @@ inline Bwrap& Bwrap::bind_media()
 // bind_audio() {{{
 inline Bwrap& Bwrap::bind_audio()
 {
-  ns_log::debug("PERM(AUDIO)");
+  ns_log::debug()("PERM(AUDIO)");
 
   // Try to bind pulse socket
   fs::path path_socket_pulse = m_path_dir_xdg_runtime / "pulse/native";
@@ -190,7 +190,7 @@ inline Bwrap& Bwrap::bind_audio()
 // bind_wayland() {{{
 inline Bwrap& Bwrap::bind_wayland()
 {
-  ns_log::debug("PERM(WAYLAND)");
+  ns_log::debug()("PERM(WAYLAND)");
   // Get WAYLAND_DISPLAY
   const char* env_wayland_display = ns_env::get("WAYLAND_DISPLAY");
   dreturn_if(not env_wayland_display, "WAYLAND_DISPLAY is undefined", *this);
@@ -208,7 +208,7 @@ inline Bwrap& Bwrap::bind_wayland()
 // bind_xorg() {{{
 inline Bwrap& Bwrap::bind_xorg()
 {
-  ns_log::debug("PERM(XORG)");
+  ns_log::debug()("PERM(XORG)");
   // Get DISPLAY
   const char* env_display = ns_env::get("DISPLAY");
   dreturn_if(not env_display, "DISPLAY is undefined", *this);
@@ -228,7 +228,7 @@ inline Bwrap& Bwrap::bind_xorg()
 // bind_dbus_user() {{{
 inline Bwrap& Bwrap::bind_dbus_user()
 {
-  ns_log::debug("PERM(DBUS_USER)");
+  ns_log::debug()("PERM(DBUS_USER)");
   // Get DBUS_SESSION_BUS_ADDRESS
   const char* env_dbus_session_bus_address = ns_env::get("DBUS_SESSION_BUS_ADDRESS");
   dreturn_if(not env_dbus_session_bus_address, "DBUS_SESSION_BUS_ADDRESS is undefined", *this);
@@ -259,7 +259,7 @@ inline Bwrap& Bwrap::bind_dbus_user()
 // bind_dbus_system() {{{
 inline Bwrap& Bwrap::bind_dbus_system()
 {
-  ns_log::debug("PERM(DBUS_SYSTEM)");
+  ns_log::debug()("PERM(DBUS_SYSTEM)");
   ns_vector::push_back(m_args, "--bind-try", "/run/dbus/system_bus_socket", "/run/dbus/system_bus_socket");
   return *this;
 } // bind_dbus_system() }}}
@@ -267,7 +267,7 @@ inline Bwrap& Bwrap::bind_dbus_system()
 // bind_udev() {{{
 inline Bwrap& Bwrap::bind_udev()
 {
-  ns_log::debug("PERM(UDEV)");
+  ns_log::debug()("PERM(UDEV)");
   ns_vector::push_back(m_args, "--bind-try", "/run/udev", "/run/udev");
   return *this;
 } // bind_udev() }}}
@@ -275,7 +275,7 @@ inline Bwrap& Bwrap::bind_udev()
 // bind_input() {{{
 inline Bwrap& Bwrap::bind_input()
 {
-  ns_log::debug("PERM(INPUT)");
+  ns_log::debug()("PERM(INPUT)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/input", "/dev/input");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/uinput", "/dev/uinput");
   return *this;
@@ -284,7 +284,7 @@ inline Bwrap& Bwrap::bind_input()
 // bind_usb() {{{
 inline Bwrap& Bwrap::bind_usb()
 {
-  ns_log::debug("PERM(USB)");
+  ns_log::debug()("PERM(USB)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/bus/usb", "/dev/bus/usb");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/usb", "/dev/usb");
   return *this;
@@ -293,7 +293,7 @@ inline Bwrap& Bwrap::bind_usb()
 // bind_network() {{{
 inline Bwrap& Bwrap::bind_network()
 {
-  ns_log::debug("PERM(NETWORK)");
+  ns_log::debug()("PERM(NETWORK)");
   ns_vector::push_back(m_args, "--bind-try", "/etc/host.conf", "/etc/host.conf");
   ns_vector::push_back(m_args, "--bind-try", "/etc/hosts", "/etc/hosts");
   ns_vector::push_back(m_args, "--bind-try", "/etc/nsswitch.conf", "/etc/nsswitch.conf");
@@ -304,7 +304,7 @@ inline Bwrap& Bwrap::bind_network()
 // bind_gpu() {{{
 inline Bwrap& Bwrap::bind_gpu()
 {
-  ns_log::debug("PERM(GPU)");
+  ns_log::debug()("PERM(GPU)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/dri", "/dev/dri");
   // TODO Nvidia symlinks
   return *this;

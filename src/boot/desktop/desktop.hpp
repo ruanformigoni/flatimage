@@ -134,12 +134,12 @@ void integrate_icons_svg(Desktop const& desktop, fs::path const& path_dir_home)
 
     if (std::error_code e; (fs::copy_file(path_file_icon, path_icon_mimetype, fs::copy_options::skip_existing, e), e) )
     {
-      ns_log::error("Could not copy file '{}' with exit code '{}'", path_icon_mimetype, e.value());
+      ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_mimetype, e.value());
     } // if
 
     if (std::error_code e; (fs::copy_file(path_file_icon, path_icon_app, fs::copy_options::skip_existing, e), e) )
     {
-      ns_log::error("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
+      ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
     } // if
 } // integrate_icons_svg() }}}
 
@@ -168,7 +168,7 @@ void integrate_icons_png(Desktop const& desktop, fs::path const& path_dir_home)
 
     if (std::error_code e; (fs::copy_file(path_icon_mimetype, path_icon_app, fs::copy_options::skip_existing, e), e) )
     {
-      ns_log::error("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
+      ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
     } // if
   } // for
 } // integrate_icons_png() }}}
@@ -219,21 +219,21 @@ inline void integrate(fs::path const& path_file_json
   // Create desktop entry
   if(set_enable_items.contains(EnableItem::ENTRY))
   {
-    ns_log::info("Integrating desktop entry...");
+    ns_log::info()("Integrating desktop entry...");
     integrate_desktop_entry(desktop, HOME, path_file_binary);
   } // if
 
   // Create and update mime
   if(set_enable_items.contains(EnableItem::MIMETYPE))
   {
-    ns_log::info("Integrating mime database...");
+    ns_log::info()("Integrating mime database...");
     integrate_mime_database(desktop, HOME, path_file_binary);
   } // if
 
   // Create desktop icons
   if(set_enable_items.contains(EnableItem::ICON))
   {
-    ns_log::info("Integrating desktop icons...");
+    ns_log::info()("Integrating desktop icons...");
     integrate_icons(desktop, HOME);
   } // if
 } // integrate() }}}

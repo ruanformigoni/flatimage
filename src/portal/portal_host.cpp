@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 
     ibreak_if(opt_msg == std::nullopt, "Empty message");
 
-    ns_log::info("Recovered message: {}", *opt_msg);
+    ns_log::info()("Recovered message: {}", *opt_msg);
 
     ibreak_if(*opt_msg == "IPC_QUIT", "IPC_QUIT");
 

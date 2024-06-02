@@ -39,18 +39,18 @@ inline std::optional<std::string> search_path(std::string const& s)
   auto view = str_path | std::views::split(':');
   auto it = std::find_if(view.begin(), view.end(), [&](auto&& e)
   {
-    ns_log::debug("PATH: Check for {}", fs::path(e.begin(), e.end()) / s);
+    ns_log::debug()("PATH: Check for {}", fs::path(e.begin(), e.end()) / s);
     return fs::exists(fs::path(e.begin(), e.end()) / s);
   });
 
   if (it != view.end())
   {
     auto result = fs::path((*it).begin(), (*it).end()) / s;
-    ns_log::debug("PATH: Found '{}'", result);
+    ns_log::debug()("PATH: Found '{}'", result);
     return result;
   } // if
 
-  ns_log::debug("PATH: Could not find '{}'", s);
+  ns_log::debug()("PATH: Could not find '{}'", s);
   return std::nullopt;
 } // search_path()}}}
 
@@ -150,7 +150,7 @@ Subprocess& Subprocess::rm_var(K&& k)
   // Erase if found
   if ( it != std::ranges::end(m_env) )
   {
-    ns_log::debug("Erased var entry: {}", *it);
+    ns_log::debug()("Erased var entry: {}", *it);
     m_env.erase(it);
   } // if
 
@@ -238,7 +238,7 @@ inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdou
   auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
   {
     // Check if 'f' is defined
-    if ( not f ) { f = [&](auto&& e) { ns_log::debug("{}({}): {}", prefix, m_program, e); }; }
+    if ( not f ) { f = [&](auto&& e) { ns_log::debug()("{}({}): {}", prefix, m_program, e); }; }
     // Apply f to incoming data from pipe
     char buffer[1024];
     ssize_t count;
@@ -301,7 +301,7 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
 inline std::optional<int> Subprocess::spawn()
 {
   // Log
-  ns_log::debug("Spawn command: {}", m_args);
+  ns_log::debug()("Spawn command: {}", m_args);
 
   int pipestdout[2];
   int pipestderr[2];
@@ -365,7 +365,7 @@ inline std::optional<int> Subprocess::spawn()
   execve(m_program.c_str(), (char**) argv_custom.get(), (char**) envp_custom.get());
 
   // Log error
-  ns_log::error("execve() failed: ", strerror(errno));
+  ns_log::error()("execve() failed: ", strerror(errno));
 
   // Child should stop here
   exit(1);

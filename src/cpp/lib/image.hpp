@@ -34,17 +34,16 @@ inline void resize_impl(fs::path const& path_file_src
   namespace gil = boost::gil;
 
   // Create icon directory and set file name
-  ns_log::info("Reading image {}", path_file_src);
+  ns_log::info()("Reading image {}", path_file_src);
   ethrow_if(not fs::is_regular_file(path_file_src), "File '{}' does not exist or is not a regular file"_fmt(path_file_src));
 
   gil::rgba8_image_t img;
-  auto expected_extension = ns_match::match(path_file_src.extension()
-    , ns_match::compare(".jpg", ".jpeg") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::jpeg_tag()); }
-    , ns_match::compare(".png") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::png_tag()); }
+  ns_match::match(path_file_src.extension()
+    , ns_match::equal(".jpg", ".jpeg") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::jpeg_tag()); }
+    , ns_match::equal(".png") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::png_tag()); }
   );
-  ethrow_if(not expected_extension, expected_extension.error());
 
-  ns_log::info("Image size is {}x{}", std::to_string(img.width()), std::to_string(img.height()));
+  ns_log::info()("Image size is {}x{}", std::to_string(img.width()), std::to_string(img.height()));
 
   if ( should_preserve_aspect_ratio )
   {
@@ -58,23 +57,23 @@ inline void resize_impl(fs::path const& path_file_src
 
     // Resize
     gil::rgba8_image_t img_resized(width_new, height_new);
-    ns_log::info("Image  aspect ratio is {}", std::to_string(src_aspect));
-    ns_log::info("Target aspect ratio is {}", std::to_string(dst_aspect));
-    ns_log::info("Resizing image to {}x{}", std::to_string(width_new), std::to_string(height_new));
+    ns_log::info()("Image  aspect ratio is {}", std::to_string(src_aspect));
+    ns_log::info()("Target aspect ratio is {}", std::to_string(dst_aspect));
+    ns_log::info()("Resizing image to {}x{}", std::to_string(width_new), std::to_string(height_new));
     gil::resize_view(gil::const_view(img), gil::view(img_resized), gil::bilinear_sampler());
 
     // Write to disk
-    ns_log::info("Saving image to {}", path_file_dst);
+    ns_log::info()("Saving image to {}", path_file_dst);
     gil::write_view(path_file_dst, gil::const_view(img_resized), gil::png_tag());
   } // if
   else
   {
     // Resize
     gil::rgba8_image_t img_resized(width, height);
-    ns_log::info("Resizing image to {}x{}", std::to_string(width), std::to_string(height));
+    ns_log::info()("Resizing image to {}x{}", std::to_string(width), std::to_string(height));
     gil::resize_view(gil::const_view(img), gil::view(img_resized), gil::bilinear_sampler());
     // Write to disk
-    ns_log::info("Saving image to {}", path_file_dst);
+    ns_log::info()("Saving image to {}", path_file_dst);
     gil::write_view(path_file_dst, gil::const_view(img_resized), gil::png_tag());
 
   } // else

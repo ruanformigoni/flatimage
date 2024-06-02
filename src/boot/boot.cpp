@@ -40,22 +40,19 @@ void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bi
     fs::path path_file_dst = path_dir_temp_bin / path_file_src.path().filename();
     if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
     {
-      ns_log::debug("Copy '{}' -> '{}'", path_file_src, path_file_dst);
+      ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
     } // if
   } // for
 } // copy_tools() }}}
 
 // parse_cmds() {{{
-int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
+int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
 {
   // Parse args
-  auto expected_cmd = ns_parser::parse(argc, argv);
-
-  // Check if any was passed
-  ethrow_if(not expected_cmd, expected_cmd.error());
+  auto variant_cmd = ns_parser::parse(argc, argv);
 
   // Execute a command as a regular user
-  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*expected_cmd) )
+  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -65,7 +62,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Execute a command as root
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*expected_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -76,13 +73,13 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     ns_bwrap::Bwrap(config, cmd->program, cmd->args, environment).run(permissions);
   } // if
   // Resize the image to contain at least the provided free space
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*expected_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
   {
     // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if
   // Configure permissions
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*expected_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -98,7 +95,7 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
     } // switch
   } // if
   // Configure environment
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*expected_cmd) )
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*variant_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -113,7 +110,8 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
       case ns_parser::CmdEnvOp::LIST: std::ranges::for_each(ns_config::ns_environment::get(config), ns_functional::PrintLn{}); break;
     } // switch
   } // if
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*expected_cmd) )
+  // Configure desktop integration
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*variant_cmd) )
   {
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
@@ -138,6 +136,41 @@ int parse_cmds(int argc, char** argv, ns_setup::FlatimageSetup config)
       break;
     } // switch
   } // if
+  // Update default command on database
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )
+  {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Create config dir if not exists
+    fs::create_directories(config.path_file_config_desktop.parent_path());
+    // Update database
+    ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+    {
+      db("program") = cmd->program;
+      db("args") = cmd->args;
+    }, ns_db::Mode::UPDATE_OR_CREATE);
+  } // else if
+  // Update default command on database
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
+  {
+    // Mount filesystem as RW
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    // Build exec command
+    ns_parser::CmdExec cmd_exec;
+    // Fetch default command from database
+    ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+    {
+      cmd_exec.program = db["program"];
+      auto& args = db["args"];
+      std::for_each(args.cbegin(), args.cend(), [&](auto&& e){ cmd_exec.args.push_back(e); });
+    }, ns_db::Mode::UPDATE_OR_CREATE);
+    // Append argv args
+    if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
+    // Execute default command
+    auto permissions = ns_exception::or_default([&]{ return ns_config::ns_permissions::get(config); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config); });
+    ns_bwrap::Bwrap(config, cmd_exec.program, cmd_exec.args, environment).run(permissions);
+  } // else if
 
   return EXIT_SUCCESS;
 } // parse_cmds() }}}
@@ -180,14 +213,17 @@ void boot(int argc, char** argv)
   );
 
   // Parse flatimage command if exists
-  parse_cmds(argc, argv, config);
+  parse_cmds(config, argc, argv);
 } // boot() }}}
 
 // main() {{{
 int main(int argc, char** argv)
 {
-  auto expected = ns_log::exception([&]{ boot(argc, argv); });
-  ireturn_if(not expected, "Program exited with error: {}"_fmt(expected.error()), EXIT_FAILURE);
+  if ( auto expected = ns_log::exception([&]{ boot(argc, argv); }); not expected )
+  {
+    print_if(not expected, "Program exited with error: {}\n", expected.error());
+    return EXIT_FAILURE;
+  } // if
   return EXIT_SUCCESS;
 } // main() }}}
 

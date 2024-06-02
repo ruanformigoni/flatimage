@@ -82,19 +82,19 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   // Increase by 5% the number of blocks, this is required because the number of free blocks is by
   // default less than the expected amount due metadata to overhead
   blocks_new *= 1.05;
-  ns_log::debug("Filesystem size statistics for: {}", path_file_image);
-  ns_log::debug("----------------------------------------------------------------");
-  ns_log::debug("State  | Type          | Value");
-  ns_log::debug("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-  ns_log::debug("Current  blocks total  : {} ", blocks_total);
-  ns_log::debug("Current  blocks free   : {}", blocks_free_curr);
-  ns_log::debug("Target   blocks total  : {} ", blocks_new);
-  ns_log::debug("Target   blocks free   : {}",  blocks_free_min);
-  ns_log::debug("Current  size   total  : {} MiB", ns_units::from_bytes(size_total).to_mebibytes());
-  ns_log::debug("Current  size   free   : {} MiB", ns_units::from_bytes(size_free).to_mebibytes());
-  ns_log::debug("Target   size   total  : {} MiB", ns_units::from_bytes(blocks_new * block_size).to_mebibytes());
-  ns_log::debug("Target   size   free   : {} MiB", ns_units::from_bytes(size_free_min).to_mebibytes());
-  ns_log::debug("----------------------------------------------------------------");
+  ns_log::debug()("Filesystem size statistics for: {}", path_file_image);
+  ns_log::debug()("----------------------------------------------------------------");
+  ns_log::debug()("State  | Type          | Value");
+  ns_log::debug()("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+  ns_log::debug()("Current  blocks total  : {} ", blocks_total);
+  ns_log::debug()("Current  blocks free   : {}", blocks_free_curr);
+  ns_log::debug()("Target   blocks total  : {} ", blocks_new);
+  ns_log::debug()("Target   blocks free   : {}",  blocks_free_min);
+  ns_log::debug()("Current  size   total  : {} MiB", ns_units::from_bytes(size_total).to_mebibytes());
+  ns_log::debug()("Current  size   free   : {} MiB", ns_units::from_bytes(size_free).to_mebibytes());
+  ns_log::debug()("Target   size   total  : {} MiB", ns_units::from_bytes(blocks_new * block_size).to_mebibytes());
+  ns_log::debug()("Target   size   free   : {} MiB", ns_units::from_bytes(size_free_min).to_mebibytes());
+  ns_log::debug()("----------------------------------------------------------------");
 
   // Check if filesystem already has the requested minimum free space
   dreturn_if (blocks_free_curr >= blocks_free_min

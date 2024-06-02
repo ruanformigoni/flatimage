@@ -51,6 +51,24 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Parse args
   auto variant_cmd = ns_parser::parse(argc, argv);
 
+  auto f_bwrap = [&](std::string const& program
+    , std::vector<std::string> const& args
+    , std::vector<std::string> const& environment
+    , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
+  {
+    ns_bwrap::Bwrap(config.is_root
+      , config.path_dir_mount_ext2
+      , config.path_dir_runtime_host
+      , config.path_dir_mounts
+      , config.path_dir_runtime_mounts
+      , config.path_dir_host_home
+      , config.path_file_bashrc
+      , program
+      , args
+      , environment)
+      .run(permissions);
+  };
+
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
@@ -59,15 +77,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_ext2
-      , config.path_dir_runtime_host
-      , config.path_dir_mounts
-      , config.path_dir_runtime_mounts
-      , config.path_dir_host_home
-      , config.path_file_bashrc
-      , cmd->program
-      , cmd->args, environment).run(permissions);
+    f_bwrap(cmd->program, cmd->args, environment, permissions);
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
@@ -78,15 +88,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_ext2
-      , config.path_dir_runtime_host
-      , config.path_dir_mounts
-      , config.path_dir_runtime_mounts
-      , config.path_dir_host_home
-      , config.path_file_bashrc
-      , cmd->program
-      , cmd->args, environment).run(permissions);
+    f_bwrap(cmd->program, cmd->args, environment, permissions);
   } // if
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
@@ -187,17 +189,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Execute default command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_permissions); });
-    ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_ext2
-      , config.path_dir_runtime_host
-      , config.path_dir_mounts
-      , config.path_dir_runtime_mounts
-      , config.path_dir_host_home
-      , config.path_file_bashrc
-      , cmd_exec.program
-      , cmd_exec.args
-      , environment)
-      .run(permissions);
+    f_bwrap(cmd_exec.program, cmd_exec.args, environment, permissions);
   } // else if
 
   return EXIT_SUCCESS;

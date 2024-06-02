@@ -68,7 +68,7 @@ inline nonstd::expected<fs::path,std::string> dir_self()
   if ( not expected_path_file_self )
   {
     return nonstd::unexpected_type(expected_path_file_self.error());
-  }
+  } // if
 
   return expected_path_file_self->parent_path();
 } // dir_self() }}}

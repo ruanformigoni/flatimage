@@ -24,15 +24,17 @@ ARG FIM_DIST
 RUN sed -i "s/FIM_DIST=.*/FIM_DIST=$FIM_DIST/" ./src/scripts/_boot.sh
 
 # Compile
-RUN cd /fim/src/elf && g++ -static -Os -Wall -Wextra -Weffc++ -std=c++23 -o main main.cpp && strip -s main
-RUN cd /fim/src/elf && g++ -static -O3 -Wall -Wextra -Weffc++ -std=c++23 -o magic magic.cpp && strip -s magic
+RUN cd /fim/src/elf && cmake -H. -Bbuild && cmake --build build
+
+# Strip
+RUN strip -s /fim/src/elf/build/main
 
 # Move to dist dir
 RUN mkdir -p dist
 
 ## Patch magic bytes
-RUN cp /fim/src/elf/main dist/main
-RUN /fim/src/elf/magic dist/main
+RUN cp /fim/src/elf/build/main dist/main
+RUN /fim/src/elf/build/magic dist/main
 
 # Build image
 # RUN cp dist/main bin/elf

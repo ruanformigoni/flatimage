@@ -10,13 +10,14 @@
 #include <pwd.h>
 
 #include "subprocess.hpp"
+#include "db.hpp"
 
 #include "../macro.hpp"
 #include "../setup.hpp"
-#include "../config/permissions.hpp"
 
 #include "../std/vector.hpp"
 #include "../std/functional.hpp"
+
 
 namespace ns_bwrap
 {
@@ -27,6 +28,36 @@ namespace
 namespace fs = std::filesystem;
 
 }
+
+namespace ns_permissions
+{
+
+ENUM(Permission,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,INPUT,GPU,NETWORK);
+
+template<ns_concept::Iterable R>
+inline void set(ns_setup::FlatimageSetup const& config, R&& r)
+{
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::CREATE).set_insert(r);
+}
+
+template<ns_concept::Iterable R>
+inline void add(ns_setup::FlatimageSetup const& config, R&& r)
+{
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).set_insert(r);
+}
+
+template<ns_concept::Iterable R>
+inline void del(ns_setup::FlatimageSetup const& config, R&& r)
+{
+  ns_db::Db(config.path_file_config_permissions, ns_db::Mode::UPDATE).set_erase(r);
+}
+
+inline std::set<Permission> get(ns_setup::FlatimageSetup const& config)
+{
+  return ns_db::Db(config.path_file_config_permissions, ns_db::Mode::READ).as_set<Permission>();
+}
+
+} // namespace ns_permissions
 
 class Bwrap
 {
@@ -70,7 +101,7 @@ class Bwrap
     Bwrap& bind_network();
     Bwrap& bind_gpu();
     Bwrap& bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts);
-    void run(std::set<ns_config::ns_permissions::Permission> const& permissions);
+    void run(std::set<ns_permissions::Permission> const& permissions);
 }; // class: Bwrap
 
 // Bwrap() {{{
@@ -318,21 +349,21 @@ inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::pa
 } // bind_runtime_mounts() }}}
 
 // run() {{{
-inline void Bwrap::run(std::set<ns_config::ns_permissions::Permission> const& permissions)
+inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
 {
   // Configure bindings
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::HOME)        , [&]{ bind_home()        ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::MEDIA)       , [&]{ bind_media()       ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::AUDIO)       , [&]{ bind_audio()       ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland()     ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::XORG)        , [&]{ bind_xorg()        ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user()   ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system() ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::UDEV)        , [&]{ bind_udev()        ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::INPUT)       , [&]{ bind_input()       ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::USB)         , [&]{ bind_usb()         ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::GPU)         , [&]{ bind_gpu()         ; });
-  ns_functional::call_if(permissions.contains(ns_config::ns_permissions::Permission::NETWORK)     , [&]{ bind_network()     ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::HOME)        , [&]{ bind_home()        ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::MEDIA)       , [&]{ bind_media()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::AUDIO)       , [&]{ bind_audio()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland()     ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::XORG)        , [&]{ bind_xorg()        ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user()   ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system() ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev()        ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input()       ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb()         ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::GPU)         , [&]{ bind_gpu()         ; });
+  ns_functional::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network()     ; });
 
   // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");

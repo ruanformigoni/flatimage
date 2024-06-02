@@ -9,13 +9,14 @@
 #include <set>
 #include <string>
 
-#include "match.hpp"
-#include "../macro.hpp"
-#include "../units.hpp"
-#include "../enum.hpp"
-#include "../std/vector.hpp"
-#include "../std/functional.hpp"
-#include "../../boot/desktop/desktop.hpp"
+#include "desktop/desktop.hpp"
+
+#include "../cpp/macro.hpp"
+#include "../cpp/units.hpp"
+#include "../cpp/enum.hpp"
+#include "../cpp/std/vector.hpp"
+#include "../cpp/lib/match.hpp"
+#include "../cpp/lib/bwrap.hpp"
 
 namespace ns_parser
 {
@@ -93,7 +94,7 @@ ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
 struct CmdPerms
 {
   CmdPermsOp op;
-  std::set<ns_bwrap::Permission> permissions;
+  std::set<ns_bwrap::ns_permissions::Permission> permissions;
 };
 
 ENUM(CmdEnvOp,SET,ADD,DEL,LIST);
@@ -180,7 +181,7 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
-        , [&](auto&& e){ cmd_perms.permissions.insert(ns_config::ns_permissions::Permission(e)); }
+        , [&](auto&& e){ cmd_perms.permissions.insert(ns_bwrap::ns_permissions::Permission(e)); }
       );
       return CmdType(cmd_perms);
     },

@@ -8,11 +8,10 @@
 #include <set>
 #include <ranges>
 
-#include "../enum.hpp"
-#include "../setup.hpp"
-#include "../std/functional.hpp"
-
-#include "../lib/db.hpp"
+#include "../../cpp/enum.hpp"
+#include "../../cpp/setup.hpp"
+#include "../../cpp/std/functional.hpp"
+#include "../../cpp/lib/db.hpp"
 
 namespace ns_config::ns_environment
 {

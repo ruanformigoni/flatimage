@@ -177,13 +177,20 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Build exec command
     ns_parser::CmdExec cmd_exec;
-    // Fetch default command from database
-    ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+    // Fetch default command from database or fallback to bash
+    ns_exception::or_else([&]
     {
-      cmd_exec.program = db["program"];
-      auto& args = db["args"];
-      std::for_each(args.cbegin(), args.cend(), [&](auto&& e){ cmd_exec.args.push_back(e); });
-    }, ns_db::Mode::UPDATE_OR_CREATE);
+      ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+      {
+        cmd_exec.program = db["program"];
+        auto& args = db["args"];
+        std::for_each(args.cbegin(), args.cend(), [&](auto&& e){ cmd_exec.args.push_back(e); });
+      }, ns_db::Mode::UPDATE_OR_CREATE);
+    }, [&]
+    {
+      cmd_exec.program = "bash";
+      cmd_exec.args = {};
+    });
     // Append argv args
     if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
     // Execute default command

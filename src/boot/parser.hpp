@@ -9,12 +9,12 @@
 #include <set>
 #include <string>
 
-#include "../cpp/macro.hpp"
-#include "../cpp/units.hpp"
 #include "../cpp/std/enum.hpp"
 #include "../cpp/std/vector.hpp"
 #include "../cpp/lib/match.hpp"
 #include "../cpp/lib/bwrap.hpp"
+#include "../cpp/units.hpp"
+#include "../cpp/macro.hpp"
 
 #include "desktop.hpp"
 

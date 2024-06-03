@@ -36,6 +36,20 @@ T or_else(F&& f, T&& t)
   try { return f(); } catch (...) { return t; }
 } // function: or_else
 
+template<std::regular_invocable F, std::regular_invocable G>
+requires std::same_as<std::invoke_result_t<F>,std::invoke_result_t<G>>
+decltype(auto) or_else(F&& f, G&& g)
+{
+  if constexpr ( std::is_void_v<std::invoke_result_t<F>> )
+  {
+    try { f(); } catch (...) { g(); }
+  } // if
+  else
+  {
+    try { return f(); } catch (...) { return g(); }
+  } // else
+} // function: or_else
+
 template<std::regular_invocable F>
 auto to_optional(F&& f) -> std::optional<std::invoke_result_t<F>>
 {

@@ -62,12 +62,12 @@ inline const char* str_boot_usage =
 "Usage:\n   fim-boot <command> [args...]\n"
 "Example:\n   fim-boot echo test";
 
-inline void cmd_error(std::string_view str)
+inline std::string cmd_error(std::string_view str)
 {
   std::stringstream ss;
   ss << str_app_descr << str;
-  println(ss.str());
-}
+  return ss.str();
+} // cmd_error
 
 } // namespace
 
@@ -133,20 +133,27 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
     return CmdNone{};
   } // if
 
+  auto f_error = [&](bool cond, std::string_view msg_help, std::string_view msg_exception)
+  {
+    if ( not cond ) { return; }
+    println(cmd_error(msg_help));
+    throw std::runtime_error(msg_exception.data());
+  };
+
   return ns_match::match(std::string_view{argv[1]},
     ns_match::equal("fim-exec") >>= [&]
     {
-      ethrow_if(argc < 3, (cmd_error(str_exec_usage), "Incorrect number of arguments"));
+      f_error(argc < 3, cmd_error(str_exec_usage), "Incorrect number of arguments");
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::equal("fim-root") >>= [&]
     {
-      ethrow_if(argc < 3, (cmd_error(str_root_usage), "Incorrect number of arguments"));
+      f_error(argc < 3, cmd_error(str_root_usage), "Incorrect number of arguments");
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::equal("fim-resize") >>= [&]
     {
-      ethrow_if(argc < 3, (cmd_error(str_resize_usage), "Incorrect number of arguments"));
+      f_error(argc != 3, cmd_error(str_resize_usage), "Incorrect number of arguments");
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -171,13 +178,13 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-perms") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc < 3, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
+      f_error(argc != 3 and argc != 4, cmd_error(str_perms_usage), "Incorrect number of arguments");
       // Get op
       CmdPermsOp op = CmdPermsOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdPermsOp::LIST,  CmdType(CmdPerms{ .op = op, .permissions = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc < 4, (cmd_error(str_perms_usage), "Incorrect number of arguments"));
+      f_error(argc != 4, cmd_error(str_perms_usage), "Incorrect number of arguments");
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
@@ -189,13 +196,13 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-env") >>= [&]
     {
       // Check if is list subcommand
-      ethrow_if(argc < 3, (cmd_error(str_env_usage), "Incorrect number of arguments"));
+      f_error(argc != 3 and argc != 4, cmd_error(str_env_usage), "Incorrect number of arguments");
       // Get op
       CmdEnvOp op = CmdEnvOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdEnvOp::LIST,  CmdType(CmdEnv{ .op = op, .environment = {} }));
       // Check if is other command with valid args
-      ethrow_if(argc < 4, (cmd_error(str_env_usage), "Incorrect number of arguments"));
+      f_error(argc != 4, cmd_error(str_env_usage), "Incorrect number of arguments");
       return CmdType(CmdEnv({
         .op = op,
         .environment = std::vector<std::string>(argv+3, argv+argc)
@@ -205,8 +212,7 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-desktop") >>= [&]
     {
       // Check if is other command with valid args
-      if ( argc < 4 ) { cmd_error(str_desktop_usage); }
-      ethrow_if(argc < 4, "Incorrect number of arguments");
+      f_error(argc != 4,  cmd_error(str_desktop_usage), "Incorrect number of arguments");
       CmdDesktopOp op = CmdDesktopOp(argv[2]);
       CmdDesktop cmd;
       cmd.op = op;
@@ -227,7 +233,7 @@ inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
     // Set the default startup command
     ns_match::equal("fim-boot", "fim-cmd") >>= [&]
     {
-      ethrow_if(argc < 3, (cmd_error(str_boot_usage), "Incorrect number of arguments"));
+      f_error(argc != 3, cmd_error(str_boot_usage), "Incorrect number of arguments");
       return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     // Use the default startup command

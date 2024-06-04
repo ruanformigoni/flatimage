@@ -593,7 +593,10 @@ cd workdir
 
 # Architecture
 
-![architecture.svg](./doc/flatimage-architecture.svg)
+Example of flatimage's arrangement for compressed filesystems with overlayfs,
+bubblewrap binds and symlinks.
+
+![](./doc/graph.flatimage.filesystem.svg)
 
 # Further Considerations
 

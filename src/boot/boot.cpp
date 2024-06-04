@@ -248,7 +248,7 @@ int main(int argc, char** argv)
 {
   if ( auto expected = ns_log::exception([&]{ boot(argc, argv); }); not expected )
   {
-    print_if(not expected, "Program exited with error: {}\n", expected.error());
+    print("Program exited with error: {}\n", expected.error());
     return EXIT_FAILURE;
   } // if
   return EXIT_SUCCESS;

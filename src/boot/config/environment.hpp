@@ -46,14 +46,14 @@ inline void del(fs::path const& path_file_config_environment, std::vector<std::s
 inline void set(fs::path const& path_file_config_environment, std::vector<std::string> entries)
 {
   entries = validate(entries);
-  del(path_file_config_environment, keys(entries));
+  ns_exception::ignore([&]{ del(path_file_config_environment, keys(entries)); });
   ns_db::Db(path_file_config_environment, ns_db::Mode::CREATE).set_insert(entries);
 }
 
 inline void add(fs::path const& path_file_config_environment, std::vector<std::string> entries)
 {
   entries = validate(entries);
-  del(path_file_config_environment, keys(entries));
+  ns_exception::ignore([&]{ del(path_file_config_environment, keys(entries)); });
   ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE_OR_CREATE).set_insert(entries);
 }
 

@@ -7,9 +7,7 @@
 
 #include <filesystem>
 #include <numeric>
-
-#define nsel_CONFIG_SELECT_EXPECTED nsel_EXPECTED_NONSTD
-#include <nonstd/expected.hpp>
+#include <expected>
 
 #include "../common.hpp"
 
@@ -24,7 +22,7 @@ namespace ns_path
 
 // canonical() {{{
 // Try to make path canonical
-inline nonstd::expected<fs::path, std::string> canonical(fs::path const& path)
+inline std::expected<fs::path, std::string> canonical(fs::path const& path)
 {
   fs::path ret{path};
 
@@ -39,14 +37,14 @@ inline nonstd::expected<fs::path, std::string> canonical(fs::path const& path)
   ret = fs::canonical(ret, ec);
   if ( ec )
   {
-    return nonstd::unexpected_type("Could not make cannonical path for parent of '{}'"_fmt(path));
+    return std::unexpected("Could not make cannonical path for parent of '{}'"_fmt(path));
   } // if
 
   return ret;
 } // function: canonical }}}
 
 // file_self() {{{
-inline nonstd::expected<fs::path,std::string> file_self()
+inline std::expected<fs::path,std::string> file_self()
 {
   std::error_code ec;
 
@@ -54,20 +52,20 @@ inline nonstd::expected<fs::path,std::string> file_self()
 
   if ( ec )
   {
-    return nonstd::unexpected_type("Failed to fetch location of self");
+    return std::unexpected("Failed to fetch location of self");
   } // if
 
   return path_file_self;
 } // file_self() }}}
 
 // dir_self() {{{
-inline nonstd::expected<fs::path,std::string> dir_self()
+inline std::expected<fs::path,std::string> dir_self()
 {
   auto expected_path_file_self = file_self();
 
   if ( not expected_path_file_self )
   {
-    return nonstd::unexpected_type(expected_path_file_self.error());
+    return std::unexpected(expected_path_file_self.error());
   } // if
 
   return expected_path_file_self->parent_path();

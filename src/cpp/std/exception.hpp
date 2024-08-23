@@ -7,10 +7,7 @@
 
 #include <optional>
 #include <sstream>
-// Disable default std::expected
-#define nsel_CONFIG_SELECT_EXPECTED nsel_EXPECTED_NONSTD
-#include <nonstd/expected.hpp>
-
+#include <expected>
 
 namespace ns_exception
 {
@@ -58,15 +55,15 @@ auto to_optional(F&& f) -> std::optional<std::invoke_result_t<F>>
 
 template<std::regular_invocable F>
 requires (not std::is_void_v<std::invoke_result_t<F>>)
-auto to_expected(F&& f) -> nonstd::expected<std::invoke_result_t<F>, std::string>
+auto to_expected(F&& f) -> std::expected<std::invoke_result_t<F>, std::string>
 {
-  try { return f(); } catch (std::exception const& e) { return nonstd::unexpected_type(e.what()); }
+  try { return f(); } catch (std::exception const& e) { return std::unexpected(e.what()); }
 } // function: to_optional
 
 template<typename F, typename... Args>
 requires std::is_invocable_v<F, Args...>
 and std::is_void_v<std::invoke_result_t<F, Args...>>
-auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::true_type, std::string>
+auto to_expected(F&& f, Args&&... args) -> std::expected<std::true_type, std::string>
 {
   try
   {
@@ -75,18 +72,18 @@ auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::true_type, std:
   }
   catch (std::exception const& e)
   {
-    return nonstd::unexpected_type(std::string{e.what()});
+    return std::unexpected(std::string{e.what()});
   }
   catch (...)
   {
-    return nonstd::unexpected_type(std::string{"Exception does not inherit from std::exception"});
+    return std::unexpected(std::string{"Exception does not inherit from std::exception"});
   }
 } // function: to_optional
 
 template<typename F, typename... Args>
 requires std::is_invocable_v<F, Args...>
 and (not std::is_void_v<std::invoke_result_t<F, Args...>>)
-auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::invoke_result_t<F,Args...>, std::string>
+auto to_expected(F&& f, Args&&... args) -> std::expected<std::invoke_result_t<F,Args...>, std::string>
 {
   try
   {
@@ -94,11 +91,11 @@ auto to_expected(F&& f, Args&&... args) -> nonstd::expected<std::invoke_result_t
   }
   catch (std::exception const& e)
   {
-    return nonstd::unexpected_type(std::string{e.what()});
+    return std::unexpected(std::string{e.what()});
   }
   catch (...)
   {
-    return nonstd::unexpected_type(std::string{"Exception does not inherit from std::exception"});
+    return std::unexpected(std::string{"Exception does not inherit from std::exception"});
   }
 } // function: to_optional
 

@@ -103,7 +103,11 @@ std::pair<T,T> to_pair(T&& t, char delimiter)
     tokens.push_back(token);
   } // while
 
-  ethrow_if(tokens.size() != 2, "Pair from '{}' with delimiter '{}' could not split to 2 elements", t, delimiter);
+  if (tokens.size() != 2)
+  {
+    throw std::runtime_error(std::vformat("Pair from '{}' with delimiter '{}' could not split to 2 elements", std::make_format_args(t, delimiter)));
+  } // if
+
   return std::make_pair(tokens.front(), tokens.back());
 } // to_pair() }}}
 

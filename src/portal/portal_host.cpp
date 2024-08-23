@@ -66,23 +66,14 @@ void fork_execve(std::vector<std::string>& vec_argv)
 // search_path() {{{
 std::optional<fs::path> search_path(fs::path query)
 {
-  const char* env_path = assign_and_ereturn_if(std::getenv("PATH")
-    , not env_path
-    , "PATH environment variable not found"
-    , std::nullopt
-  );
+  const char* env_path = std::getenv("PATH");
+  ereturn_if( env_path == nullptr, "PATH environment variable not found", std::nullopt);
 
-  const char* env_dir_global_bin = assign_and_ereturn_if(std::getenv("FIM_DIR_GLOBAL_BIN")
-    , not env_dir_global_bin
-    , "FIM_DIR_GLOBAL_BIN environment variable not found"
-    , std::nullopt
-  );
+  const char* env_dir_global_bin = std::getenv("FIM_DIR_GLOBAL_BIN");
+  ereturn_if( env_dir_global_bin == nullptr, "FIM_DIR_GLOBAL_BIN environment variable not found", std::nullopt);
 
-  const char* env_dir_static = assign_and_ereturn_if(std::getenv("FIM_DIR_STATIC")
-    , not env_dir_global_bin
-    , "FIM_DIR_STATIC environment variable not found"
-    , std::nullopt
-  );
+  const char* env_dir_static = std::getenv("FIM_DIR_STATIC");
+  ereturn_if( env_dir_static == nullptr, "FIM_DIR_STATIC environment variable not found", std::nullopt);
 
   if ( query.is_absolute() )
   {

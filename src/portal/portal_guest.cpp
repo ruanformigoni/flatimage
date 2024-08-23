@@ -11,14 +11,11 @@
 int main(int argc, char** argv)
 {
   // Check args
-  ereturn_if( argc < 2, "Incorrect arguments", EXIT_FAILURE);
+  ereturn_if( argc < 2, "Incorrect number arguments", EXIT_FAILURE);
 
   // Get file path for IPC
-  const char* env = assign_and_ereturn_if(getenv("FIM_FILE_BINARY")
-    , env
-    , "Could not read FIM_FILE_BINARY"
-    , EXIT_FAILURE
-  );
+  const char* env = getenv("FIM_FILE_BINARY");
+  ereturn_if( env == nullptr, "Could not read FIM_FILE_BINARY", EXIT_FAILURE);
 
   // Create ipc instance
   auto ipc = ns_ipc::Ipc::guest(env);

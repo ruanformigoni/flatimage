@@ -45,12 +45,13 @@ sandboxing with [AppImage](https://github.com/AppImage/AppImageKit) portability.
 
 FlatImage use case is twofold:
 
-* A tool to package software that aims to work across several linux distros,
-it bundles all the software dependencies and the software itself, within an
-executable; unlike `AppImage`, FlatImage runs the application in a container, which
-increases portability and compatibility at the cost of file size.
+* Flatimage is a package format, it includes a piece of software with all its
+    dependencies for it work with across several linux distros (both Musl and
+    GNU). Unlike `AppImage`, FlatImage runs the application in a container by
+    default, which increases portability and compatibility at the cost of file
+    size.
 
-* A portable container image that requires no superuser permissions to run.
+* Flatimage is a portable container image that requires no superuser permissions to run.
 
 The diverse `GNU/Linux` ecosystem includes a vast array of distributions, each
 with its own advantages and use cases. This can lead to cross-distribution
@@ -59,15 +60,22 @@ software compatibility challenges. FlatImage addresses these issues by:
 * Utilizing its own root directory, enabling dynamic libraries with hard-coded
     paths to be packaged alongside the software without
     [binary patching](https://github.com/AppImage/AppImageKit/wiki/Bundling-Windows-applications).
-* Running the application in its own gnu system, therefore, not using host
-    libraries that might be outdated/incompatible with the application.
+* Running the application in its own gnu (or musl) environment, therefore, not using host
+    libraries that might be outdated/incompatiblesystem with the application.
+
+It simplifies the task of software packaging by enforcing the philosophy that it
+should be as simple as setting up a container. This is an effort for the
+end-user to not depend on the application developer to provide the portable
+binary (or to handle how to package the application, dependencies and create a
+runner script). It also increases the quality of life of the package developer,
+simplifying the packaging process of applications.
 
 ## Comparison
 
 | Feature                                                                   | FlatImage     | Docker                     | AppImage |
 | :---                                                                      | :---:         | :---:                      | :---:    |
 | No superuser privileges to use                                            | x             | x<sup>2</sup>              | x
-| **Overlayfs** (allows to install programs even after compression)             | x             |                            |
+| **Overlayfs** (allows to install programs even after compression)         | x             |                            |
 | No installation necessary (click and use)                                 | x             | Requires docker on the host| x
 | Requires building on an old system to minimize glibc issues               |               | N/A                        | x
 | Mountable as a filesystem                                                 | x             | x                          | x<sup>3</sup>
@@ -208,39 +216,57 @@ $ ./arch.flatimage fim-config-set backend "host"
 
 ### Desktop Integration
 
-#### Desktop Entry and File Manager Icon
+#### Configure Application
 
-Flatimage supports desktop integration, the icon and menu entry should appear
-after the first execution. Make sure to have this line in your `~/.bashrc`
-file:
+You can use `./arch.flatimage fim-desktop` to get the following usage details:
 
-```bash
-export XDG_DATA_DIRS=$HOME/.local/share:$XDG_DATA_DIRS
+```
+fim-desktop:
+   Configure the desktop integration
+Usage:
+   fim-desktop setup <json-file>
+   fim-desktop enable <items...>
+items:
+   entry,mimetype,icon
+Example:
+   fim-desktop enable entry,mimetype,icon
 ```
 
-After including it, log out and log in again (or reboot) for the changes apply.
-Here's how to configure flatimage desktop integration:
+To setup the desktop integration for a flatimage package, the first step is to
+create a `json` file with the integration data, assume we create the file name
+`desktop.json` with the following contents:
 
-```bash
- # Set the name of your application
-$ ./arch.flatimage fim-config-set name "MyApp"
- # Set the icon, supported image types are '.svg,.png,.jpg'
-$ ./arch.flatimage fim-config-set icon '"$FIM_DIR_MOUNT"/fim/desktop/icon.png'
- # Copy icon to inside the container
-$ ./arch.flatimage fim-root cp ./my-image.png /fim/desktop/icon.png
- # Set the categories of your application
- # Avaliable categories found here: https://specifications.freedesktop.org/menu-spec/latest/apa.html
-$ ./arch.flatimage fim-config-set categories "Game"
- # Enable desktop integration
-$ ./arch.flatimage fim-config-set desktop 1
+```json
+{
+  "name": "MyApp",
+  "icon": "./my_app.png",
+  "categories": ["System","Audio"]
+}
 ```
 
-You can also disable desktop integration with:
+This example creates the integration data for the application `MyApp`, with the
+icon file `my_app.png` located in the same folder as `desktop.json`. The
+categories field is used for the desktop menu entry integration, a list of valid
+categories is found
+[here](https://specifications.freedesktop.org/menu-spec/latest/category-registry.html#main-category-registry).
+Let's assume the json file is called `desktop.json` and the flatimage file is
+called `arch.flatimage`, the next command uses the `desktop.json` file to
+configure the desktop integration.
 
 ```bash
- # Disable desktop integration
-$ ./arch.flatimage fim-config-set desktop 0
+$ ./arch.flatimage fim-desktop setup ./desktop.json
 ```
+
+After the setup step, you can enable the integration selectively, `entry` refers
+to the desktop entry in the start menu, `mimetype` refers to the file type that
+appears in the file manager, `icon` is the application icon shown in the start
+menu and the file manager. Here's how to enable everything:
+
+```bash
+$ ./arch.flatimage fim-desktop enable entry,mimetype,icon
+```
+
+#### Erase entries
 
 To erase all desktop entries and icons created by flatimage, you can use the
 command:
@@ -302,310 +328,6 @@ Examples:
 * Open thunar in the host machine: `fim_portal_guest thunar`
 * Open thunar in the host machine (full path): `fim_portal_guest /bin/thunar`
 * Open the desktop folder with thunar on the host machine: `fim_portal_guest thunar ~/Desktop`
-
-# Use cases
-
-To use FlatImage there is no need to install anything, simply download an image in
-the [releases](https://github.com/ruanformigoni/flatimage/releases) page, i.e., `focal
-(ubuntu)`, `alpine` or `arch`. The archive is compressed, extract it and use it
-as shown in the following examples.
-
-## Use pacman packages on non-arch systems
-
-```sh
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./arch.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
- # Install the desired application in the ubuntu subsystem
-$ ./arch.flatimage fim-root fakechroot pacman -S firefox --noconfirm
- # Test the application
-$ ./arch.flatimage fim-exec firefox
- # Set the default startup command
-$ ./arch.flatimage fim-cmd firefox
- # (optional) Compress the package filesystem
-$ ./arch.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-mv arch.flatimage firefox
- # Run the application (you can also click on it in your file manager)
-$ ./firefox
-```
-
-## Use apt packages in non-debian systems
-
-```sh
- # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
-$ ./focal.flatimage fim-resize 4G
- # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./focal.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
- # Install the desired application in the ubuntu subsystem
-$ ./focal.flatimage fim-root apt install -y firefox
- # Test the application
-$ ./focal.flatimage fim-exec firefox
- # Set the default startup command
-$ ./focal.flatimage fim-cmd firefox
- # (optional) Compress the package filesystem
-$ ./focal.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv focal.flatimage firefox
- # Run the application (you can also click on it in your file manager)
-$ ./firefox
-```
-
-## Use alpine (apk) packages
-
-```sh
- # Set the maximum filesystem size (use du -sh ./alpine.flatimage to see actual size)
-$ ./alpine.flatimage fim-resize 2G
- # Set the desired permissions (you can also list them with fim-perms-list)
-$ ./alpine.flatimage fim-perms-set wayland,pulseaudio,gpu,session_bus
- # Install firefox with apk
-$ ./alpine.flatimage fim-root apk add firefox font-noto
- # Test the application
-$ ./alpine.flatimage fim-exec firefox
- # Set the default startup command
-$ ./alpine.flatimage fim-cmd firefox
- # (optional) Compress the package filesystem
-$ ./alpine.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv alpine.flatimage firefox
- # Run the application (you can also click on it in your file manager)
-$ ./firefox
-```
-
-## Use a pip package without installing pip
-
-__Archlinux__
-
-```sh
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Install python-pipx
-$ ./arch.flatimage fim-root fakechroot pacman -S python-pipx ffmpeg
- # Install the pip application inside the image
- export PIPX_HOME=/opt/pipx
- export PIPX_BIN_DIR=/usr/local/bin
-$ ./arch.flatimage fim-root fakechroot pipx install yt-dlp
- # Test the application
-$ ./arch.flatimage fim-exec yt-dlp -f "bestvideo+bestaudio" "https://www.youtube.com/watch?v=srnyVw-OR0g"
- # Set the default startup command
-$ ./arch.flatimage fim-cmd yt-dlp
- # (optional) Compress the package filesystem
-$ ./arch.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv arch.flatimage yt-dlp
- # Use the application (download youtube video)
-$ ./yt-dlp -f 'bestvideo+bestaudio' 'https://www.youtube.com/watch?v=srnyVw-OR0g'
-```
-
-__Ubuntu__
-
-```sh
- # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
-$ ./focal.flatimage fim-resize 4G
- # Install python-pip
-$ ./focal.flatimage fim-root apt install -y python3-pip ffmpeg
- # Install the pip application inside the image
-$ ./focal.flatimage fim-root pip3 install yt-dlp
- # Test the application
-$ ./focal.flatimage fim-exec yt-dlp -f "bestvideo+bestaudio" https://www.youtube.com/watch?v=srnyVw-OR0g
- # Set the default startup command
-$ ./focal.flatimage fim-cmd yt-dlp
- # (optional) Compress the package filesystem
-$ ./focal.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv focal.flatimage yt-dlp.flatimage
- # Use the application (download youtube video)
-$ ./yt-dlp.flatimage -f 'bestvideo+bestaudio' https://www.youtube.com/watch?v=srnyVw-OR0g
-```
-
-## Use an npm package without installing npm
-
-### Outside the container
-
-__Archlinux__
-
-```sh
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Set the desired permissions (so vlc can play from inside the container)
-$ ./arch.flatimage fim-perms-set x11,pulseaudio
- # Install npm/nodejs into the image
-$ ./arch.flatimage fim-root fakechroot pacman -S nodejs npm vlc
- # Configure prefix to the root of the image
-$ ./arch.flatimage fim-exec npm config set prefix -g '/usr/local/'
- # Install the npm application inside the image
-$ ./arch.flatimage fim-root fakechroot npm install -g webtorrent-cli
- # Test the application
-$ ./arch.flatimage fim-exec webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
- # Set the default startup command
-$ ./arch.flatimage fim-cmd webtorrent
- # (optional) Compress the package filesystem
-$ ./arch.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv arch.flatimage webtorrent
- # Use the application (stream legal torrent video)
-$ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
-```
-
-__Ubuntu__
-
-```sh
- # Set the maximum filesystem size (use du -sh ./focal.flatimage to see actual size)
-$ ./focal.flatimage fim-resize 4G
- # Set the desired permissions (so vlc can play from inside the container)
-$ ./focal.flatimage fim-perms-set x11,pulseaudio
- # Install npm/nodejs into the image
-$ ./focal.flatimage fim-root apt install -y curl
-$ ./focal.flatimage fim-root curl -fsSL https://deb.nodesource.com/setup_19.x | bash -
-$ ./focal.flatimage fim-root apt-get install -y nodejs mpv
- # Configure prefix to the root of the image
-$ ./focal.flatimage fim-root npm config set prefix -g /usr/local
- # Install the npm application inside the image
-$ ./focal.flatimage fim-root npm install -g webtorrent-cli
- # Test the application
-$ ./focal.flatimage fim-exec webtorrent magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
- # Set the default startup command
-$ ./focal.flatimage fim-cmd webtorrent
- # (optional) Compress the package filesystem
-$ ./focal.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv focal.flatimage webtorrent.flatimage
- # Use the application (stream legal torrent video)
-$ ./webtorrent.flatimage magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c --mpv
-```
-
-Note that vlc/mpv was installed inside the image, it is required since the image
-has no access to the host filesystem/applications.
-
-### Inside the container
-
-```sh
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Set the desired permissions (so vlc can play from inside the container)
-$ ./arch.flatimage fim-perms-set x11,pulseaudio
- # Enter the container as root
-$ FIM_ROOT=1 ./arch.flatimage
- # Install npm/nodejs into the image
-(fim@arch) → fakechroot pacman -S nodejs npm vlc
- # Configure prefix to the root of the image
-(fim@arch) → npm config set prefix -g '/usr/local/'
- # Install the npm application inside the image
-(fim@arch) → fakechroot npm install -g webtorrent-cli
- # Press CTRL+D or type exit to quit the container
- # Enter the container as an unprivileged user
-$ ./arch.flatimage
- # Test the application
-(fim@arch) → webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
- # Press CTRL+D or type exit to quit the container
- # Set the default startup command
-$ ./arch.flatimage fim-cmd webtorrent
- # (optional) Compress the package filesystem
-$ ./arch.flatimage fim-compress
- # (optional) Rename the binary to the main application name
-$ mv arch.flatimage webtorrent
- # Use the application (stream legal torrent video)
-$ ./webtorrent "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c" --vlc
-```
-
-## Compile an application without installing dependencies on the host
-
-### Outside the container
-
-```sh
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Fetch the application
-$ git clone https://github.com/htop-dev/htop.git
- # Install the required build dependencies
-$ ./arch.flatimage fim-root fakechroot pacman -S ncurses automake autoconf gcc make
- # Compile the application
-cd htop
-$ ../arch.flatimage fim-exec './autogen.sh'
-$ ../arch.flatimage fim-exec './configure'
-$ ../arch.flatimage fim-exec 'make'
- # Run the compiled application
-$ ./htop
-```
-
-### Inside the container
-
-```bash
- # Set the maximum filesystem size (use du -sh ./arch.flatimage to see actual size)
-$ ./arch.flatimage fim-resize 4G
- # Fetch the application
-$ git clone https://github.com/htop-dev/htop.git
- # Enter the container as root
-$ FIM_ROOT=1 ./arch.flatimage
- # Install the required build dependencies
- (fim@arch) → fakechroot pacman -S ncurses automake autoconf gcc make
- # Compile
- (fim@arch) → cd htop
- (fim@arch) → ./autogen.sh
- (fim@arch) → ./configure
- (fim@arch) → make
- # Run
- (fim@arch) → ./htop
-```
-
-In this case `arch.flatimage` is now a portable building environment for htop.
-
-# Samples
-
-## Portable steam
-
-Creates a portable steam installation that works on both `GNU` and `MUSL` systems:
-
-```
-wget -O- https://raw.githubusercontent.com/ruanformigoni/flatimage/master/samples/steam.sh | sh
-```
-
-The home directory (where your games will be installed into) for this steam sample is always on the same directory as the flatimage, in a folder called `steam.home`. This enables the usage of steam on an external hard drive that maybe plugged in several linux distros, without having to re-configure anything.
-
-## Portable wine
-
-Creates a portable wine installation that works on both `GNU` and `MUSL` systems:
-
-```
-wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/base.flatimage.tar.xz
-wget https://github.com/gameimage/runners/releases/download/wine-gnu-x86_64/staging.dwarfs
-tar xf base.flatimage.tar.xz
-rm base.flatimage.tar.xz
-chmod +x base.flatimage
-./base.flatimage fim-dwarfs-add staging.dwarfs /fim/mount/wine
-rm staging.dwarfs
-mv ./base.flatimage ./wine
-```
-
-You can use it simply by:
-
-# Usage Inside Docker
-
-Currently to run a flatimage inside docker, the `--privileged` flag is required.
-Assuming that the current directory contains the image `alpine.flatimage`:
-
-```
-docker run --privileged -it --rm -v "$(pwd):/workdir" ubuntu:focal /bin/bash
-cd workdir
-./alpine.flatimage
-```
-
-# Architecture
-
-Example of flatimage's arrangement for compressed filesystems with overlayfs,
-bubblewrap binds and symlinks.
-
-![](./doc/graph.flatimage.filesystem.svg)
-
-# Further Considerations
-
-FlatImage offers on build simplicity, packaging applications should be as simple as
-installing them natively on the host system. This is an effort for the end-user
-to not depend on the application developer to provide the portable binary (or to
-handle how to package the application, dependencies and create a runner script).
-It also simplifies the quality of life of the package developer, simplifying
-the packaging process of applications.
 
 # Motivations
 

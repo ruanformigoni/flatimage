@@ -28,11 +28,11 @@ namespace fs = std::filesystem;
 
 inline const char* str_app_descr = "Flatimage - Portable Linux Applications\n";
 inline const char* str_root_usage =
-"fim-root:\n   Executes the command as the root user\n"
+"fim-root:\n   Executes a command as the root user\n"
 "Usage:\n   fim-root program-name [program-args...]\n"
 "Example:\n   fim-root bash";
 inline const char* str_exec_usage =
-"fim-exec:\n   Executes the command as a regular user\n"
+"fim-exec:\n   Executes a command as a regular user\n"
 "Usage:\n   fim-exec program-name [program-args...]\n"
 "Example:\n   fim-exec bash";
 inline const char* str_resize_usage =
@@ -43,7 +43,7 @@ inline const char* str_perms_usage =
 "fim-perms:\n   Edit current permissions for the flatimage\n"
 "Usage:\n   fim-perms add|del|set <perms>...\n"
 "   fim-perms list\n"
-"Permissions:\n   home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,gpu,network\n"
+"Permissions:\n  home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,input,gpu,network\n"
 "Example:\n   fim-perms add home,media";
 inline const char* str_env_usage =
 "fim-env:\n   Edit current permissions for the flatimage\n"
@@ -56,7 +56,7 @@ inline const char* str_desktop_usage =
 "Usage:\n   fim-desktop setup <json-file>\n"
 "   fim-desktop enable <items...>\n"
 "items:\n   entry,mimetype,icon\n"
-"Example:\n   fim-desktop setup entry,mimetype,icon";
+"Example:\n   fim-desktop enable entry,mimetype,icon";
 inline const char* str_boot_usage =
 "fim-boot:\n   Configure the default startup command\n"
 "Usage:\n   fim-boot <command> [args...]\n"
@@ -124,7 +124,7 @@ using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDeskto
 // }}}
 
 // parse() {{{
-inline nonstd::expected<CmdType, std::string> parse(int argc , char** argv)
+inline std::expected<CmdType, std::string> parse(int argc , char** argv)
 {
   using VecArgs = std::vector<std::string>;
 

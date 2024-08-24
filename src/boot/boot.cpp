@@ -93,12 +93,16 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Resize the image to contain at least the provided free space
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
   {
+    // Update log level
+    ns_log::set_level(ns_log::Level::INFO);
     // Resize to fit the provided amount of free space
     ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
   } // if
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
   {
+    // Update log level
+    ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists
@@ -116,6 +120,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Configure environment
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*variant_cmd) )
   {
+    // Update log level
+    ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists
@@ -133,6 +139,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Configure desktop integration
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*variant_cmd) )
   {
+    // Update log level
+    ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists
@@ -151,7 +159,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
         ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(*opt_path_file_src_json, config.path_file_config_desktop);
+        ns_desktop::setup(config.path_dir_mount_ext2, *opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
     } // switch
@@ -159,6 +167,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )
   {
+    // Update log level
+    ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
     ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
     // Create config dir if not exists

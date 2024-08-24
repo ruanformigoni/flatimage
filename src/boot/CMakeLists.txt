@@ -33,7 +33,6 @@ find_package(ZLIB REQUIRED)
 add_executable(boot boot.cpp)
 target_link_libraries(boot PRIVATE
   nlohmann_json::nlohmann_json
-  nonstd::expected-lite
   /usr/lib/libturbojpeg.a
   /usr/lib/libpng.a
   /usr/lib/libext2fs.a

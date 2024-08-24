@@ -21,7 +21,7 @@
 
 #include "../cpp/common.hpp"
 
-#include "boot.h" // boot script
+// #include "boot.h" // boot script
 #include "killer.h" // cleanup script
 
 #if defined(__LP64__)
@@ -171,36 +171,22 @@ int main(int, char** argv)
     //
     std::string str_boot_file = "{}.boot"_fmt(path_dir_mount.c_str());
     std::string str_killer_file = "{}.killer"_fmt(path_dir_mount.c_str());
-    // Change to global directory if debug flag is enabled
-    if ( getenv("FIM_DEBUG") )
-    {
-      str_boot_file = "{}/boot"_fmt(cstr_dir_temp);
-      str_killer_file = "{}/killer"_fmt(cstr_dir_temp);
-    }
+
     // Update env
     setenv("FIM_FPATH_BOOT", str_boot_file.c_str(), 1);
     setenv("FIM_FPATH_KILLER", str_killer_file.c_str(), 1);
 
-    auto shbang = "#!{}/bash\n"_fmt(cstr_dir_temp_bin);
-
     //
-    // Set boot script
+    // Copy boot binary
     //
-    if ( ! fs::exists(str_boot_file) )
-    {
-      std::ofstream script_boot(str_boot_file, std::ios::binary);
-      fs::permissions(str_boot_file, fs::perms::all);
-      // -1 to exclude the trailing null byte
-      script_boot.write(shbang.c_str(), shbang.size());
-      script_boot.write(reinterpret_cast<const char*>(_script_boot), sizeof(_script_boot) - 1);
-      script_boot.close();
-    }
+    fs::copy_file(fs::path{cstr_dir_temp_bin} / "boot", str_boot_file);
 
     //
     // Set killer daemon script
     //
     if ( ! fs::exists(str_killer_file) )
     {
+      std::string shbang = "#!{}/bash\n"_fmt(cstr_dir_temp_bin);
       std::ofstream script_killer(str_killer_file, std::ios::binary);
       fs::permissions(str_killer_file, fs::perms::all);
       // -1 to exclude the trailing null byte
@@ -307,6 +293,7 @@ int main(int, char** argv)
     //
     auto start = std::chrono::high_resolution_clock::now();
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp, "main", 0);
+    std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "boot", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "fuse2fs", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "e2fsck", offset_end);
     std::tie(offset_beg, offset_end) = f_write_bin(str_dir_temp_bin, "bash", offset_end);

@@ -23,7 +23,6 @@ endif()
 
 # External libraries
 find_package(nlohmann_json REQUIRED)
-find_package(expected-lite REQUIRED)
 find_package(Boost REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)

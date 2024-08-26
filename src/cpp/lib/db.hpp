@@ -93,6 +93,7 @@ class Db
     Db() = delete;
     Db(Db const&) = delete;
     Db(Db&&) = delete;
+    Db(std::string_view json_data);
     Db(fs::path t, Mode mode);
 
     // Destructors
@@ -111,6 +112,7 @@ class Db
     std::set<T> as_set() const;
     template<typename T = std::string>
     std::vector<T> as_vector() const;
+    std::string as_string() const;
 
     // Modifying
     template<ns_concept::StringRepresentable T>
@@ -150,6 +152,16 @@ inline Db::Db(std::reference_wrapper<json_t> json)
 {
   m_json = json;
 } // Json
+
+inline Db::Db(std::string_view json_data)
+  : m_path_file_db("/dev/null")
+  , m_mode(Mode::READ)
+{
+  // Validate contents
+  ithrow_if(not json_t::accept(json_data), "Failed to parse json data: '{}'"_fmt(json_data));
+  // Parse contents
+  m_json = json_t::parse(json_data);
+}
 
 inline Db::Db(fs::path t, Mode mode)
   : m_path_file_db(t)
@@ -300,6 +312,12 @@ std::vector<T> Db::as_vector() const
   std::for_each(json.begin(), json.end(), [&](std::string e){ vector.push_back(T{e}); });
   return vector;
 } // as_vector() }}}
+
+// as_string() {{{
+std::string Db::as_string() const
+{
+  return data().dump();
+} // as_string() }}}
 
 // obj_erase() {{{
 template<ns_concept::StringRepresentable T>

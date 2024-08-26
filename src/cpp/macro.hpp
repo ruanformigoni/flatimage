@@ -18,6 +18,19 @@
 #define ethrow_if(cond, msg) \
   if (cond) { ns_log::error()(msg); throw std::runtime_error(msg); }
 
+// Exit
+#define qexit_if(cond, ret) \
+  if (cond) { exit(ret); }
+
+#define dexit_if(cond, msg, ret) \
+  if (cond) { ns_log::debug()(msg); exit(ret); }
+
+#define iexit_if(cond, msg, ret) \
+  if (cond) { ns_log::info()(msg); exit(ret); }
+
+#define eexit_if(cond, msg, ret) \
+  if (cond) { ns_log::error()(msg); exit(ret); }
+
 // Return
 #define qreturn_if(cond, ...) \
   if (cond) { return __VA_ARGS__; }

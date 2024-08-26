@@ -8,7 +8,7 @@ RUN echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/reposit
 # Install deps
 RUN apk update && apk upgrade
 RUN apk add --no-cache build-base git libbsd-dev git cmake gcc \
-  bash e2fsprogs xz curl zstd gawk upx
+  bash e2fsprogs xz curl zstd gawk upx nlohmann-json
 
 # Update PATH
 ENV PATH="/root/.local/bin:$PATH"

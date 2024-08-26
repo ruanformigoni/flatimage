@@ -3,6 +3,9 @@
 // @file        : portal_host
 ///
 
+#include <fcntl.h>
+#include <sys/wait.h>
+#include <thread>
 #include <vector>
 #include <string>
 #include <csignal>
@@ -11,6 +14,7 @@
 
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ipc.hpp"
+#include "../cpp/lib/db.hpp"
 #include "../cpp/macro.hpp"
 
 namespace fs = std::filesystem;
@@ -25,11 +29,46 @@ void signal_handler(int)
   G_QUIT = true;
 } // signal_handler() }}}
 
+// search_path() {{{
+std::optional<fs::path> search_path(fs::path query)
+{
+  const char* env_path = std::getenv("PATH");
+  ereturn_if( env_path == nullptr, "PATH environment variable not found", std::nullopt);
+
+  const char* env_dir_global_bin = std::getenv("FIM_DIR_GLOBAL_BIN");
+  const char* env_dir_static = std::getenv("FIM_DIR_STATIC");
+
+  if ( query.is_absolute() )
+  {
+    return_if_else(fs::exists(query), query, std::nullopt);
+  } // if
+
+  std::string path(env_path);
+  std::istringstream istream_path(path);
+  std::string str_getline;
+
+  while (std::getline(istream_path, str_getline, ':'))
+  {
+    fs::path path_parent = str_getline;
+    qcontinue_if(env_dir_static and path_parent == fs::path(env_dir_static));
+    qcontinue_if(env_dir_global_bin and path_parent == fs::path(env_dir_global_bin));
+    fs::path path_full = path_parent / query;
+    ireturn_if(fs::exists(path_full), "Found '{}' in PATH"_fmt(path_full), path_full);
+  } // while
+
+  return std::nullopt;
+} // search_path() }}}
+
 // fork_execve() {{{
 // Fork & execve child
-void fork_execve(std::vector<std::string>& vec_argv)
+void fork_execve(std::string msg)
 {
-  // Ignore on empty vec_argv
+  auto db = ns_db::Db(msg);
+
+  // Get command
+  std::vector<std::string> vec_argv = db["command"].as_vector();
+
+  // Ignore on empty command
   if ( vec_argv.empty() ) { return; }
 
   // Create child
@@ -39,7 +78,46 @@ void fork_execve(std::vector<std::string>& vec_argv)
   ereturn_if(pid == -1, "Failed to fork");
 
   // Is parent
-  qreturn_if(pid > 0);
+  if (pid > 0)
+  {
+    // Wait for child to finish
+    int status;
+    int ret_waitpid = waitpid(pid, &status, 0);
+    // Check for failures
+    ereturn_if(ret_waitpid == -1, "waitpid failed");
+    ereturn_if(not WIFEXITED(status), "child did not terminate normally");
+    // Get exit code
+    int code = WEXITSTATUS(status);
+    // Send exit code of child through a fifo
+    std::string str_exit = db["exit"];
+    int fd_exit = open(str_exit.c_str(), O_WRONLY);
+    ereturn_if(fd_exit == -1, "Failed to open exit fifo");
+    int ret_write = write(fd_exit, &code, sizeof(code));
+    close(fd_exit);
+    ereturn_if(ret_write == -1, "Failed to write to exit FIFO");
+    return;
+  } // if
+
+  std::string str_stdout_fifo = db["stdout"];
+  std::string str_stderr_fifo = db["stderr"];
+
+  // Open FIFOs
+  int fd_stdout = open(str_stdout_fifo.c_str(), O_WRONLY);
+  int fd_stderr = open(str_stderr_fifo.c_str(), O_WRONLY);
+  eexit_if(fd_stdout == -1 or fd_stderr == -1, strerror(errno), 1);
+
+  // Redirect stdout and stderr
+  eexit_if(dup2(fd_stdout, STDOUT_FILENO) < 0, strerror(errno), 1);
+  eexit_if(dup2(fd_stderr, STDERR_FILENO) < 0, strerror(errno), 1);
+
+  // Close the original file descriptors
+  close(fd_stdout);
+  close(fd_stderr);
+
+  // Search for command in PATH and replace vec_argv[0] with the full path to the binary
+  auto opt_path_file_command = search_path(vec_argv[0]);
+  eexit_if(not opt_path_file_command, "'{}' not found in PATH"_fmt(vec_argv[0]), 1);
+  vec_argv[0] = opt_path_file_command->c_str();
 
   // Create arguments for execve
   const char **argv_custom = new const char* [vec_argv.size()+1];
@@ -60,45 +138,31 @@ void fork_execve(std::vector<std::string>& vec_argv)
   delete[] argv_custom;
 
   // Child should stop here
-  exit(0);
+  exit(1);
 } // fork_execve() }}}
 
-// search_path() {{{
-std::optional<fs::path> search_path(fs::path query)
+// validate() {{{
+decltype(auto) validate(std::string_view msg) noexcept
 {
-  const char* env_path = std::getenv("PATH");
-  ereturn_if( env_path == nullptr, "PATH environment variable not found", std::nullopt);
-
-  const char* env_dir_global_bin = std::getenv("FIM_DIR_GLOBAL_BIN");
-  ereturn_if( env_dir_global_bin == nullptr, "FIM_DIR_GLOBAL_BIN environment variable not found", std::nullopt);
-
-  const char* env_dir_static = std::getenv("FIM_DIR_STATIC");
-  ereturn_if( env_dir_static == nullptr, "FIM_DIR_STATIC environment variable not found", std::nullopt);
-
-  if ( query.is_absolute() )
+  try
   {
-    return_if_else(fs::exists(query), query, std::nullopt);
-  } // if
-
-  std::string path(env_path);
-  std::istringstream istream_path(path);
-  std::string str_getline;
-
-  while (std::getline(istream_path, str_getline, ':'))
+    auto db = ns_db::Db(msg);
+    return db["command"].is_array()
+      and db["stdout"].is_string()
+      and db["stderr"].is_string()
+      and db["exit"].is_string();
+  } // try
+  catch(...)
   {
-    fs::path path_parent = str_getline;
-    qcontinue_if(path_parent == fs::path(env_dir_static));
-    qcontinue_if(path_parent == fs::path(env_dir_global_bin));
-    fs::path path_full = path_parent / query;
-    ireturn_if(fs::exists(path_full), "Found '{}' in PATH"_fmt(path_full), path_full);
-  } // while
-
-  return std::nullopt;
-} // search_path() }}}
+    return false;
+  } // catch
+} // validate() }}}
 
 // main() {{{
 int main(int argc, char** argv)
 {
+  ns_log::set_level(ns_log::Level::DEBUG);
+
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
 
@@ -108,7 +172,7 @@ int main(int argc, char** argv)
   // Create ipc instance
   auto ipc = ns_ipc::Ipc::host(argv[1]);
 
-  std::vector<std::string> argv_custom;
+  std::vector<std::jthread> commands;
 
   // Recover messages
   while (not G_QUIT)
@@ -121,25 +185,9 @@ int main(int argc, char** argv)
 
     ibreak_if(*opt_msg == "IPC_QUIT", "IPC_QUIT");
 
-    if ( *opt_msg == "IPC_ARGV_START" )
-    {
-      argv_custom.clear();
-    } // if
-    else if ( *opt_msg == "IPC_ARGV_END" )
-    {
-      fork_execve(argv_custom);
-      argv_custom.clear();
-    } // if
-    else
-    {
-      // If is first argument, search in PATH
-      if ( argv_custom.empty() )
-      {
-        opt_msg = search_path(*opt_msg);
-      } // if
-      // Push to argument list
-      argv_custom.push_back(*opt_msg);
-    } // else
+    econtinue_if(not validate(*opt_msg), "Failed to validate message");
+
+    commands.emplace_back(std::jthread([=]{ fork_execve(*opt_msg); }));
   } // while
 
   return EXIT_SUCCESS;

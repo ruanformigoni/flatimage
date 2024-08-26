@@ -19,10 +19,10 @@ inline void push_back(R& r, Args&&... args)
   ( r.push_back(std::forward<Args>(args)), ... );
 } // push_back
 
-template<ns_concept::StringRepresentable T>
-inline std::vector<std::string> from_string(T&& t, char delimiter)
+template<ns_concept::Iterable R = std::vector<std::string>>
+inline R from_string(ns_concept::StringRepresentable auto&& t, char delimiter)
 {
-  std::vector<std::string> tokens;
+  R tokens;
   std::string token;
   std::istringstream stream_token(ns_string::to_string(t));
 

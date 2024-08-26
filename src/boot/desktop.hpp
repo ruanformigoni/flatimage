@@ -23,6 +23,7 @@ namespace
 
 namespace fs = std::filesystem;
 
+// struct Desktop {{{
 struct Desktop
 {
   std::string name;
@@ -40,7 +41,7 @@ struct Desktop
       std::for_each(db_categories.begin(), db_categories.end(), ns_functional::PushBack(vec_categories));
     }, ns_db::Mode::READ);
   } // Desktop
-}; // Desktop
+}; // Desktop }}}
 
 // integrate_desktop_entry() {{{
 decltype(auto) integrate_desktop_entry(Desktop const& desktop
@@ -186,6 +187,43 @@ void integrate_icons(Desktop const& desktop, fs::path const& path_dir_home)
   } // else
 } // integrate_icons() }}}
 
+// integrate_bash() {{{
+void integrate_bash(fs::path const& path_dir_home)
+{
+  fs::path path_file_bashrc = path_dir_home / ".bashrc";
+
+  // If a backup was already made, then the integration process was completed
+  fs::path path_file_bashrc_backup = path_dir_home / ".bashrc.flatimage.bak";
+  dreturn_if(fs::exists(path_file_bashrc_backup), "FlatImage backup exists in {}"_fmt(path_file_bashrc_backup));
+
+  // Location where flatimage stores desktop entries, icons, and mimetypes.
+  fs::path path_dir_data = path_dir_home / ".local" / "share";
+
+  // Check if XDG_DATA_HOME contain ~/.local/share
+  if (const char * str_xdg_data_home = ns_env::get("XDG_DATA_HOME"); str_xdg_data_home != nullptr)
+  {
+    dreturn_if(fs::path(str_xdg_data_home) == path_dir_data, "Found '{}' in XDG_DATA_HOME"_fmt(path_dir_data));
+  } // if
+
+  // Check if XDG_DATA_DIRS contain ~/.local/share
+  if (const char * str_xdg_data_dirs = ns_env::get("XDG_DATA_DIRS"); str_xdg_data_dirs != nullptr)
+  {
+    auto vec_path_dirs = ns_vector::from_string<std::vector<fs::path>>(str_xdg_data_dirs, ':');
+    auto search = std::ranges::find(vec_path_dirs, path_dir_data, [](fs::path const& e){ return fs::canonical(e); });
+    dreturn_if(search != std::ranges::end(vec_path_dirs), "Found '{}' in XDG_DATA_DIRS"_fmt(path_dir_data));
+  } // if
+
+  // Backup
+  fs::copy_file(path_file_bashrc, path_file_bashrc_backup);
+  ns_log::info()("Saved a backup of ~/.bashrc in '{}'", path_file_bashrc_backup);
+
+  // Integrate
+  std::ofstream of_bashrc{path_file_bashrc, std::ios::app};
+  of_bashrc << "export XDG_DATA_DIRS=\"$HOME/.local/share:$XDG_DATA_DIRS\"";
+  of_bashrc.close();
+  ns_log::info()("Modified XDG_DATA_DIRS in ~/.bashrc");
+} // integrate_bash }}}
+
 } // namespace
 
 ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
@@ -213,28 +251,47 @@ inline void integrate(fs::path const& path_file_json
   Desktop desktop = Desktop(path_file_json, path_dir_mount_ext2);
 
   // Get HOME directory
-  const char* HOME = ns_env::get("HOME");
-  ethrow_if(not HOME, "Environment variable HOME is not set");
+  const char* cstr_home = ns_env::get("HOME");
+  ethrow_if(not cstr_home, "Environment variable HOME is not set");
+
+  // Check if XDG_DATA_DIRS contains ~/.local/bin
+  const char* cstr_shell = ns_env::get("SHELL");
+  if ( cstr_shell )
+  {
+    std::string str_shell{cstr_shell};
+    if ( cstr_shell and str_shell.ends_with("bash") )
+    {
+      integrate_bash(cstr_home);
+    } // if
+    else
+    {
+      ns_log::error()("Unsupported shell '{}' for integration", str_shell);
+    } // else
+  }
+  else
+  {
+    ns_log::error()("SHELL environment variable is undefined");
+  } // else
 
   // Create desktop entry
   if(set_enable_items.contains(EnableItem::ENTRY))
   {
     ns_log::info()("Integrating desktop entry...");
-    integrate_desktop_entry(desktop, HOME, path_file_binary);
+    integrate_desktop_entry(desktop, cstr_home, path_file_binary);
   } // if
 
   // Create and update mime
   if(set_enable_items.contains(EnableItem::MIMETYPE))
   {
     ns_log::info()("Integrating mime database...");
-    integrate_mime_database(desktop, HOME, path_file_binary);
+    integrate_mime_database(desktop, cstr_home, path_file_binary);
   } // if
 
   // Create desktop icons
   if(set_enable_items.contains(EnableItem::ICON))
   {
     ns_log::info()("Integrating desktop icons...");
-    integrate_icons(desktop, HOME);
+    integrate_icons(desktop, cstr_home);
   } // if
 } // integrate() }}}
 

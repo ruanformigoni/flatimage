@@ -15,10 +15,59 @@ set -e
 # Max size (M) = actual occupied size + offset
 export FIM_IMG_SIZE_OFFSET="${FIM_IMG_SIZE_OFFSET:=50}"
 
-FIM_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+FIM_DIR_SCRIPT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+FIM_DIR="$(dirname "$(dirname -- "$FIM_DIR_SCRIPT")")"
+FIM_DIR_BUILD="$FIM_DIR"/build
 
 # shellcheck source=/dev/null
-source "${FIM_SCRIPT_DIR}/_common.sh"
+source "${FIM_DIR_SCRIPT}/_common.sh"
+
+function _fetch_static()
+{
+  # Fetch coreutils
+  wget "https://github.com/ruanformigoni/coreutils-static/releases/download/d7f4cd2/coreutils-x86_64.tar.xz"
+
+  # Extracts a bin/... folder
+  tar xf "coreutils-x86_64.tar.xz"
+
+  # Fetch Magick
+  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/c1c5775/magick-x86_64"
+  wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
+  chmod +x bin/magick
+
+  # Fetch lsof
+  wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/12c2552/lsof-x86_64"
+
+  # Fetch e2fsprogs
+  wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/fuse2fs-x86_64"
+  wget -O ./bin/mke2fs    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/mke2fs-x86_64"
+  wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/e2fsck-x86_64"
+  wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/resize2fs-x86_64"
+
+  # Fetch proot
+  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/d9211c8/proot-x86_64"
+
+  # Fetch bwrap
+  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/719925f/bwrap-x86_64"
+
+  # Fetch overlayfs
+  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/bc2814e/fuse-overlayfs-x86_64"
+
+  # Fetch dwarfs
+  wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
+  ln -sf dwarfs_aio bin/mkdwarfs
+  ln -sf dwarfs_aio bin/dwarfsextract
+  ln -sf dwarfs_aio bin/dwarfs
+
+  # Fetch bash
+  wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/b604d6c/bash-x86_64"
+
+  # Setup xdg scripts
+  cp "$FIM_DIR"/src/xdg/xdg-* ./bin
+
+  # Make binaries executable
+  chmod +x ./bin/*
+}
 
 # Creates a filesystem image
 # $1 = folder to create image from
@@ -53,7 +102,7 @@ function _create_elf()
   local img="$1"
   local out="$2"
 
-  cp bin/elf "$out"
+  cp bin/boot "$out"
   cat bin/{fuse2fs,e2fsck,bash} >> "$out"
   cat "$img" >> "$out"
 
@@ -116,7 +165,7 @@ function _create_subsystem_debootstrap()
 
   # Update sources
   # shellcheck disable=2002
-  cat "$FIM_SCRIPT_DIR/../../sources/apt.list" | sed "s|DISTRO|$dist|" | tee "/tmp/$dist/etc/apt/sources.list"
+  cat "$FIM_DIR_SCRIPT/../../sources/apt.list" | sed "s|DISTRO|$dist|" | tee "/tmp/$dist/etc/apt/sources.list"
 
   # Update packages
   pkglist=(
@@ -179,10 +228,10 @@ function _create_subsystem_debootstrap()
   cp -r ./bin/* "/tmp/$dist/fim/static"
 
   # Embed runner
-  cp "$FIM_SCRIPT_DIR/_boot.sh" "/tmp/$dist/fim/boot"
+  cp "$FIM_DIR_SCRIPT/_boot.sh" "/tmp/$dist/fim/boot"
 
   # Embed permissions
-  cp "$FIM_SCRIPT_DIR/_perms.sh" "/tmp/$dist/fim/perms"
+  cp "$FIM_DIR_SCRIPT/_perms.sh" "/tmp/$dist/fim/perms"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -272,10 +321,10 @@ function _create_subsystem_alpine()
   cp -r ./bin/* "/tmp/$dist/fim/static"
 
   # Embed runner
-  cp "$FIM_SCRIPT_DIR/_boot.sh" "/tmp/$dist/fim/boot"
+  cp "$FIM_DIR_SCRIPT/_boot.sh" "/tmp/$dist/fim/boot"
 
   # Embed permissions
-  cp "$FIM_SCRIPT_DIR/_perms.sh" "/tmp/$dist/fim/perms"
+  cp "$FIM_DIR_SCRIPT/_perms.sh" "/tmp/$dist/fim/perms"
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -307,10 +356,9 @@ function _create_subsystem_alpine()
 function _create_subsystem_arch()
 {
   mkdir -p dist
-  mkdir -p bin
 
-  # Update exec permissions
-  chmod -R +x ./bin/.
+  # Fetch static binaries, creates a bin folder
+  _fetch_static
 
   # Fetch bootstrap
   git clone "https://github.com/ruanformigoni/arch-bootstrap.git"
@@ -322,7 +370,7 @@ function _create_subsystem_arch()
   ./arch-bootstrap/arch-bootstrap.sh arch
 
   # Update mirrorlist
-  cp "$FIM_SCRIPT_DIR/../../sources/arch.list" arch/etc/pacman.d/mirrorlist
+  cp "$FIM_DIR_SCRIPT/../../sources/arch.list" arch/etc/pacman.d/mirrorlist
 
   # Enable multilib
   gawk -i inplace '/#\[multilib\]/,/#Include = (.*)/ { sub("#", ""); } 1' ./arch/etc/pacman.conf
@@ -464,12 +512,6 @@ function _create_subsystem_arch()
   chroot arch /bin/bash -c "locale-gen"
   echo "LANG=en_US.UTF-8" > ./arch/etc/locale.conf
 
-  # Install yay
-  wget -O yay.tar.gz https://github.com/Jguer/yay/releases/download/v11.3.2/yay_11.3.2_x86_64.tar.gz
-  tar -xf yay.tar.gz --strip-components=1 "yay_11.3.2_x86_64/yay"
-  rm yay.tar.gz
-  mv yay arch/usr/bin
-
   # Create share symlink
   ln -sf /usr/share ./arch/share
 
@@ -482,20 +524,33 @@ function _create_subsystem_arch()
   # Create fim dwarfs dir
   mkdir -p "./arch/fim/dwarfs"
 
-  # Create fim tools dir
-  mkdir -p "./arch/fim/static"
+  # # Compile and include elf
+  # (
+  #   cd "$FIM_DIR"
+  #   docker build . --build-arg FIM_DIST="arch" -t "flatimage:arch" -f docker/Dockerfile.elf
+  #   docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage:arch" cp /fim/dist/main /host/bin/elf
+  # )
+
+  # Compile and include runner
+  (
+    cd "$FIM_DIR"
+    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker run -it --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
+  )
+
+  # Compile and include portal
+  (
+    cd "$FIM_DIR"
+    docker build . -t "flatimage-portal:arch" -f docker/Dockerfile.portal
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal:arch" cp /fim/dist/portal_guest /fim/dist/portal_host /host/bin
+  )
 
   # Embed static binaries
-  cp -r ./bin/* "./arch/fim/static"
+  mkdir -p "./arch/fim/static"
+  cp -r "$FIM_DIR_BUILD"/bin/* "./arch/fim/static"
 
-  # Embed runner
-  cp "$FIM_SCRIPT_DIR/_boot.sh" "./arch/fim/boot"
-
-  # Embed permissions
-  cp "$FIM_SCRIPT_DIR/_perms.sh" "./arch/fim/perms"
-
-  # Embed AUR helper
-  cp "$FIM_SCRIPT_DIR/_aur.sh" "./arch/usr/bin/aur"
+  # TODO Embed permissions
+  cp "$FIM_DIR_SCRIPT/_perms.sh" "./arch/fim/perms"
 
   # Remove mount dirs that may have leftover files
   rm -rf arch/{tmp,proc,sys,dev,run}
@@ -513,8 +568,8 @@ function _create_subsystem_arch()
 
   # MIME
   mkdir -p ./arch/fim/desktop
-  cp ./mime/icon.svg      ./arch/fim/desktop
-  cp ./mime/flatimage.xml ./arch/fim/desktop
+  cp "$FIM_DIR"/mime/icon.svg      ./arch/fim/desktop
+  cp "$FIM_DIR"/mime/flatimage.xml ./arch/fim/desktop
 
   # Create image
   _create_image  "./arch" "arch.img"
@@ -522,22 +577,26 @@ function _create_subsystem_arch()
   # Create elf
   _create_elf "arch.img" "arch.flatimage"
 
-  # Create sha256sum
-  sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
-
-  tar -cf arch.tar arch.flatimage
-  xz -3zv arch.tar
-  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
-
-  mv "arch.tar.xz" dist/
+  # # Create sha256sum
+  # sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
+  #
+  # tar -cf arch.tar arch.flatimage
+  # xz -3zv arch.tar
+  # sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
+  #
+  # mv "arch.tar.xz" dist/
 }
 
 function main()
 {
+  rm -rf "$FIM_DIR_BUILD"
+  mkdir "$FIM_DIR_BUILD"
+  cd "$FIM_DIR_BUILD"
+
   case "$1" in
-    "debootstrap")   _create_subsystem_debootstrap "${@:2}" ;;
-    "archbootstrap") _create_subsystem_arch ;;
-    "alpinebootstrap") _create_subsystem_alpine ;;
+    "debian")   _create_subsystem_debootstrap "${@:2}" ;;
+    "arch") _create_subsystem_arch ;;
+    "alpine") _create_subsystem_alpine ;;
     *) _die "Invalid option $2" ;;
   esac
 }

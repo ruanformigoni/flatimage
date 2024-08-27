@@ -3,6 +3,11 @@
 // @file        : boot
 ///
 
+// Version
+#ifndef VERSION
+#define VERSION "unknown"
+#endif
+
 // Git commit hash
 #ifndef COMMIT
 #define COMMIT "unknown"
@@ -335,7 +340,7 @@ void relocate(char** argv)
 
   // Make the temporary directory name
   fs::path path_dir_temp = path_dir_base / "app" / "{}_{}"_fmt(COMMIT, TIMESTAMP);
-  ethrow_if(not fs::create_directories(path_dir_temp)
+  ethrow_if(not fs::exists(path_dir_temp) and not fs::create_directories(path_dir_temp)
     , "Failed to create directory {}"_fmt(path_dir_temp)
   );
 
@@ -454,6 +459,13 @@ void boot(int argc, char** argv)
 // main() {{{
 int main(int argc, char** argv)
 {
+  // Print version and exit
+  if ( argc > 1 && std::string{argv[1]} == "fim-version" )
+  {
+    println(VERSION);
+    return EXIT_SUCCESS;
+  } // if
+
   // Set logger level
   if ( ns_env::exists("FIM_DEBUG", "1") )
   {
@@ -463,10 +475,10 @@ int main(int argc, char** argv)
   // Get path to self
   auto expected_path_file_self = ns_filesystem::ns_path::file_self();
   ereturn_if(not expected_path_file_self, expected_path_file_self.error(), EXIT_FAILURE);
+  fs::path path_file_self = *expected_path_file_self;
 
   // If it is outside /tmp, move the binary
   // This function should not reach the return statement due to evecve
-  fs::path path_file_self = *expected_path_file_self;
   if (std::distance(path_file_self.begin(), path_file_self.end()) < 2 or *std::next(path_file_self.begin()) != "tmp")
   {
     ns_log::debug()("Relocate program from {}", path_file_self);

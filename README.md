@@ -1,10 +1,15 @@
+<p align="center">
+  <img src="./doc/icon.png" width=150x/>
+</p>
+
+
 # Table of contents
 
 - [Table of contents](#table-of-contents)
-- [What is FlatImage?](#what-is-flatimage)
-- [Comparison](#comparison)
-- [Get FlatImage](#get-flatimage)
-- [Usage](#usage)
+- [FlatImage](#flatimage)
+    - [What is it?](#what-is-it)
+    - [How to use](#how-to-use)
+    - [How it works](#how-it-works)
 - [Environment Variables](#environment-variables)
     - [What is it?](#what-is-it)
     - [How to use](#how-to-use)
@@ -20,7 +25,9 @@
 - [Motivations](#motivations)
 - [Related Projects](#related-projects)
 
-# What is FlatImage?
+# FlatImage
+
+## What is it?
 
 FlatImage, is a hybrid of [Flatpak](https://github.com/flatpak/flatpak)
 sandboxing with [AppImage](https://github.com/AppImage/AppImageKit) portability.
@@ -52,7 +59,7 @@ binary (or to handle how to package the application, dependencies and create a
 runner script). It also increases the quality of life of the package developer,
 simplifying the packaging process of applications.
 
-# Comparison
+**Comparison**:
 
 | Feature                                                                   | FlatImage     | Docker                     | AppImage |
 | :---                                                                      | :---:         | :---:                      | :---:    |
@@ -81,11 +88,13 @@ simplifying the packaging process of applications.
 > 1. Works without libfuse/libfuse3, still requires fusermount to be available.
 > 1. Experimental implementations, available [here](https://github.com/probonopd/go-appimage) and [here](https://github.com/AppImage/type2-runtime)
 
-# Get FlatImage
+## How to use
+
+**Get FlatImage**
 
 You can get the latest release [here](https://github.com/ruanformigoni/flatimage/releases), and extract the compressed archive with your file manager or with `tar -xf some-file.tar.xz`. To verify the image integrity, you can use the `sha256sum` file that accompanies each release, like so: `sha256sum -c some-file.flatimage.sha256sum`.
 
-# Usage
+**Execute The Container**
 
 You can enter the container simply by executing the downloaded image, e.g.,
 `./arch.flatimage`, which should give you a prompt like this `(flatimage@arch) →`.
@@ -94,6 +103,17 @@ To enter the container as root (to install software) use:
 ```
 ./arch.flatimage fim-root bash
 ```
+
+**Create a portable firefox installation**
+
+TODO
+
+## How it works
+
+A FlatImage contains a container where it executes its own commands apart
+from the host system. With that in mind, it is possible to create applications
+to run in different linux systems (distributions) without worrying about missing
+binaries or libraries.
 
 # Environment Variables
 
@@ -139,7 +159,7 @@ own mimetype.
 
 ## How to Use
 
-### Configure
+**Configure**
 
 You can use `./arch.flatimage fim-desktop` to get the following usage details:
 
@@ -189,7 +209,7 @@ menu and the file manager. Here's how to enable everything:
 $ ./arch.flatimage fim-desktop enable entry,mimetype,icon
 ```
 
-### Erase entries
+**Erase entries**
 
 To erase all desktop entries and icons created by flatimage, you can use the
 command:
@@ -198,7 +218,7 @@ command:
 $ find ~/.local/share -iname "*flatimage*" -exec rm -v "{}" \;
 ```
 
-### XDG-Open
+**xdg-open**
 
 Flatimage redirects `xdg-open` commands to the host machine
 

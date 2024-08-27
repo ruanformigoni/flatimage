@@ -56,13 +56,6 @@ int main(int argc, char** argv)
   auto path_file_fifo_exit = create_fifo("exit");
   qreturn_if(not path_file_fifo_stdout or not path_file_fifo_stderr or not path_file_fifo_exit, EXIT_FAILURE);
 
-  auto db = ns_db::Db("{}");
-  std::vector<std::string> vec_args;
-  db("command") = std::vector(argv+1, argv+argc);
-  db("stdout") = path_file_fifo_stdout->c_str();
-  db("stderr") = path_file_fifo_stderr->c_str();
-  db("exit") = path_file_fifo_exit->c_str();
-
   // Open fifos for reading
   auto thread_stdout = std::jthread([=]
   {
@@ -96,6 +89,11 @@ int main(int argc, char** argv)
   });
 
   // Send message
+  auto db = ns_db::Db("{}");
+  db("command") = std::vector(argv+1, argv+argc);
+  db("stdout") = path_file_fifo_stdout->c_str();
+  db("stderr") = path_file_fifo_stderr->c_str();
+  db("exit") = path_file_fifo_exit->c_str();
   ipc.send(db.as_string());
 
   // Read stdout and stderr while program is running

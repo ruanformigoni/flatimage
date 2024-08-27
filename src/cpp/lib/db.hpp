@@ -460,7 +460,9 @@ template<typename T>
 requires ns_concept::StringRepresentable<T> or ns_concept::Iterable<T>
 decltype(auto) Db::operator=(T&& t)
 {
-  return data() = t;
+  json_t& json = data();
+  json = t;
+  return json;
 } // operator=(ns_concept::StringRepresentable) }}}
 
 // from_file() {{{

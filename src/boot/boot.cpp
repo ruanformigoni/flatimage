@@ -465,6 +465,7 @@ int main(int argc, char** argv)
     println(VERSION);
     return EXIT_SUCCESS;
   } // if
+  ns_env::set("FIM_VERSION", VERSION, ns_env::Replace::Y);
 
   // Set logger level
   if ( ns_env::exists("FIM_DEBUG", "1") )

@@ -53,6 +53,9 @@ int main(int argc, char** argv)
 
   // Close the file
   file.close();
+
+  std::cout << "Patched file " << argv[1] << std::endl;
+
   return 0;
 }
 

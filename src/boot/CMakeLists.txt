@@ -21,6 +21,42 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are not allowed")
 endif()
 
+# Tools
+## XXD
+find_program(XXD_COMMAND xxd)
+if(NOT XXD_COMMAND)
+  message(FATAL_ERROR "xxd command not found")
+endif()
+## Git
+find_program(GIT_COMMAND git)
+if(NOT GIT_COMMAND)
+  message(FATAL_ERROR "git command not found")
+endif()
+
+# Definitions
+## Version
+execute_process(
+  COMMAND ${GIT_COMMAND} describe --tags --abbrev=0
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DVERSION=\"${VERSION}\"")
+message(STATUS "VERSION: ${VERSION}")
+## Timestamp
+string(TIMESTAMP TIMESTAMP "%Y%m%d%H%M%S")
+add_definitions("-DTIMESTAMP=\"${TIMESTAMP}\"")
+message(STATUS "TIMESTAMP: ${TIMESTAMP}")
+## Commit
+execute_process(
+  COMMAND ${GIT_COMMAND} rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+add_definitions("-DCOMMIT=\"${GIT_COMMIT_HASH}\"")
+message(STATUS "GIT COMMIT HASH: ${GIT_COMMIT_HASH}")
+
 # External libraries
 find_package(nlohmann_json REQUIRED)
 find_package(Boost REQUIRED)
@@ -28,7 +64,7 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
-# # Main executable
+# Main executable
 add_executable(boot boot.cpp)
 target_link_libraries(boot PRIVATE
   nlohmann_json::nlohmann_json
@@ -40,3 +76,15 @@ target_link_libraries(boot PRIVATE
 )
 target_compile_options(boot PRIVATE -g -rdynamic -static -Wall -Os -Wextra)
 target_link_options(boot PRIVATE -static)
+
+# Magic patcher
+add_executable(magic magic.cpp)
+target_compile_options(magic PRIVATE --std=c++23 -Wall -Wextra)
+target_link_options(magic PRIVATE -static)
+add_custom_target(run_magic ALL
+  DEPENDS boot magic
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/magic ${CMAKE_CURRENT_BINARY_DIR}/boot
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Running magic with boot as argument"
+  VERBATIM
+)

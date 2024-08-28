@@ -8,6 +8,7 @@
 
 #include <set>
 #include <string>
+#include <expected>
 
 #include "../cpp/std/enum.hpp"
 #include "../cpp/std/vector.hpp"

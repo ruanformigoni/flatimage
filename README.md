@@ -245,7 +245,7 @@ and return code is returned in the guest as if the command was executed in it
 ## How to Use
 
 Examples:
-* Check if the host contains the thunar file manager: `fim_portal command -v thunar`
+* Check if the host contains the thunar file manager: `fim_portal sh -c 'command -v thunar'`
 * Open thunar in the host machine: `fim_portal thunar`
 * Open thunar in the host machine (full path): `fim_portal /bin/thunar`
 * Open the desktop folder with thunar on the host machine: `fim_portal thunar ~/Desktop`

@@ -262,7 +262,7 @@ inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdou
   // Wait for child process to finish
   int status;
   waitpid(pid, &status, 0);
-  return status;
+  return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
 } // with_pipes_parent() }}}
 
 // with_pipes_child() {{{
@@ -340,7 +340,7 @@ inline std::optional<int> Subprocess::spawn()
     // Wait for child process to finish
     int status;
     waitpid(pid, &status, 0);
-    return status;
+    return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
   } // if
 
   // Create arguments for execve

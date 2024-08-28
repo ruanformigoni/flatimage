@@ -524,13 +524,6 @@ function _create_subsystem_arch()
   # Create fim dwarfs dir
   mkdir -p "./arch/fim/dwarfs"
 
-  # # Compile and include elf
-  # (
-  #   cd "$FIM_DIR"
-  #   docker build . --build-arg FIM_DIST="arch" -t "flatimage:arch" -f docker/Dockerfile.elf
-  #   docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage:arch" cp /fim/dist/main /host/bin/elf
-  # )
-
   # Compile and include runner
   (
     cd "$FIM_DIR"
@@ -542,7 +535,7 @@ function _create_subsystem_arch()
   (
     cd "$FIM_DIR"
     docker build . -t "flatimage-portal:arch" -f docker/Dockerfile.portal
-    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal:arch" cp /fim/dist/portal_guest /fim/dist/portal_host /host/bin
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal:arch" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
   )
 
   # Embed static binaries
@@ -577,14 +570,14 @@ function _create_subsystem_arch()
   # Create elf
   _create_elf "arch.img" "arch.flatimage"
 
-  # # Create sha256sum
-  # sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
-  #
-  # tar -cf arch.tar arch.flatimage
-  # xz -3zv arch.tar
-  # sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
-  #
-  # mv "arch.tar.xz" dist/
+  # Create sha256sum
+  sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
+
+  tar -cf arch.tar arch.flatimage
+  xz -3zv arch.tar
+  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
+
+  mv "arch.tar.xz" dist/
 }
 
 function main()

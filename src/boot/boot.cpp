@@ -33,7 +33,6 @@
 #include <filesystem>
 
 #include "../cpp/units.hpp"
-#include "../cpp/units.hpp"
 #include "../cpp/lib/env.hpp"
 #include "../cpp/std/variant.hpp"
 #include "../cpp/std/functional.hpp"
@@ -421,6 +420,27 @@ void relocate(char** argv)
   execve("{}/ext.boot"_fmt(path_dir_mounts).c_str(), argv, environ);
 } // relocate() }}}
 
+// portal() {{{
+std::jthread portal(fs::path const& path_file_reference)
+{
+  // This is read by the guest to send commands to the host
+  ns_env::set("FIM_PORTAL_FILE", path_file_reference, ns_env::Replace::Y);
+
+  // Path to flatimage binaries
+  const char* str_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
+  ethrow_if(not str_dir_temp_bin, "FIM_DIR_TEMP_BIN is undefined");
+
+  // Create a portal that uses the reference file to create an unique
+  // communication key
+  return std::jthread([=]
+  {
+    ns_subprocess::Subprocess(fs::path{str_dir_temp_bin} / "fim_portal_daemon")
+      .with_piped_outputs()
+      .with_args(path_file_reference)
+      .spawn();
+  });
+} // portal() }}}
+
 // boot() {{{
 void boot(int argc, char** argv)
 {
@@ -435,6 +455,9 @@ void boot(int argc, char** argv)
 
   // Copy tools
   ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_temp_bin); });
+
+  // Start portal
+  auto portal_thread = portal(config.path_dir_mounts / "ext.boot");
 
   // Refresh desktop integration
   ns_log::exception([&]{ ns_desktop::integrate(
@@ -479,11 +502,11 @@ int main(int argc, char** argv)
   fs::path path_file_self = *expected_path_file_self;
 
   // If it is outside /tmp, move the binary
-  // This function should not reach the return statement due to evecve
   if (std::distance(path_file_self.begin(), path_file_self.end()) < 2 or *std::next(path_file_self.begin()) != "tmp")
   {
     ns_log::debug()("Relocate program from {}", path_file_self);
     relocate(argv);
+    // This function should not reach the return statement due to evecve
     return EXIT_FAILURE;
   } // if
 

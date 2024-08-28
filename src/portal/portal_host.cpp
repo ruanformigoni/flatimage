@@ -15,6 +15,7 @@
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ipc.hpp"
 #include "../cpp/lib/db.hpp"
+#include "../cpp/lib/env.hpp"
 #include "../cpp/macro.hpp"
 
 namespace fs = std::filesystem;
@@ -161,7 +162,14 @@ decltype(auto) validate(std::string_view msg) noexcept
 // main() {{{
 int main(int argc, char** argv)
 {
-  ns_log::set_level(ns_log::Level::DEBUG);
+  if ( ns_env::exists("FIM_DEBUG", "1") )
+  {
+    ns_log::set_level(ns_log::Level::DEBUG);
+  } // if
+  else
+  {
+    ns_log::set_level(ns_log::Level::ERROR);
+  } // else
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);

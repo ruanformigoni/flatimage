@@ -22,12 +22,11 @@ WORKDIR /fim
 
 # Compile
 WORKDIR /fim/src/portal
-RUN g++ -o portal_guest portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
-RUN g++ -o portal_host portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
-RUN upx --brute --no-lzma portal_guest
-RUN upx --brute --no-lzma portal_host
+RUN g++ -o fim_portal portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
+RUN g++ -o fim_portal_daemon portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
+RUN upx --brute --no-lzma fim_portal
+RUN upx --brute --no-lzma fim_portal_daemon
 
 # Move to dist dir
 RUN mkdir -p /fim/dist
-RUN cp /fim/src/portal/portal_guest /fim/dist/portal_guest
-RUN cp /fim/src/portal/portal_host /fim/dist/portal_host
+RUN cp /fim/src/portal/fim_portal /fim/src/portal/fim_portal_daemon /fim/dist

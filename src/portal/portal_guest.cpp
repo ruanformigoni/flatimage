@@ -17,9 +17,14 @@
 namespace fs = std::filesystem;
 
 // create_fifo() {{{
-std::expected<fs::path, std::string> create_fifo(std::string_view prefix)
+std::expected<fs::path, std::string> create_fifo(fs::path path_dir_mount, std::string_view prefix)
 {
-  fs::path path_file_fifo{"/tmp/fim/fifo/{}_XXXXXX"_fmt(prefix)};
+  fs::path path_dir_fifo = path_dir_mount / "portal" / "fifo";
+  ereturn_if(not fs::exists(path_dir_fifo) and not fs::create_directories(path_dir_fifo)
+    , strerror(errno)
+    , std::unexpected(strerror(errno))
+  );
+  fs::path path_file_fifo = path_dir_fifo / "{}_XXXXXX"_fmt(prefix);
 
   // Generate a unique filename using mkstemp
   int fd_temp = mkstemp(const_cast<char*>(path_file_fifo.c_str()));
@@ -44,16 +49,20 @@ int main(int argc, char** argv)
   ereturn_if( argc < 2, "Incorrect number arguments", EXIT_FAILURE);
 
   // Get file path for IPC
-  const char* env = getenv("FIM_FILE_BINARY");
-  ereturn_if( env == nullptr, "Could not read FIM_FILE_BINARY", EXIT_FAILURE);
+  const char* str_file_portal = getenv("FIM_PORTAL_FILE");
+  ereturn_if( str_file_portal == nullptr, "Could not read FIM_PORTAL_FILE", EXIT_FAILURE);
 
   // Create ipc instance
-  auto ipc = ns_ipc::Ipc::guest(env);
+  auto ipc = ns_ipc::Ipc::guest(str_file_portal);
+
+  // Mount dir
+  const char* str_dir_mount = getenv("FIM_DIR_MOUNT");
+  ereturn_if( str_dir_mount == nullptr, "Could not read FIM_DIR_MOUNT", EXIT_FAILURE);
 
   // Create a fifo for stdout, for stderr, and for the exit code
-  auto path_file_fifo_stdout = create_fifo("stdout");
-  auto path_file_fifo_stderr = create_fifo("stderr");
-  auto path_file_fifo_exit = create_fifo("exit");
+  auto path_file_fifo_stdout = create_fifo(str_dir_mount, "stdout");
+  auto path_file_fifo_stderr = create_fifo(str_dir_mount, "stderr");
+  auto path_file_fifo_exit = create_fifo(str_dir_mount, "exit");
   qreturn_if(not path_file_fifo_stdout or not path_file_fifo_stderr or not path_file_fifo_exit, EXIT_FAILURE);
 
   // Open fifos for reading

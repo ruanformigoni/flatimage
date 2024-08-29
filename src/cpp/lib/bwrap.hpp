@@ -68,9 +68,6 @@ class Bwrap
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
 
-    // HOME directory of the host
-    fs::path m_path_dir_host_home;
-
     // Arguments and environment to bwrap
     std::vector<std::string> m_args;
 
@@ -162,10 +159,10 @@ inline Bwrap::Bwrap(
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
 {
-  std::string xdg_runtime_dir = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}" + ns_string::to_string(getuid()));
-  ns_log::info()("XDG_RUNTIME_DIR: {}", xdg_runtime_dir);
-  m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(xdg_runtime_dir));
-  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", xdg_runtime_dir);
+  m_path_dir_xdg_runtime = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}" + ns_string::to_string(getuid()));
+  ns_log::info()("XDG_RUNTIME_DIR: {}", m_path_dir_xdg_runtime);
+  m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(m_path_dir_xdg_runtime));
+  ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_path_dir_xdg_runtime);
 } // set_xdg_runtime_dir() }}}
 
 // bind_root() {{{
@@ -180,7 +177,8 @@ inline Bwrap& Bwrap::bind_home()
 {
   if ( m_is_root ) { return *this; }
   ns_log::debug()("PERM(HOME)");
-  // ns_vector::push_back(m_args, "--ro-bind-try", m_path_dir_host_home, m_path_dir_host_home);
+  const char* str_dir_home = ns_env::get_or_throw("HOME");
+  ns_vector::push_back(m_args, "--ro-bind-try", str_dir_home, str_dir_home);
   return *this;
 } // bind_home() }}}
 

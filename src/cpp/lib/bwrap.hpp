@@ -84,9 +84,6 @@ class Bwrap
     Bwrap(bool is_root
       , fs::path const& path_dir_root
       , fs::path const& path_dir_runtime_host
-      , fs::path const& path_dir_mount
-      , fs::path const& path_dir_runtime_mounts
-      , fs::path const& path_dir_host_home
       , fs::path const& path_file_bashrc
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
@@ -104,7 +101,6 @@ class Bwrap
     Bwrap& bind_usb();
     Bwrap& bind_network();
     Bwrap& bind_gpu();
-    Bwrap& bind_runtime_mounts(fs::path const& path_dir_mount, fs::path const& path_dir_runtime_mounts);
     void run(std::set<ns_permissions::Permission> const& permissions);
 }; // class: Bwrap
 
@@ -114,16 +110,12 @@ inline Bwrap::Bwrap(
       bool is_root
     , fs::path const& path_dir_root
     , fs::path const& path_dir_runtime_host
-    , fs::path const& path_dir_mount
-    , fs::path const& path_dir_runtime_mounts
-    , fs::path const& path_dir_host_home
     , fs::path const& path_file_bashrc
     , fs::path const& path_file_program
     , std::vector<std::string> const& program_args
     , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
   , m_program_args(program_args)
-  , m_path_dir_host_home(path_dir_host_home)
   , m_is_root(is_root)
 {
   // Push passed environment
@@ -165,10 +157,6 @@ inline Bwrap::Bwrap(
 
   // Make root filesystem accessible from the guest
   bind_root(path_dir_runtime_host);
-
-  // Make filesystems accessible from the guest
-  bind_runtime_mounts(path_dir_mount, path_dir_runtime_mounts);
-
 } // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{
@@ -192,7 +180,7 @@ inline Bwrap& Bwrap::bind_home()
 {
   if ( m_is_root ) { return *this; }
   ns_log::debug()("PERM(HOME)");
-  ns_vector::push_back(m_args, "--ro-bind-try", m_path_dir_host_home, m_path_dir_host_home);
+  // ns_vector::push_back(m_args, "--ro-bind-try", m_path_dir_host_home, m_path_dir_host_home);
   return *this;
 } // bind_home() }}}
 
@@ -351,13 +339,6 @@ inline Bwrap& Bwrap::bind_gpu()
   // TODO Nvidia symlinks
   return *this;
 } // bind_gpu() }}}
-
-// bind_runtime_mounts() {{{
-inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mount, fs::path const& path_dir_runtime_mounts)
-{
-  ns_vector::push_back(m_args, "--bind-try", path_dir_mount, path_dir_runtime_mounts);
-  return *this;
-} // bind_runtime_mounts() }}}
 
 // run() {{{
 inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)

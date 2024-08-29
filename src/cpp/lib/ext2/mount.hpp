@@ -85,6 +85,10 @@ class Mount
     fs::path m_path_dir_mount;
 
   public:
+    Mount(Mount const&) = delete;
+    Mount(Mount&&) = delete;
+    Mount& operator=(Mount const&) = delete;
+    Mount& operator=(Mount&&) = delete;
     Mount(fs::path const& path_file_image, fs::path path_dir_mount, Mode mode, uint64_t offset)
       : m_mode(mode)
       , m_path_dir_mount(path_dir_mount)

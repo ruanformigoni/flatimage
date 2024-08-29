@@ -41,6 +41,7 @@
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"
+#include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/bwrap.hpp"
 
 #include "parser.hpp"
@@ -54,19 +55,50 @@ extern char** environ;
 
 namespace fs = std::filesystem;
 
+// class Mounts {{{
+class Mounts
+{
+  private:
+    std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
+    std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
+
+  public:
+    Mounts(ns_setup::FlatimageSetup const& config)
+    {
+      // Mount filesystem as RO
+      m_ext2 = std::make_unique<ns_ext2::ns_mount::Mount>(config.path_file_binary
+        , config.path_dir_mount_ext
+        , ns_ext2::ns_mount::Mode::RO
+        , config.offset_ext2
+      );
+
+      // Mount overlayfs on top of read-only ext2 filesystem
+      m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(config.path_dir_mount_ext
+        , config.path_dir_host_overlayfs
+        , config.path_dir_mount_overlayfs
+      );
+    } // Mounts
+
+    Mounts(Mounts const&) = delete;
+    Mounts(Mounts&&) = delete;
+    Mounts& operator=(Mounts const&) = delete;
+    Mounts& operator=(Mounts&&) = delete;
+}; // class Mounts }}}
 
 // copy_tools() {{{
-void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_app_bin)
+void copy_tools(ns_setup::FlatimageSetup const& config)
 {
-  // Check if path_dir_tools exists and is directory
-  ethrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
+  // Mount filesystem as RO
+  [[maybe_unused]] auto mount = Mounts(config);
+  // Check if path_dir_static exists and is directory
+  ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory
-  ethrow_if(not fs::is_directory(path_dir_app_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_app_bin));
+  ethrow_if(not fs::is_directory(config.path_dir_app_bin), "'{}' does not exist or is not a directory"_fmt(config.path_dir_app_bin));
   // Copy programs
-  for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
+  for (auto&& path_file_src : fs::directory_iterator(config.path_dir_static)
     | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
   {
-    fs::path path_file_dst = path_dir_app_bin / path_file_src.path().filename();
+    fs::path path_file_dst = config.path_dir_app_bin / path_file_src.path().filename();
     if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
     {
       ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
@@ -86,11 +118,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
   {
     ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_ext
+      , config.path_dir_mount_overlayfs
       , config.path_dir_runtime_host
-      , config.path_dir_instance
-      , config.path_dir_runtime_mounts
-      , config.path_dir_host_home
       , config.path_file_bashrc
       , program
       , args
@@ -102,11 +131,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -116,11 +141,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Execute specified command as 'root'
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
@@ -141,11 +162,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
@@ -164,11 +181,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
@@ -187,11 +200,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
@@ -219,11 +228,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database
@@ -237,11 +242,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-      , config.path_dir_mount_ext
-      , ns_ext2::ns_mount::Mode::RW
-      , config.offset_ext2
-    );
+    [[maybe_unused]] auto mount = Mounts(config);
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash
@@ -455,15 +456,8 @@ void boot(int argc, char** argv)
   // Check filesystem
   ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
 
-  // Mount filesystem as RO
-  [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
-    , config.path_dir_mount_ext
-    , ns_ext2::ns_mount::Mode::RO
-    , config.offset_ext2
-  );
-
   // Copy tools
-  if (auto expected = ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_app_bin); }); not expected)
+  if (auto expected = ns_log::exception([&]{ copy_tools(config); }); not expected)
   {
     ns_log::error()("Error while copying files '{}'", expected.error());
   } // if

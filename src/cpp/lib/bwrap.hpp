@@ -84,7 +84,7 @@ class Bwrap
     Bwrap(bool is_root
       , fs::path const& path_dir_root
       , fs::path const& path_dir_runtime_host
-      , fs::path const& path_dir_mounts
+      , fs::path const& path_dir_mount
       , fs::path const& path_dir_runtime_mounts
       , fs::path const& path_dir_host_home
       , fs::path const& path_file_bashrc
@@ -104,7 +104,7 @@ class Bwrap
     Bwrap& bind_usb();
     Bwrap& bind_network();
     Bwrap& bind_gpu();
-    Bwrap& bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts);
+    Bwrap& bind_runtime_mounts(fs::path const& path_dir_mount, fs::path const& path_dir_runtime_mounts);
     void run(std::set<ns_permissions::Permission> const& permissions);
 }; // class: Bwrap
 
@@ -114,7 +114,7 @@ inline Bwrap::Bwrap(
       bool is_root
     , fs::path const& path_dir_root
     , fs::path const& path_dir_runtime_host
-    , fs::path const& path_dir_mounts
+    , fs::path const& path_dir_mount
     , fs::path const& path_dir_runtime_mounts
     , fs::path const& path_dir_host_home
     , fs::path const& path_file_bashrc
@@ -167,7 +167,7 @@ inline Bwrap::Bwrap(
   bind_root(path_dir_runtime_host);
 
   // Make filesystems accessible from the guest
-  bind_runtime_mounts(path_dir_mounts, path_dir_runtime_mounts);
+  bind_runtime_mounts(path_dir_mount, path_dir_runtime_mounts);
 
 } // Bwrap() }}}
 
@@ -353,9 +353,9 @@ inline Bwrap& Bwrap::bind_gpu()
 } // bind_gpu() }}}
 
 // bind_runtime_mounts() {{{
-inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mounts, fs::path const& path_dir_runtime_mounts)
+inline Bwrap& Bwrap::bind_runtime_mounts(fs::path const& path_dir_mount, fs::path const& path_dir_runtime_mounts)
 {
-  ns_vector::push_back(m_args, "--bind-try", path_dir_mounts, path_dir_runtime_mounts);
+  ns_vector::push_back(m_args, "--bind-try", path_dir_mount, path_dir_runtime_mounts);
   return *this;
 } // bind_runtime_mounts() }}}
 

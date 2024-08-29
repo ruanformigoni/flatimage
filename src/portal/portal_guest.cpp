@@ -56,8 +56,8 @@ int main(int argc, char** argv)
   auto ipc = ns_ipc::Ipc::guest(str_file_portal);
 
   // Mount dir
-  const char* str_dir_mount = getenv("FIM_DIR_MOUNT");
-  ereturn_if( str_dir_mount == nullptr, "Could not read FIM_DIR_MOUNT", EXIT_FAILURE);
+  const char* str_dir_mount = getenv("FIM_DIR_MOUNT_EXT");
+  ereturn_if( str_dir_mount == nullptr, "Could not read FIM_DIR_MOUNT_EXT", EXIT_FAILURE);
 
   // Create a fifo for stdout, for stderr, and for the exit code
   auto path_file_fifo_stdout = create_fifo(str_dir_mount, "stdout");

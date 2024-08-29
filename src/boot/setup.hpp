@@ -30,10 +30,11 @@ struct FlatimageSetup
 
   uint64_t offset_ext2;
   fs::path path_dir_global;
-  fs::path path_dir_mounts;
-  fs::path path_dir_mount_ext2;
-  fs::path path_dir_temp;
-  fs::path path_dir_temp_bin;
+  fs::path path_dir_instance;
+  fs::path path_dir_mount;
+  fs::path path_dir_mount_ext;
+  fs::path path_dir_app;
+  fs::path path_dir_app_bin;
   fs::path path_file_binary;
   fs::path path_dir_binary;
   fs::path path_file_bashrc;
@@ -41,8 +42,8 @@ struct FlatimageSetup
   fs::path path_dir_host_home;
   fs::path path_dir_host_config;
   fs::path path_dir_host_overlayfs;
-  fs::path path_dir_mounts_dwarfs;
-  fs::path path_dir_mounts_overlayfs;
+  fs::path path_dir_mount_dwarfs;
+  fs::path path_dir_mount_overlayfs;
   fs::path path_dir_runtime;
   fs::path path_dir_runtime_host;
   fs::path path_dir_runtime_mounts;
@@ -83,25 +84,26 @@ inline FlatimageSetup setup()
   // Paths in /tmp
   setup.offset_ext2               = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
   setup.path_dir_global           = ns_env::get_or_throw("FIM_DIR_GLOBAL");
-  setup.path_dir_mounts           = ns_env::get_or_throw("FIM_DIR_MOUNTS");
-  setup.path_dir_mount_ext2       = ns_env::get_or_throw("FIM_DIR_MOUNT");
-  setup.path_dir_temp             = ns_env::get_or_throw("FIM_DIR_TEMP");
-  setup.path_dir_temp_bin         = ns_env::get_or_throw("FIM_DIR_TEMP_BIN");
+  setup.path_dir_instance         = ns_env::get_or_throw("FIM_DIR_INSTANCE");
+  setup.path_dir_mount            = ns_env::get_or_throw("FIM_DIR_MOUNT");
+  setup.path_dir_mount_ext       = ns_env::get_or_throw("FIM_DIR_MOUNT_EXT");
+  setup.path_dir_app             = ns_env::get_or_throw("FIM_DIR_APP");
+  setup.path_dir_app_bin         = ns_env::get_or_throw("FIM_DIR_APP_BIN");
   setup.path_file_binary          = ns_env::get_or_throw("FIM_FILE_BINARY");
   setup.path_dir_binary           = setup.path_file_binary.parent_path();
-  setup.path_file_bashrc          = setup.path_dir_temp / ".bashrc";
-  setup.path_file_bash            = setup.path_dir_temp_bin / "bash";
-  setup.path_dir_mounts_dwarfs    = setup.path_dir_mounts / "dwarfs";
-  setup.path_dir_mounts_overlayfs = setup.path_dir_mounts / "overlayfs";
+  setup.path_file_bashrc          = setup.path_dir_app / ".bashrc";
+  setup.path_file_bash            = setup.path_dir_app_bin / "bash";
+  setup.path_dir_mount_dwarfs    = setup.path_dir_instance / "dwarfs";
+  setup.path_dir_mount_overlayfs = setup.path_dir_instance / "overlayfs";
 
   // Paths inside the ext2 filesystem
-  setup.path_dir_static              = setup.path_dir_mount_ext2 / "fim/static";
-  setup.path_file_config_boot        = setup.path_dir_mount_ext2 / "fim/config/boot.json";
-  setup.path_file_config_environment = setup.path_dir_mount_ext2 / "fim/config/environment.json";
-  setup.path_file_config_permissions = setup.path_dir_mount_ext2 / "fim/config/permissions.json";
-  setup.path_file_config_desktop     = setup.path_dir_mount_ext2 / "fim/config/desktop.json";
-  setup.path_dir_dwarfs              = setup.path_dir_mount_ext2 / "fim/dwarfs";
-  setup.path_dir_hooks               = setup.path_dir_mount_ext2 / "fim/hooks";
+  setup.path_dir_static              = setup.path_dir_mount_ext / "fim/static";
+  setup.path_file_config_boot        = setup.path_dir_mount_ext / "fim/config/boot.json";
+  setup.path_file_config_environment = setup.path_dir_mount_ext / "fim/config/environment.json";
+  setup.path_file_config_permissions = setup.path_dir_mount_ext / "fim/config/permissions.json";
+  setup.path_file_config_desktop     = setup.path_dir_mount_ext / "fim/config/desktop.json";
+  setup.path_dir_dwarfs              = setup.path_dir_mount_ext / "fim/dwarfs";
+  setup.path_dir_hooks               = setup.path_dir_mount_ext / "fim/hooks";
 
   // Paths on the host machine
   setup.path_dir_host_home = ns_env::get_or_throw("HOME");
@@ -118,7 +120,7 @@ inline FlatimageSetup setup()
   setup.path_dir_runtime_mounts_overlayfs = setup.path_dir_runtime_mounts / "overlayfs";
 
   // Environment
-  setup.env_path = setup.path_dir_temp_bin.string() + ":" + ns_env::get_or_throw("PATH");
+  setup.env_path = setup.path_dir_app_bin.string() + ":" + ns_env::get_or_throw("PATH");
   setup.env_path += ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";
   ns_env::set("PATH", setup.env_path, ns_env::Replace::Y);
 

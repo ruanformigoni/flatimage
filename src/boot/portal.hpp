@@ -32,12 +32,12 @@ struct Portal
     ns_env::set("FIM_PORTAL_FILE", path_file_reference, ns_env::Replace::Y);
 
     // Path to flatimage binaries
-    const char* str_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
-    ethrow_if(not str_dir_temp_bin, "FIM_DIR_TEMP_BIN is undefined");
+    const char* str_dir_app_bin = ns_env::get("FIM_DIR_APP_BIN");
+    ethrow_if(not str_dir_app_bin, "FIM_DIR_APP_BIN is undefined");
 
     // Create paths to daemon and portal
-    m_path_file_daemon = fs::path{str_dir_temp_bin} / "fim_portal_daemon";
-    m_path_file_guest = fs::path{str_dir_temp_bin} / "fim_portal";
+    m_path_file_daemon = fs::path{str_dir_app_bin} / "fim_portal_daemon";
+    m_path_file_guest = fs::path{str_dir_app_bin} / "fim_portal";
     ethrow_if(not fs::exists(m_path_file_daemon), "Daemon not found in {}"_fmt(m_path_file_daemon));
     ethrow_if(not fs::exists(m_path_file_guest), "Guest not found in {}"_fmt(m_path_file_guest));
 

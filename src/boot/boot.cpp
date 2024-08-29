@@ -56,17 +56,17 @@ namespace fs = std::filesystem;
 
 
 // copy_tools() {{{
-void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_temp_bin)
+void copy_tools(fs::path const& path_dir_tools, fs::path const& path_dir_app_bin)
 {
   // Check if path_dir_tools exists and is directory
   ethrow_if(not fs::is_directory(path_dir_tools), "'{}' does not exist or is not a directory"_fmt(path_dir_tools));
-  // Check if path_dir_temp_bin exists and is directory
-  ethrow_if(not fs::is_directory(path_dir_temp_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_temp_bin));
+  // Check if path_dir_app_bin exists and is directory
+  ethrow_if(not fs::is_directory(path_dir_app_bin), "'{}' does not exist or is not a directory"_fmt(path_dir_app_bin));
   // Copy programs
   for (auto&& path_file_src : fs::directory_iterator(path_dir_tools)
     | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
   {
-    fs::path path_file_dst = path_dir_temp_bin / path_file_src.path().filename();
+    fs::path path_file_dst = path_dir_app_bin / path_file_src.path().filename();
     if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
     {
       ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
@@ -86,9 +86,9 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
   {
     ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_ext2
+      , config.path_dir_mount_ext
       , config.path_dir_runtime_host
-      , config.path_dir_mounts
+      , config.path_dir_instance
       , config.path_dir_runtime_mounts
       , config.path_dir_host_home
       , config.path_file_bashrc
@@ -102,7 +102,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -112,7 +112,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Execute specified command as 'root'
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
@@ -133,7 +133,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
@@ -152,7 +152,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
@@ -171,7 +171,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
@@ -188,7 +188,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
         ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(config.path_dir_mount_ext2, *opt_path_file_src_json, config.path_file_config_desktop);
+        ns_desktop::setup(config.path_dir_mount_ext, *opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
     } // switch
@@ -199,7 +199,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database
@@ -213,7 +213,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash
@@ -332,47 +332,44 @@ void relocate(char** argv)
     , "Failed to create directory {}"_fmt(path_dir_base)
   );
 
-  // Create temp dir
-  fs::path path_dir_app = path_dir_base / "app";
+  // Make the temporary directory name
+  fs::path path_dir_app = path_dir_base / "app" / "{}_{}"_fmt(COMMIT, TIMESTAMP);
   ethrow_if(not fs::exists(path_dir_app) and not fs::create_directories(path_dir_app)
     , "Failed to create directory {}"_fmt(path_dir_app)
   );
 
-  // Make the temporary directory name
-  fs::path path_dir_temp = path_dir_base / "app" / "{}_{}"_fmt(COMMIT, TIMESTAMP);
-  ethrow_if(not fs::exists(path_dir_temp) and not fs::create_directories(path_dir_temp)
-    , "Failed to create directory {}"_fmt(path_dir_temp)
-  );
-
   // Create bin dir
-  fs::path path_dir_temp_bin = path_dir_temp / "bin";
-  ethrow_if(not fs::exists(path_dir_temp_bin) and not fs::create_directories(path_dir_temp_bin),
-    "Failed to create directory {}"_fmt(path_dir_temp_bin)
+  fs::path path_dir_app_bin = path_dir_app / "bin";
+  ethrow_if(not fs::exists(path_dir_app_bin) and not fs::create_directories(path_dir_app_bin),
+    "Failed to create directory {}"_fmt(path_dir_app_bin)
   );
 
   // Set variables
   ns_env::set("FIM_DIR_GLOBAL", path_dir_base.c_str(), ns_env::Replace::Y);
-  ns_env::set("FIM_DIR_TEMP_BIN", path_dir_temp_bin.c_str(), ns_env::Replace::Y);
+  ns_env::set("FIM_DIR_APP", path_dir_app.c_str(), ns_env::Replace::Y);
+  ns_env::set("FIM_DIR_APP_BIN", path_dir_app_bin.c_str(), ns_env::Replace::Y);
   ns_env::set("FIM_FILE_BINARY", path_absolute.c_str(), ns_env::Replace::Y);
-  ns_env::set("FIM_DIR_TEMP", path_dir_temp.c_str(), ns_env::Replace::Y);
 
   // Create instance directory
-  fs::path path_dir_instance_prefix = "{}/{}/"_fmt(path_dir_temp, "instance");
+  fs::path path_dir_instance_prefix = "{}/{}/"_fmt(path_dir_app, "instance");
 
   // Create temp dir to mount filesystems into
-  fs::path path_dir_mounts = create_temp_dir(path_dir_instance_prefix);
-  ns_env::set("FIM_DIR_MOUNTS", path_dir_mounts.c_str(), ns_env::Replace::Y);
+  fs::path path_dir_instance = create_temp_dir(path_dir_instance_prefix);
+  ns_env::set("FIM_DIR_INSTANCE", path_dir_instance.c_str(), ns_env::Replace::Y);
+
+  // Path to directory with mount points
+  fs::path path_dir_mount = path_dir_instance / "mount";
+  ns_env::set("FIM_DIR_MOUNT", path_dir_mount.c_str(), ns_env::Replace::Y);
+  ethrow_if(not fs::exists(path_dir_mount) and not fs::create_directory(path_dir_mount)
+    , "Could not mount directory '{}'"_fmt(path_dir_mount)
+  );
 
   // Path to ext mount dir is a directory called 'ext'
-  fs::path path_dir_mount = path_dir_mounts / "ext";
-  ns_env::set("FIM_DIR_MOUNT", path_dir_mount.c_str(), ns_env::Replace::Y);
-
-  /// Create mount directory
-  if ( not fs::exists(path_dir_mount) )
-  {
-    fs::create_directory(path_dir_mount);
-  } // if
-  ns_log::debug()("Mount directory: {}", path_dir_mount);
+  fs::path path_dir_mount_ext = path_dir_mount / "ext";
+  ns_env::set("FIM_DIR_MOUNT_EXT", path_dir_mount_ext.c_str(), ns_env::Replace::Y);
+  ethrow_if(not fs::exists(path_dir_mount_ext) and not fs::create_directory(path_dir_mount_ext)
+    , "Could not mount directory '{}'"_fmt(path_dir_mount_ext)
+  );
 
   // Starting offsets
   uint64_t offset_beg = 0;
@@ -397,10 +394,10 @@ void relocate(char** argv)
 
   // Write binaries
   auto start = std::chrono::high_resolution_clock::now();
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_mounts   / "ext.boot" , 0);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_temp_bin / "fuse2fs"  , offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_temp_bin / "e2fsck"   , offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_temp_bin / "bash"     , offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_instance / "ext.boot" , 0);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "fuse2fs"  , offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "e2fsck"   , offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "bash"     , offset_end);
   auto end = std::chrono::high_resolution_clock::now();
 
   // Filesystem starts here
@@ -418,7 +415,7 @@ void relocate(char** argv)
   } // if
 
   // Launch Runner
-  execve("{}/ext.boot"_fmt(path_dir_mounts).c_str(), argv, environ);
+  execve("{}/ext.boot"_fmt(path_dir_instance).c_str(), argv, environ);
 } // relocate() }}}
 
 // boot() {{{
@@ -431,29 +428,29 @@ void boot(int argc, char** argv)
   ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
 
   // Mount filesystem as RO
-  ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
+  ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
 
   // Copy tools
-  if (auto expected = ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_temp_bin); }); not expected)
+  if (auto expected = ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_app_bin); }); not expected)
   {
     ns_log::error()("Error while copying files '{}'", expected.error());
   } // if
 
   // Start portal
-  ns_portal::Portal portal = ns_portal::Portal(config.path_dir_mounts / "ext.boot");
+  ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");
 
   // Refresh desktop integration
   if (auto expected = ns_log::exception([&]{ ns_desktop::integrate(
       config.path_file_config_desktop
     , config.path_file_binary
-    , config.path_dir_mount_ext2);
+    , config.path_dir_mount_ext);
   }); not expected)
   {
     ns_log::error()("Error in desktop integration '{}'", expected.error());
   } // if
 
   // Un-mount
-  ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);
+  ns_ext2::ns_mount::unmount(config.path_dir_mount_ext);
 
   // Keep at least the provided slack amount of extra free space
   ns_ext2::ns_size::resize_free_space(config.path_file_binary
@@ -463,6 +460,9 @@ void boot(int argc, char** argv)
 
   // Parse flatimage command if exists
   parse_cmds(config, argc, argv);
+
+  // Un-mount filesystem if is mounted
+  (void) ns_ext2::ns_mount::unmount(config.path_dir_mount_ext);
 } // boot() }}}
 
 // main() {{{

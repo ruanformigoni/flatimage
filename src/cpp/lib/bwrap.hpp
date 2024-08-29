@@ -381,12 +381,15 @@ inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
   ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
 
   // Run Bwrap
-  ns_subprocess::Subprocess(*opt_path_file_bwrap)
+  auto ret = ns_subprocess::Subprocess(*opt_path_file_bwrap)
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)
     .with_env(m_program_env)
-    .spawn();
+    .spawn()
+    .wait();
+  if ( not ret ) { ns_log::error()("bwrap was signalled"); }
+  if ( *ret != 0 ) { ns_log::error()("bwrap exited with non-zero exit code '{}'", *ret); }
 } // run() }}}
 
 } // namespace ns_bwrap

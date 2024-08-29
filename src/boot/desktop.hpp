@@ -112,9 +112,12 @@ decltype(auto) integrate_mime_database(Desktop const& desktop
   {
     auto opt_mime_database = ns_subprocess::search_path("update-mime-database");
     ereturn_if(not opt_mime_database.has_value(), "Could not find 'update-mime-database'");
-    ns_subprocess::Subprocess(*opt_mime_database)
+    auto ret = ns_subprocess::Subprocess(*opt_mime_database)
       .with_args(path_dir_home / ".local/share/mime")
-      .spawn();
+      .spawn()
+      .wait();
+    if ( not ret ) { ns_log::error()("update-mime-database was signalled"); }
+    if ( *ret != 0 ) { ns_log::error()("update-mime-database exited with non-zero exit code '{}'", *ret); }
   } // if
 } // integrate_mime_database() }}}
 

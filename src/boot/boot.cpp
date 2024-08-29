@@ -45,6 +45,7 @@
 
 #include "parser.hpp"
 #include "desktop.hpp"
+#include "portal.hpp"
 #include "setup.hpp"
 #include "config/environment.hpp"
 
@@ -420,27 +421,6 @@ void relocate(char** argv)
   execve("{}/ext.boot"_fmt(path_dir_mounts).c_str(), argv, environ);
 } // relocate() }}}
 
-// portal() {{{
-std::jthread portal(fs::path const& path_file_reference)
-{
-  // This is read by the guest to send commands to the host
-  ns_env::set("FIM_PORTAL_FILE", path_file_reference, ns_env::Replace::Y);
-
-  // Path to flatimage binaries
-  const char* str_dir_temp_bin = ns_env::get("FIM_DIR_TEMP_BIN");
-  ethrow_if(not str_dir_temp_bin, "FIM_DIR_TEMP_BIN is undefined");
-
-  // Create a portal that uses the reference file to create an unique
-  // communication key
-  return std::jthread([=]
-  {
-    ns_subprocess::Subprocess(fs::path{str_dir_temp_bin} / "fim_portal_daemon")
-      .with_piped_outputs()
-      .with_args(path_file_reference)
-      .spawn();
-  });
-} // portal() }}}
-
 // boot() {{{
 void boot(int argc, char** argv)
 {
@@ -454,17 +434,23 @@ void boot(int argc, char** argv)
   ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext2, config.offset_ext2);
 
   // Copy tools
-  ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_temp_bin); });
+  if (auto expected = ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_temp_bin); }); not expected)
+  {
+    ns_log::error()("Error while copying files '{}'", expected.error());
+  } // if
 
   // Start portal
-  auto portal_thread = portal(config.path_dir_mounts / "ext.boot");
+  ns_portal::Portal portal = ns_portal::Portal(config.path_dir_mounts / "ext.boot");
 
   // Refresh desktop integration
-  ns_log::exception([&]{ ns_desktop::integrate(
+  if (auto expected = ns_log::exception([&]{ ns_desktop::integrate(
       config.path_file_config_desktop
     , config.path_file_binary
     , config.path_dir_mount_ext2);
-  });
+  }); not expected)
+  {
+    ns_log::error()("Error in desktop integration '{}'", expected.error());
+  } // if
 
   // Un-mount
   ns_ext2::ns_mount::unmount(config.path_dir_mount_ext2);

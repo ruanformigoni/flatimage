@@ -37,7 +37,8 @@ inline int check(fs::path const& path_file_image, uint64_t offset)
     .with_piped_outputs()
     .with_args("-y")
     .with_args(path_file_image.string() + "?offset=" + ns_string::to_string(offset))
-    .spawn();
+    .spawn()
+    .wait();
 
   if ( not ret.has_value() ) { ret = 1; }
 
@@ -62,7 +63,8 @@ inline int check_force(fs::path const& path_file_image, uint64_t offset)
     .with_piped_outputs()
     .with_args("-fy")
     .with_args(path_file_image.string() + "?offset=" + ns_string::to_string(offset))
-    .spawn();
+    .spawn()
+    .wait();
 
   if ( not ret.has_value() ) { ret = 1; }
 

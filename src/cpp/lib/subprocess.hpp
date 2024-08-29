@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include <sys/wait.h>
+#include <csignal>
 #include <vector>
 #include <string>
 #include <unistd.h>
@@ -61,47 +62,64 @@ class Subprocess
     std::string m_program;
     std::vector<std::string> m_args;
     std::vector<std::string> m_env;
+    std::optional<pid_t> m_opt_pid;
     std::optional<std::function<void(std::string)>> m_fstdout;
     std::optional<std::function<void(std::string)>> m_fstderr;
+    std::jthread m_thread_stdout;
+    std::jthread m_thread_stderr;
     bool m_with_piped_outputs;
 
-    std::optional<int> with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2]);
+    [[nodiscard]] Subprocess& with_pipes_parent(int pipestdout[2], int pipestderr[2]);
     void with_pipes_child(int pipestdout[2], int pipestderr[2]);
   public:
     template<ns_concept::StringRepresentable T>
-    Subprocess(T&& t);
+    [[nodiscard]] Subprocess(T&& t);
+    ~Subprocess();
 
-    Subprocess& env_clear();
+    Subprocess(Subprocess const&) = delete;
+    Subprocess& operator=(Subprocess const&) = delete;
+
+    Subprocess(Subprocess&&) = delete;
+    Subprocess& operator=(Subprocess&&) = delete;
+
+
+    [[nodiscard]] Subprocess& env_clear();
 
     template<ns_concept::StringRepresentable K, ns_concept::StringRepresentable V>
-    Subprocess& with_var(K&& k, V&& v);
+    [[nodiscard]] Subprocess& with_var(K&& k, V&& v);
 
     template<ns_concept::StringRepresentable K>
-    Subprocess& rm_var(K&& k);
+    [[nodiscard]] Subprocess& rm_var(K&& k);
 
-    template<typename... T>
-    requires (sizeof...(T) > 1)
-    Subprocess& with_args(T&&... t);
+    [[nodiscard]] std::optional<pid_t> get_pid();
 
-    template<typename T>
-    Subprocess& with_args(T&& t);
+    void kill(int signal);
 
-    template<typename... T>
-    requires (sizeof...(T) > 1)
-    Subprocess& with_env(T&&... t);
+    template<typename Arg, typename... Args>
+    requires (sizeof...(Args) > 0)
+    Subprocess& with_args(Arg&& arg, Args&&... args);
 
     template<typename T>
-    Subprocess& with_env(T&& t);
+    [[nodiscard]] Subprocess& with_args(T&& t);
 
-    Subprocess& with_piped_outputs();
+    template<typename Arg, typename... Args>
+    requires (sizeof...(Args) > 0)
+    Subprocess& with_env(Arg&& arg, Args&&... args);
+
+    template<typename T>
+    [[nodiscard]] Subprocess& with_env(T&& t);
+
+    [[nodiscard]] Subprocess& with_piped_outputs();
 
     template<typename F>
-    Subprocess& with_stdout_handle(F&& f);
+    [[nodiscard]] Subprocess& with_stdout_handle(F&& f);
 
     template<typename F>
-    Subprocess& with_stderr_handle(F&& f);
+    [[nodiscard]] Subprocess& with_stderr_handle(F&& f);
 
-    std::optional<int> spawn();
+    [[nodiscard]] Subprocess& spawn();
+
+    [[nodiscard]] std::optional<int> wait();
 }; // Subprocess }}}
 
 // Subprocess::Subprocess {{{
@@ -118,6 +136,12 @@ Subprocess::Subprocess(T&& t)
     m_env.push_back(*i);
   } // for
 } // Subprocess }}}
+
+// Subprocess::~Subprocess {{{
+Subprocess::~Subprocess()
+{
+  (void) this->wait();
+} // Subprocess::~Subprocess }}}
 
 // env_clear() {{{
 inline Subprocess& Subprocess::env_clear()
@@ -157,12 +181,27 @@ Subprocess& Subprocess::rm_var(K&& k)
   return *this;
 } // rm_var() }}}
 
-// with_args() {{{
-template<typename... T>
-requires (sizeof...(T) > 1)
-Subprocess& Subprocess::with_args(T&&... t)
+// get_pid() {{{
+inline std::optional<pid_t> Subprocess::get_pid()
 {
-  return ( with_args(std::forward<T>(t)), ... );
+  return this->m_opt_pid;
+} // get_pid() }}}
+
+// kill() {{{
+inline void Subprocess::kill(int signal)
+{
+  if ( auto opt_pid = this->get_pid(); opt_pid )
+  {
+    ::kill(*opt_pid, signal);
+  } // if
+} // kill() }}}
+
+// with_args() {{{
+template<typename Arg, typename... Args>
+requires (sizeof...(Args) > 0)
+Subprocess& Subprocess::with_args(Arg&& arg, Args&&... args)
+{
+  return with_args(std::forward<Arg>(arg)).with_args(std::forward<Args>(args)...);
 } // with_args }}}
 
 // with_args() {{{
@@ -190,11 +229,11 @@ Subprocess& Subprocess::with_args(T&& t)
 } // with_args }}}
 
 // with_env() {{{
-template<typename... T>
-requires (sizeof...(T) > 1)
-Subprocess& Subprocess::with_env(T&&... t)
+template<typename Arg, typename... Args>
+requires (sizeof...(Args) > 0)
+Subprocess& Subprocess::with_env(Arg&& arg, Args&&... args)
 {
-  return ( with_env(std::forward<T>(t)), ... );
+  return with_env(std::forward<Arg>(arg)).with_env(std::forward<Args>(args)...);
 } // with_env }}}
 
 // with_env() {{{
@@ -229,11 +268,11 @@ inline Subprocess& Subprocess::with_piped_outputs()
 } // with_piped_outputs() }}}
 
 // with_pipes_parent() {{{
-inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdout[2], int pipestderr[2])
+inline Subprocess& Subprocess::with_pipes_parent(int pipestdout[2], int pipestderr[2])
 {
   // Close write end
-  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), std::nullopt);
-  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), std::nullopt);
+  ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)), *this);
+  ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)), *this);
 
   auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
   {
@@ -256,13 +295,10 @@ inline std::optional<int> Subprocess::with_pipes_parent(pid_t pid, int pipestdou
     close(id_pipe);
   };
 
-  auto thread_stdout = std::jthread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
-  auto thread_stderr = std::jthread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
+  m_thread_stdout = std::jthread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
+  m_thread_stderr = std::jthread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
 
-  // Wait for child process to finish
-  int status;
-  waitpid(pid, &status, 0);
-  return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
+  return *this;
 } // with_pipes_parent() }}}
 
 // with_pipes_child() {{{
@@ -297,8 +333,21 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
   return *this;
 } // with_stderr_handle }}}
 
+// wait() {{{
+inline std::optional<int> Subprocess::wait()
+{
+  if ( m_opt_pid and *m_opt_pid > 0)
+  {
+    int status;
+    waitpid(*m_opt_pid, &status, 0);
+    return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
+  } // if
+
+  return std::nullopt;
+} // wait() }}}
+
 // spawn() {{{
-inline std::optional<int> Subprocess::spawn()
+inline Subprocess& Subprocess::spawn()
 {
   // Log
   ns_log::debug()("Spawn command: {}", m_args);
@@ -307,41 +356,42 @@ inline std::optional<int> Subprocess::spawn()
   int pipestderr[2];
 
   // Create pipe
-  ereturn_if(pipe(pipestdout), strerror(errno), std::nullopt);
-  ereturn_if(pipe(pipestderr), strerror(errno), std::nullopt);
+  ereturn_if(pipe(pipestdout), strerror(errno), *this);
+  ereturn_if(pipe(pipestderr), strerror(errno), *this);
 
   // Ignore on empty vec_argv
-  if ( m_args.empty() ) { return std::nullopt; }
+  if ( m_args.empty() )
+  {
+    ns_log::error()("No arguments to spawn subprocess");
+    return *this;
+  } // if
 
   // Create child
-  pid_t pid = fork();
+  m_opt_pid = fork();
 
   // Failed to fork
-  ereturn_if(pid == -1, "Failed to fork", std::nullopt);
+  ereturn_if(*m_opt_pid == -1, "Failed to fork", *this);
 
   // Setup pipe on child and parent
   // On parent, return exit code of child
-  if ( m_with_piped_outputs && pid > 0)
+  if ( *m_opt_pid > 0 )
   {
-    // This is blocking, waits for child to exit
-    return with_pipes_parent(pid, pipestdout, pipestderr);
+    if ( m_with_piped_outputs )
+    {
+      return with_pipes_parent(pipestdout, pipestderr);
+    } // if
+    else
+    {
+      return *this;
+    } // else
   } // if
 
   // On child, just setup the pipe
-  if ( m_with_piped_outputs && pid == 0)
+  if ( m_with_piped_outputs && *m_opt_pid == 0)
   {
     // this is non-blocking, setup pipes and perform execve afterwards
     with_pipes_child(pipestdout, pipestderr);
   } // else
-
-  // No custom pipe, wait for child to exit
-  if ( pid > 0 )
-  {
-    // Wait for child process to finish
-    int status;
-    waitpid(pid, &status, 0);
-    return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
-  } // if
 
   // Create arguments for execve
   auto argv_custom = std::make_unique<const char*[]>(m_args.size() + 1);

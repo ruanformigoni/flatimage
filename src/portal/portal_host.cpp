@@ -191,8 +191,6 @@ int main(int argc, char** argv)
 
     ns_log::info()("Recovered message: {}", *opt_msg);
 
-    ibreak_if(*opt_msg == "IPC_QUIT", "IPC_QUIT");
-
     econtinue_if(not validate(*opt_msg), "Failed to validate message");
 
     commands.emplace_back(std::jthread([=]{ fork_execve(*opt_msg); }));

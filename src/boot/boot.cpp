@@ -102,7 +102,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -112,7 +116,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Execute specified command as 'root'
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
@@ -133,7 +141,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
@@ -152,7 +164,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
@@ -171,7 +187,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
@@ -199,7 +219,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database
@@ -213,7 +237,11 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
     // Mount filesystem as RW
-    ns_ext2::ns_mount::mount_rw(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+    [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+      , config.path_dir_mount_ext
+      , ns_ext2::ns_mount::Mode::RW
+      , config.offset_ext2
+    );
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash
@@ -428,7 +456,11 @@ void boot(int argc, char** argv)
   ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
 
   // Mount filesystem as RO
-  ns_ext2::ns_mount::mount_ro(config.path_file_binary, config.path_dir_mount_ext, config.offset_ext2);
+  [[maybe_unused]] auto mount = ns_ext2::ns_mount::Mount(config.path_file_binary
+    , config.path_dir_mount_ext
+    , ns_ext2::ns_mount::Mode::RO
+    , config.offset_ext2
+  );
 
   // Copy tools
   if (auto expected = ns_log::exception([&]{ copy_tools(config.path_dir_static, config.path_dir_app_bin); }); not expected)
@@ -449,9 +481,6 @@ void boot(int argc, char** argv)
     ns_log::error()("Error in desktop integration '{}'", expected.error());
   } // if
 
-  // Un-mount
-  ns_ext2::ns_mount::unmount(config.path_dir_mount_ext);
-
   // Keep at least the provided slack amount of extra free space
   ns_ext2::ns_size::resize_free_space(config.path_file_binary
     , config.offset_ext2
@@ -460,9 +489,6 @@ void boot(int argc, char** argv)
 
   // Parse flatimage command if exists
   parse_cmds(config, argc, argv);
-
-  // Un-mount filesystem if is mounted
-  (void) ns_ext2::ns_mount::unmount(config.path_dir_mount_ext);
 } // boot() }}}
 
 // main() {{{

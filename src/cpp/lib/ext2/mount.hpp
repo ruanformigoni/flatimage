@@ -5,21 +5,18 @@
 
 #pragma once
 
+#include "../../std/enum.hpp"
 #include "../subprocess.hpp"
 
 namespace ns_ext2::ns_mount
 {
 
+ENUM(Mode, RO, RW);
+
 namespace
 {
 
 namespace fs = std::filesystem;
-
-enum class Mode
-{
-  RO,
-  RW,
-};
 
 // mount() {{{
 inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset)
@@ -53,20 +50,6 @@ inline int mount(Mode const& mode, fs::path const& path_file_image, fs::path con
   return *ret;
 } // mount() }}}
 
-}
-
-// mount_ro() {{{
-inline int mount_ro(fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset)
-{
-  return mount(Mode::RO, path_file_image, path_dir_mount, offset);
-} // mount_ro() }}}
-
-// mount_rw() {{{
-inline int mount_rw(fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset)
-{
-  return mount(Mode::RW, path_file_image, path_dir_mount, offset);
-} // mount_rw() }}}
-
 // unmount() {{{
 inline int unmount(fs::path const& path_dir_mount)
 {
@@ -91,6 +74,29 @@ inline int unmount(fs::path const& path_dir_mount)
 
   return *ret;
 } // unmount() }}}
+
+}
+
+// class Mount {{{
+class Mount
+{
+  private:
+    Mode m_mode;
+    fs::path m_path_dir_mount;
+
+  public:
+    Mount(fs::path const& path_file_image, fs::path path_dir_mount, Mode mode, uint64_t offset)
+      : m_mode(mode)
+      , m_path_dir_mount(path_dir_mount)
+    {
+      mount(m_mode, path_file_image, path_dir_mount, offset);
+    } // Mount
+
+    ~Mount()
+    {
+      unmount(m_path_dir_mount);
+    } // Mount
+}; // class: Mount }}}
 
 } // namespace ns_ext2::ns_mount
 

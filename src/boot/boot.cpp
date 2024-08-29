@@ -55,41 +55,53 @@ extern char** environ;
 
 namespace fs = std::filesystem;
 
-// class Mounts {{{
-class Mounts
+// class Filesystems {{{
+class Filesystems
 {
   private:
     std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
 
   public:
-    Mounts(ns_setup::FlatimageSetup const& config)
+    enum class FilesystemsLayer
+    { 
+      EXT_RO,
+      EXT_RW,
+      DWARFS,
+      OVERLAYFS
+    };
+
+    Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS)
     {
-      // Mount filesystem as RO
+      // Mount main filesystem
       m_ext2 = std::make_unique<ns_ext2::ns_mount::Mount>(config.path_file_binary
         , config.path_dir_mount_ext
-        , ns_ext2::ns_mount::Mode::RO
+        , (layer == FilesystemsLayer::EXT_RW)? ns_ext2::ns_mount::Mode::RW : ns_ext2::ns_mount::Mode::RO
         , config.offset_ext2
       );
+      qreturn_if(layer == FilesystemsLayer::EXT_RO or layer == FilesystemsLayer::EXT_RW);
 
-      // Mount overlayfs on top of read-only ext2 filesystem
+      // TODO Mount dwarfs layers
+      qreturn_if(layer == FilesystemsLayer::DWARFS);
+
+      // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
       m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(config.path_dir_mount_ext
         , config.path_dir_host_overlayfs
         , config.path_dir_mount_overlayfs
       );
-    } // Mounts
+    } // Filesystems
 
-    Mounts(Mounts const&) = delete;
-    Mounts(Mounts&&) = delete;
-    Mounts& operator=(Mounts const&) = delete;
-    Mounts& operator=(Mounts&&) = delete;
-}; // class Mounts }}}
+    Filesystems(Filesystems const&) = delete;
+    Filesystems(Filesystems&&) = delete;
+    Filesystems& operator=(Filesystems const&) = delete;
+    Filesystems& operator=(Filesystems&&) = delete;
+}; // class Filesystems }}}
 
 // copy_tools() {{{
 void copy_tools(ns_setup::FlatimageSetup const& config)
 {
   // Mount filesystem as RO
-  [[maybe_unused]] auto mount = Mounts(config);
+  [[maybe_unused]] auto mount = Filesystems(config);
   // Check if path_dir_static exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory
@@ -130,8 +142,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    // Mount filesystem as RO
+    [[maybe_unused]] auto mount = Filesystems(config);
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -140,8 +152,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    // Mount filesystem as RO
+    [[maybe_unused]] auto mount = Filesystems(config);
     // Execute specified command as 'root'
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
@@ -162,7 +174,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
@@ -181,7 +193,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
@@ -200,7 +212,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
@@ -228,7 +240,7 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     // Update log level
     ns_log::set_level(ns_log::Level::INFO);
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database
@@ -241,8 +253,8 @@ int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Mounts(config);
+    // Mount filesystem as RO
+    [[maybe_unused]] auto mount = Filesystems(config);
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash

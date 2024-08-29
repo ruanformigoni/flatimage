@@ -518,12 +518,6 @@ function _create_subsystem_arch()
   # Create fim dir
   mkdir -p "./arch/fim"
 
-  # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/symlinks ./arch/fim/mount
-
-  # Create fim dwarfs dir
-  mkdir -p "./arch/fim/dwarfs"
-
   # Compile and include runner
   (
     cd "$FIM_DIR"
@@ -541,9 +535,6 @@ function _create_subsystem_arch()
   # Embed static binaries
   mkdir -p "./arch/fim/static"
   cp -r "$FIM_DIR_BUILD"/bin/* "./arch/fim/static"
-
-  # TODO Embed permissions
-  cp "$FIM_DIR_SCRIPT/_perms.sh" "./arch/fim/perms"
 
   # Remove mount dirs that may have leftover files
   rm -rf arch/{tmp,proc,sys,dev,run}

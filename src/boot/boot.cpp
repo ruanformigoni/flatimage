@@ -18,12 +18,6 @@
 #define TIMESTAMP "unknown"
 #endif
 
-#if defined(__LP64__)
-#define ElfW(type) Elf64_ ## type
-#else
-#define ElfW(type) Elf32_ ## type
-#endif
-
 #include <elf.h>
 #include <cstdlib>
 #include <cstring>
@@ -35,6 +29,7 @@
 #include "../cpp/units.hpp"
 #include "../cpp/lib/env.hpp"
 #include "../cpp/lib/log.hpp"
+#include "../cpp/lib/elf.hpp"
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/size.hpp"
 
@@ -80,68 +75,6 @@ std::string create_temp_dir(std::string const& prefix)
   ethrow_if(temp_dir_cstr == NULL, "Failed to create temporary dir {}"_fmt(temp_dir_template_cstr.get()));
   return temp_dir_cstr;
 } // function: create_temp_dir }}}
-
-// write_from_offset() {{{
-void write_from_offset(std::string const& f_in_str, std::string const& f_out_str, std::pair<uint64_t,uint64_t> offset)
-{
-  std::ifstream f_in{f_in_str, std::ios::binary};
-  std::ofstream f_out{f_out_str, std::ios::binary};
-
-  ereturn_if(not f_in.good() , "Failed to open in file {}\n"_fmt(f_in_str));
-  ereturn_if(not f_out.good(), "Failed to open out file {}\n"_fmt(f_out_str));
-
-  // Calculate the size of the data to read
-  uint64_t size = offset.second - offset.first;
-
-  // Seek to the start offset in the input file
-  f_in.seekg(offset.first, std::ios::beg);
-
-  // Read in chunks
-  const size_t size_buf = 4096;
-  char buffer[size_buf];
-
-  while( size > 0 )
-  {
-    std::streamsize read_size = static_cast<std::streamsize>(std::min(static_cast<uint64_t>(size_buf), size));
-
-    f_in.read(buffer, read_size);
-    f_out.write(buffer, read_size);
-
-    size -= read_size;
-  } // while
-} // function: write_from_offset
-
-// }}}
-
-// read_elf_header() {{{
-//  Read the current binary's data. The first part of the file is the
-//  executable, and the rest is the rw filesystem, therefore, we need to
-//  discover where the filesystem stfim (offset) to mount it.
-
-uint64_t read_elf_header(const char* elfFile, uint64_t offset = 0) {
-  // Either Elf64_Ehdr or Elf32_Ehdr depending on architecture.
-  ElfW(Ehdr) header;
-
-  FILE* file = fopen(elfFile, "rb");
-  fseek(file, offset, SEEK_SET);
-  if (file)
-  {
-    // read the header
-    fread(&header, sizeof(header), 1, file);
-    // check so its really an elf file
-    if (std::memcmp(header.e_ident, ELFMAG, SELFMAG) == 0) {
-      fclose(file);
-      offset = header.e_shoff + (header.e_ehsize * header.e_shnum);
-      return offset;
-    }
-    // finally close the file
-    fclose(file);
-  } // if
-
-  ns_log::error()("Could not read elf header from {}", elfFile);
-
-  exit(1);
-} // }}}
 
 // relocate() {{{
 void relocate(char** argv)
@@ -201,18 +134,18 @@ void relocate(char** argv)
 
   // Starting offsets
   uint64_t offset_beg = 0;
-  uint64_t offset_end = read_elf_header(path_absolute.c_str());
+  uint64_t offset_end = ns_elf::skip_elf_header(path_absolute.c_str());
 
   // Write by binary offset
   auto f_write_bin = [&](fs::path path_file, uint64_t offset_end)
   {
     // Update offsets
     offset_beg = offset_end;
-    offset_end = read_elf_header(path_absolute.c_str(), offset_beg) + offset_beg;
+    offset_end = ns_elf::skip_elf_header(path_absolute.c_str(), offset_beg) + offset_beg;
     // Write binary only if it doesnt already exist
     if ( ! fs::exists(path_file) )
     {
-      write_from_offset(path_absolute.string(), path_file, {offset_beg, offset_end});
+      ns_elf::copy_binary(path_absolute.string(), path_file, {offset_beg, offset_end});
     }
     // Set permissions
     fs::permissions(path_file.c_str(), fs::perms::owner_all | fs::perms::group_all);

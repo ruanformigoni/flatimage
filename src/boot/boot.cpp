@@ -27,6 +27,7 @@
 #include <filesystem>
 
 #include "../cpp/units.hpp"
+#include "../cpp/lib/linux.hpp"
 #include "../cpp/lib/env.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/elf.hpp"
@@ -63,18 +64,6 @@ void copy_tools(ns_setup::FlatimageSetup const& config)
     } // if
   } // for
 } // copy_tools() }}}
-
-// create_temp_dir() {{{
-std::string create_temp_dir(std::string const& prefix)
-{
-  fs::create_directories(prefix);
-  std::string temp_dir_template = prefix + "XXXXXX";
-  auto temp_dir_template_cstr = std::unique_ptr<char[]>(new char[temp_dir_template.size() + 1]);
-  std::strcpy(temp_dir_template_cstr.get(), temp_dir_template.c_str());
-  char* temp_dir_cstr = mkdtemp(temp_dir_template_cstr.get());
-  ethrow_if(temp_dir_cstr == NULL, "Failed to create temporary dir {}"_fmt(temp_dir_template_cstr.get()));
-  return temp_dir_cstr;
-} // function: create_temp_dir }}}
 
 // relocate() {{{
 void relocate(char** argv)
@@ -115,7 +104,7 @@ void relocate(char** argv)
   fs::path path_dir_instance_prefix = "{}/{}/"_fmt(path_dir_app, "instance");
 
   // Create temp dir to mount filesystems into
-  fs::path path_dir_instance = create_temp_dir(path_dir_instance_prefix);
+  fs::path path_dir_instance = ns_linux::mkdtemp(path_dir_instance_prefix);
   ns_env::set("FIM_DIR_INSTANCE", path_dir_instance.c_str(), ns_env::Replace::Y);
 
   // Path to directory with mount points

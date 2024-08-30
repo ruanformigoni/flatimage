@@ -34,74 +34,25 @@
 
 #include "../cpp/units.hpp"
 #include "../cpp/lib/env.hpp"
-#include "../cpp/std/variant.hpp"
-#include "../cpp/std/functional.hpp"
-#include "../cpp/std/exception.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ext2/check.hpp"
-#include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/ext2/size.hpp"
-#include "../cpp/lib/overlayfs.hpp"
-#include "../cpp/lib/bwrap.hpp"
 
 #include "parser.hpp"
 #include "desktop.hpp"
 #include "portal.hpp"
 #include "setup.hpp"
-#include "config/environment.hpp"
 
 // Unix environment variables
 extern char** environ;
 
 namespace fs = std::filesystem;
 
-// class Filesystems {{{
-class Filesystems
-{
-  private:
-    std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
-    std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
-
-  public:
-    enum class FilesystemsLayer
-    { 
-      EXT_RO,
-      EXT_RW,
-      DWARFS,
-      OVERLAYFS
-    };
-
-    Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS)
-    {
-      // Mount main filesystem
-      m_ext2 = std::make_unique<ns_ext2::ns_mount::Mount>(config.path_file_binary
-        , config.path_dir_mount_ext
-        , (layer == FilesystemsLayer::EXT_RW)? ns_ext2::ns_mount::Mode::RW : ns_ext2::ns_mount::Mode::RO
-        , config.offset_ext2
-      );
-      qreturn_if(layer == FilesystemsLayer::EXT_RO or layer == FilesystemsLayer::EXT_RW);
-
-      // TODO Mount dwarfs layers
-      qreturn_if(layer == FilesystemsLayer::DWARFS);
-
-      // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
-      m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(config.path_dir_mount_ext
-        , config.path_dir_host_overlayfs
-        , config.path_dir_mount_overlayfs
-      );
-    } // Filesystems
-
-    Filesystems(Filesystems const&) = delete;
-    Filesystems(Filesystems&&) = delete;
-    Filesystems& operator=(Filesystems const&) = delete;
-    Filesystems& operator=(Filesystems&&) = delete;
-}; // class Filesystems }}}
-
 // copy_tools() {{{
 void copy_tools(ns_setup::FlatimageSetup const& config)
 {
   // Mount filesystem as RO
-  [[maybe_unused]] auto mount = Filesystems(config);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
   // Check if path_dir_static exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory
@@ -117,170 +68,6 @@ void copy_tools(ns_setup::FlatimageSetup const& config)
     } // if
   } // for
 } // copy_tools() }}}
-
-// parse_cmds() {{{
-int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
-{
-  // Parse args
-  auto variant_cmd = ns_parser::parse(argc, argv);
-
-  auto f_bwrap = [&](std::string const& program
-    , std::vector<std::string> const& args
-    , std::vector<std::string> const& environment
-    , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
-  {
-    ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_overlayfs
-      , config.path_dir_runtime_host
-      , config.path_file_bashrc
-      , program
-      , args
-      , environment)
-      .run(permissions);
-  };
-
-  // Execute a command as a regular user
-  if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
-  {
-    // Mount filesystem as RO
-    [[maybe_unused]] auto mount = Filesystems(config);
-    // Execute specified command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment, permissions);
-  } // if
-  // Execute a command as root
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
-  {
-    // Mount filesystem as RO
-    [[maybe_unused]] auto mount = Filesystems(config);
-    // Execute specified command as 'root'
-    config.is_root = true;
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment, permissions);
-  } // if
-  // Resize the image to contain at least the provided free space
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
-  {
-    // Update log level
-    ns_log::set_level(ns_log::Level::INFO);
-    // Resize to fit the provided amount of free space
-    ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
-  } // if
-  // Configure permissions
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
-  {
-    // Update log level
-    ns_log::set_level(ns_log::Level::INFO);
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_permissions.parent_path());
-    // Determine open mode
-    switch( cmd->op )
-    {
-      case ns_parser::CmdPermsOp::ADD: ns_bwrap::ns_permissions::add(config.path_file_config_permissions, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::SET: ns_bwrap::ns_permissions::set(config.path_file_config_permissions, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::DEL: ns_bwrap::ns_permissions::del(config.path_file_config_permissions, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::LIST:
-        std::ranges::for_each(ns_bwrap::ns_permissions::get(config.path_file_config_permissions), ns_functional::PrintLn{}); break;
-    } // switch
-  } // if
-  // Configure environment
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*variant_cmd) )
-  {
-    // Update log level
-    ns_log::set_level(ns_log::Level::INFO);
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_environment.parent_path());
-    // Determine open mode
-    switch( cmd->op )
-    {
-      case ns_parser::CmdEnvOp::ADD: ns_config::ns_environment::add(config.path_file_config_environment, cmd->environment); break;
-      case ns_parser::CmdEnvOp::SET: ns_config::ns_environment::set(config.path_file_config_environment, cmd->environment); break;
-      case ns_parser::CmdEnvOp::DEL: ns_config::ns_environment::del(config.path_file_config_environment, cmd->environment); break;
-      case ns_parser::CmdEnvOp::LIST:
-        std::ranges::for_each(ns_config::ns_environment::get(config.path_file_config_environment), ns_functional::PrintLn{}); break;
-    } // switch
-  } // if
-  // Configure desktop integration
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*variant_cmd) )
-  {
-    // Update log level
-    ns_log::set_level(ns_log::Level::INFO);
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_desktop.parent_path());
-    // Determine open mode
-    switch( cmd->op )
-    {
-      case ns_parser::CmdDesktopOp::ENABLE:
-      {
-        auto opt_should_enable = ns_variant::get_if_holds_alternative<std::set<ns_desktop::EnableItem>>(cmd->arg);
-        ethrow_if(not opt_should_enable.has_value(), "Could not get items to configure desktop integration");
-        ns_desktop::enable(config.path_file_config_desktop, *opt_should_enable);
-      }
-      break;
-      case ns_parser::CmdDesktopOp::SETUP:
-      {
-        auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
-        ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(config.path_dir_mount_ext, *opt_path_file_src_json, config.path_file_config_desktop);
-      } // case
-      break;
-    } // switch
-  } // if
-  // Update default command on database
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )
-  {
-    // Update log level
-    ns_log::set_level(ns_log::Level::INFO);
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = Filesystems(config, Filesystems::FilesystemsLayer::EXT_RW);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_desktop.parent_path());
-    // Update database
-    ns_db::from_file(config.path_file_config_boot, [&](auto& db)
-    {
-      db("program") = cmd->program;
-      db("args") = cmd->args;
-    }, ns_db::Mode::UPDATE_OR_CREATE);
-  } // else if
-  // Update default command on database
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
-  {
-    // Mount filesystem as RO
-    [[maybe_unused]] auto mount = Filesystems(config);
-    // Build exec command
-    ns_parser::CmdExec cmd_exec;
-    // Fetch default command from database or fallback to bash
-    ns_exception::or_else([&]
-    {
-      ns_db::from_file(config.path_file_config_boot, [&](auto& db)
-      {
-        cmd_exec.program = db["program"];
-        auto& args = db["args"];
-        std::for_each(args.cbegin(), args.cend(), [&](auto&& e){ cmd_exec.args.push_back(e); });
-      }, ns_db::Mode::UPDATE_OR_CREATE);
-    }, [&]
-    {
-      cmd_exec.program = "bash";
-      cmd_exec.args = {};
-    });
-    // Append argv args
-    if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
-    // Execute default command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_permissions); });
-    f_bwrap(cmd_exec.program, cmd_exec.args, environment, permissions);
-  } // else if
-
-  return EXIT_SUCCESS;
-} // parse_cmds() }}}
 
 // create_temp_dir() {{{
 std::string create_temp_dir(std::string const& prefix)
@@ -494,7 +281,7 @@ void boot(int argc, char** argv)
   );
 
   // Parse flatimage command if exists
-  parse_cmds(config, argc, argv);
+  ns_parser::parse_cmds(config, argc, argv);
 } // boot() }}}
 
 // main() {{{

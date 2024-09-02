@@ -81,7 +81,7 @@ function _create_image()
   # Set vars & max size
   local dir="$1"
   local out="$(basename "$2")"
-  local slack="10" # 10M
+  local slack="50" # 50M
   local size="$(du -s "$dir" | awk '{printf "%d\n", $1/1000}')"
   size="$((size+slack))M"
 
@@ -565,7 +565,7 @@ function _create_subsystem_arch()
   rm -rf ./arch
 
   # Change filesystem name to index:sha
-  mv arch.dwarfs ./root/fim/layers/"0:$(sha256sum ./arch.dwarfs | awk '{print $1}')"
+  mv arch.dwarfs ./root/fim/layers/"0-$(sha256sum ./arch.dwarfs | awk '{print $1}')"
 
   # Create image
   _create_image  "./root" "arch.img"

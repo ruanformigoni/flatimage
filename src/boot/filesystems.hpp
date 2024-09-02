@@ -97,12 +97,27 @@ inline void Filesystems::mount_ext2(fs::path const& path_file_binary
 inline void Filesystems::mount_dwarfs(fs::path const& path_dir_layers
   , fs::path const& path_dir_mount)
 {
-  for (auto&& entry : fs::directory_iterator(path_dir_layers)
-    | std::views::filter([](auto&& e){ return fs::is_regular_file(e); })
-  )
+  // TODO Improve this when std::ranges::to becomes available in alpine
+
+  // Get directories
+  std::vector<fs::path> vec_path_dir_layer;
+  for( auto&& entry :  fs::directory_iterator(path_dir_layers))
+  {
+    vec_path_dir_layer.push_back(entry.path());
+  } // for
+
+  // Filter non-directory files
+  auto f_is_regular_file = std::views::filter([](auto&& e){ return fs::is_regular_file(e); });
+  std::erase_if(vec_path_dir_layer, f_is_regular_file);
+
+  // Sort paths
+  std::ranges::sort(vec_path_dir_layer);
+
+  // Mount one at the time
+  for (auto&& entry : vec_path_dir_layer)
   {
     // Create sub-directory in path_dir_mount with the same name as the filesystem
-    fs::path path_file_filesystem = entry.path();
+    fs::path path_file_filesystem = entry;
     fs::path path_dir_submount = path_dir_mount / path_file_filesystem.filename();
     ns_log::info()("Mount '{}' in '{}'", path_file_filesystem.filename(), path_dir_submount);
     if ( not fs::exists(path_dir_submount) )

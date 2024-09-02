@@ -81,7 +81,7 @@ function _create_image()
   # Set vars & max size
   local dir="$1"
   local out="$(basename "$2")"
-  local slack="50" # 50M
+  local slack="10" # 10M
   local size="$(du -s "$dir" | awk '{printf "%d\n", $1/1000}')"
   size="$((size+slack))M"
 
@@ -555,8 +555,20 @@ function _create_subsystem_arch()
   cp "$FIM_DIR"/mime/icon.svg      ./arch/fim/desktop
   cp "$FIM_DIR"/mime/flatimage.xml ./arch/fim/desktop
 
+  # Create root filesystem and layers folder
+  mkdir ./root
+  mv ./arch/fim ./root
+  mkdir ./root/fim/layers
+
+  # Create layer 0 compressed filesystem
+  "$FIM_DIR_BUILD"/bin/mkdwarfs -l 7 -i ./arch -o ./arch.dwarfs
+  rm -rf ./arch
+
+  # Change filesystem name to index:sha
+  mv arch.dwarfs ./root/fim/layers/"0:$(sha256sum ./arch.dwarfs | awk '{print $1}')"
+
   # Create image
-  _create_image  "./arch" "arch.img"
+  _create_image  "./root" "arch.img"
 
   # Create elf
   _create_elf "arch.img" "arch.flatimage"

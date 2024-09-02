@@ -48,7 +48,7 @@ namespace fs = std::filesystem;
 void copy_tools(ns_setup::FlatimageSetup const& config)
 {
   // Mount filesystem as RO
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
   // Check if path_dir_static exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory

@@ -39,12 +39,12 @@ struct FlatimageSetup
   fs::path path_dir_binary;
   fs::path path_file_bashrc;
   fs::path path_file_bash;
-  fs::path path_dir_mount_dwarfs;
+  fs::path path_dir_mount_layers;
   fs::path path_dir_runtime;
   fs::path path_dir_runtime_host;
   fs::path path_dir_host_home;
   fs::path path_dir_host_config;
-  fs::path path_dir_host_overlayfs;
+  fs::path path_dir_data_overlayfs;
   fs::path path_dir_mount_overlayfs;
 
   fs::path path_dir_static;
@@ -52,7 +52,7 @@ struct FlatimageSetup
   fs::path path_file_config_environment;
   fs::path path_file_config_permissions;
   fs::path path_file_config_desktop;
-  fs::path path_dir_dwarfs;
+  fs::path path_dir_layers;
   fs::path path_dir_hooks;
 
   uint32_t dwarfs_compression_level;
@@ -90,7 +90,7 @@ inline FlatimageSetup setup()
   setup.path_dir_mount_ext       = ns_env::get_or_throw("FIM_DIR_MOUNT_EXT");
   setup.path_file_bashrc         = setup.path_dir_app / ".bashrc";
   setup.path_file_bash           = setup.path_dir_app_bin / "bash";
-  setup.path_dir_mount_dwarfs    = setup.path_dir_mount / "dwarfs";
+  setup.path_dir_mount_layers    = setup.path_dir_mount / "layers";
   setup.path_dir_mount_overlayfs = setup.path_dir_mount / "overlayfs";
 
   // Paths inside the ext2 filesystem
@@ -99,7 +99,7 @@ inline FlatimageSetup setup()
   setup.path_file_config_environment = setup.path_dir_mount_ext / "fim/config/environment.json";
   setup.path_file_config_permissions = setup.path_dir_mount_ext / "fim/config/permissions.json";
   setup.path_file_config_desktop     = setup.path_dir_mount_ext / "fim/config/desktop.json";
-  setup.path_dir_dwarfs              = setup.path_dir_mount_ext / "fim/dwarfs";
+  setup.path_dir_layers              = setup.path_dir_mount_ext / "fim/layers";
   setup.path_dir_hooks               = setup.path_dir_mount_ext / "fim/hooks";
 
   // Paths only available inside the container (runtime)
@@ -119,7 +119,7 @@ inline FlatimageSetup setup()
   ns_env::set("FIM_DIR_HOST_CONFIG", setup.path_dir_host_config, ns_env::Replace::Y);
 
   // Overlayfs write data to remain on the host
-  setup.path_dir_host_overlayfs = setup.path_dir_host_config / "overlays";
+  setup.path_dir_data_overlayfs = setup.path_dir_host_config / "overlays";
 
   // Environment
   setup.env_path = setup.path_dir_app_bin.string() + ":" + ns_env::get_or_throw("PATH");

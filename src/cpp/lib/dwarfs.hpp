@@ -54,17 +54,16 @@ class Dwarfs
       m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_fuse2fs);
 
       // Spawn command
-      (void) m_subprocess->with_piped_outputs()
+      auto ret = m_subprocess->with_piped_outputs()
         .with_args(path_file_image, path_dir_mount)
-        .spawn();
+        .spawn()
+        .wait();
+      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mount));
+      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mount, *ret));
     } // Dwarfs
     
     ~Dwarfs()
     {
-      auto ret = m_subprocess->wait();
-      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mount));
-      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mount, *ret));
-
       // Find fusermount
       auto opt_path_file_fusermount = ns_subprocess::search_path("fusermount");
       ereturn_if (not opt_path_file_fusermount, "Could not find 'fusermount' in PATH");
@@ -76,6 +75,10 @@ class Dwarfs
         .wait();
     } // Dwarfs
 
+    fs::path const& get_dir_mount()
+    {
+      return m_path_dir_mount;
+    }
 }; // class Dwarfs }}}
 
 } // namespace ns_dwarfs

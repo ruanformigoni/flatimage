@@ -31,7 +31,7 @@ class Filesystems
     void mount_dwarfs(fs::path const& path_dir_layers
       , fs::path const& path_dir_mount
     );
-    void mount_overlayfs(fs::path const& path_dir_lower
+    void mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
     );
@@ -60,7 +60,15 @@ class Filesystems
       qreturn_if(layer == FilesystemsLayer::DWARFS);
 
       // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
-      mount_overlayfs(config.path_dir_mount_ext
+      std::vector<fs::path> vec_path_dir_layers;
+      // Push ext layer
+      vec_path_dir_layers.push_back(config.path_dir_mount_ext);
+      // Push additional layers mounted with dwarfs
+      for (auto&& layer : m_layers)
+      {
+        vec_path_dir_layers.push_back(layer->get_dir_mount());
+      } // for
+      mount_overlayfs(vec_path_dir_layers
         , config.path_dir_data_overlayfs
         , config.path_dir_mount_overlayfs);
     } // Filesystems
@@ -89,8 +97,6 @@ inline void Filesystems::mount_ext2(fs::path const& path_file_binary
 inline void Filesystems::mount_dwarfs(fs::path const& path_dir_layers
   , fs::path const& path_dir_mount)
 {
-  std::vector<fs::path> vec_mountpoints;
-
   for (auto&& entry : fs::directory_iterator(path_dir_layers)
     | std::views::filter([](auto&& e){ return fs::is_regular_file(e); })
   )
@@ -110,11 +116,11 @@ inline void Filesystems::mount_dwarfs(fs::path const& path_dir_layers
 } // fn: mount_dwarfs }}}
 
 // fn: mount_overlayfs {{{
-inline void Filesystems::mount_overlayfs(fs::path const& path_dir_lower
+inline void Filesystems::mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower
   , fs::path const& path_dir_data
   , fs::path const& path_dir_mount)
 {
-  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_lower
+  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(vec_path_dir_lower
     , path_dir_data
     , path_dir_mount
   );

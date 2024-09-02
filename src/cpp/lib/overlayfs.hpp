@@ -27,15 +27,20 @@ class Overlayfs
     fs::path m_path_dir_mountpoint;
 
   public:
-    Overlayfs(fs::path const& path_dir_lowerdir
+    Overlayfs(std::vector<fs::path> const& vec_path_dir_lowerdir
         , fs::path const& path_dir_modifications
         , fs::path const& path_dir_mountpoint
       )
       : m_path_dir_mountpoint(path_dir_mountpoint)
     {
-      ethrow_if (not fs::exists(path_dir_lowerdir)
-        , "Lowerdir does not exist for overlayfs mount"
-      );
+      ethrow_if(vec_path_dir_lowerdir.empty(), "Empty lowerdirs vector");
+
+      for(auto&& path_dir_lowerdir : vec_path_dir_lowerdir)
+      {
+        ethrow_if (not fs::exists(path_dir_lowerdir)
+          , "Lowerdir does not exist for overlayfs mount"
+        );
+      } // for
 
       ethrow_if (not fs::exists(path_dir_modifications) and not fs::create_directories(path_dir_modifications)
         , "Could not create modifications dir for overlayfs"
@@ -66,11 +71,19 @@ class Overlayfs
         , "Could not create workdir for overlayfs"
       );
 
+      // Create string to represent argument of lowerdirs
+      std::string arg_lowerdir="lowerdir={}"_fmt(vec_path_dir_lowerdir.at(0));
+      for (auto&& path_dir_lowerdir : std::ranges::subrange(vec_path_dir_lowerdir.begin()+1, vec_path_dir_lowerdir.end()))
+      {
+        arg_lowerdir += ":{}"_fmt(path_dir_lowerdir);
+      } // for
+
+
       // Include arguments and spawn process
       (void) m_subprocess->
          with_args("-o", "squash_to_uid={}"_fmt(user_id))
         .with_args("-o", "squash_to_gid={}"_fmt(group_id))
-        .with_args("-o", "lowerdir={}"_fmt(path_dir_lowerdir))
+        .with_args("-o", arg_lowerdir)
         .with_args("-o", "upperdir={}"_fmt(path_dir_upperdir))
         .with_args("-o", "workdir={}"_fmt(path_dir_workdir))
         .with_args(m_path_dir_mountpoint)

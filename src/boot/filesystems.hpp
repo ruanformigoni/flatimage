@@ -45,39 +45,41 @@ class Filesystems
       OVERLAYFS
     };
 
-    Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS)
-    {
-      // Mount main filesystem
-      mount_ext2(config.path_file_binary
-        , config.path_dir_mount_ext
-        , config.offset_ext2
-        , (layer == FilesystemsLayer::EXT_RW)? ns_ext2::ns_mount::Mode::RW : ns_ext2::ns_mount::Mode::RO
-      );
-      qreturn_if(layer == FilesystemsLayer::EXT_RO or layer == FilesystemsLayer::EXT_RW);
-
-      // Mount dwarfs layers
-      mount_dwarfs(config.path_dir_layers, config.path_dir_mount_layers);
-      qreturn_if(layer == FilesystemsLayer::DWARFS);
-
-      // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
-      std::vector<fs::path> vec_path_dir_layers;
-      // Push ext layer
-      vec_path_dir_layers.push_back(config.path_dir_mount_ext);
-      // Push additional layers mounted with dwarfs
-      for (auto&& layer : m_layers)
-      {
-        vec_path_dir_layers.push_back(layer->get_dir_mount());
-      } // for
-      mount_overlayfs(vec_path_dir_layers
-        , config.path_dir_data_overlayfs
-        , config.path_dir_mount_overlayfs);
-    } // Filesystems
-
+    Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS);
     Filesystems(Filesystems const&) = delete;
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
     Filesystems& operator=(Filesystems&&) = delete;
 }; // class Filesystems }}}
+
+// fn: Filesystems::Filesystems {{{
+inline Filesystems::Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer)
+{
+  // Mount main filesystem
+  mount_ext2(config.path_file_binary
+    , config.path_dir_mount_ext
+    , config.offset_ext2
+    , (layer == FilesystemsLayer::EXT_RW)? ns_ext2::ns_mount::Mode::RW : ns_ext2::ns_mount::Mode::RO
+  );
+  qreturn_if(layer == FilesystemsLayer::EXT_RO or layer == FilesystemsLayer::EXT_RW);
+
+  // Mount dwarfs layers
+  mount_dwarfs(config.path_dir_layers, config.path_dir_mount_layers);
+  qreturn_if(layer == FilesystemsLayer::DWARFS);
+
+  // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
+  std::vector<fs::path> vec_path_dir_layers;
+  // Push ext layer
+  vec_path_dir_layers.push_back(config.path_dir_mount_ext);
+  // Push additional layers mounted with dwarfs
+  for (auto&& layer : m_layers)
+  {
+    vec_path_dir_layers.push_back(layer->get_dir_mount());
+  } // for
+  mount_overlayfs(vec_path_dir_layers
+    , config.path_dir_data_overlayfs
+    , config.path_dir_mount_overlayfs);
+} // fn Filesystems::Filesystems }}}
 
 // fn: mount_ext2 {{{
 inline void Filesystems::mount_ext2(fs::path const& path_file_binary

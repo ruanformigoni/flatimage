@@ -103,7 +103,7 @@ class Mount
       // Filesystem could be busy for a bit after un-mount of overlays
       for(int i{0}; i < 10; ++i)
       {
-        ibreak_if(unmount(m_path_dir_mount) == 0, "Un-mounted filesystem '{}'"_fmt(m_path_dir_mount));
+        dbreak_if(unmount(m_path_dir_mount) == 0, "Un-mounted filesystem '{}'"_fmt(m_path_dir_mount));
         std::this_thread::sleep_for(100ms);
       } // if
     } // Mount

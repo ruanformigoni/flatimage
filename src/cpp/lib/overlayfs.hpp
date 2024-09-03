@@ -106,7 +106,7 @@ class Overlayfs
           .with_args("-zu", m_path_dir_mountpoint)
           .spawn()
           .wait();
-        ibreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
+        dbreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
         std::this_thread::sleep_for(100ms);
       } // if
     } // ~Overlayfs

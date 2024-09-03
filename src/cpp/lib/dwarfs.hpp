@@ -77,7 +77,7 @@ class Dwarfs
           .with_args("-zu", m_path_dir_mount)
           .spawn()
           .wait();
-        ibreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
+        dbreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
         std::this_thread::sleep_for(100ms);
       } // if
     } // Dwarfs

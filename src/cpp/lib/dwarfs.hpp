@@ -73,10 +73,11 @@ class Dwarfs
       for(int i{0}; i < 10; ++i)
       {
         auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
-          .with_args("-u", m_path_dir_mount)
+          .with_piped_outputs()
+          .with_args("-zu", m_path_dir_mount)
           .spawn()
           .wait();
-        qbreak_if(ret and *ret == 0);
+        ibreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
         std::this_thread::sleep_for(100ms);
       } // if
     } // Dwarfs

@@ -66,7 +66,7 @@ inline int unmount(fs::path const& path_dir_mount)
   // Execute command
   auto ret = ns_subprocess::Subprocess(*opt_path_file_fuse2fs)
     .with_piped_outputs()
-    .with_args("-u", path_dir_mount)
+    .with_args("-zu", path_dir_mount)
     .spawn()
     .wait();
 
@@ -103,7 +103,7 @@ class Mount
       // Filesystem could be busy for a bit after un-mount of overlays
       for(int i{0}; i < 10; ++i)
       {
-        qbreak_if(unmount(m_path_dir_mount) == 0);
+        ibreak_if(unmount(m_path_dir_mount) == 0, "Un-mounted filesystem '{}'"_fmt(m_path_dir_mount));
         std::this_thread::sleep_for(100ms);
       } // if
     } // Mount

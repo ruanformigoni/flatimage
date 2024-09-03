@@ -52,23 +52,23 @@
   if ( (cond) ) { break; }
 
 #define ebreak_if(cond, msg) \
-  if ( (cond) ) { ns_log::debug()(msg); break; }
+  if ( (cond) ) { ns_log::error()(msg); break; }
 
 #define ibreak_if(cond, msg) \
   if ( (cond) ) { ns_log::info()(msg); break; }
 
 #define dbreak_if(cond, msg) \
-  if ( (cond) ) { ns_log::error()(msg); break; }
+  if ( (cond) ) { ns_log::debug()(msg); break; }
 
 // Continue
 #define qcontinue_if(cond) \
   if ( (cond) ) { continue; }
 
 #define econtinue_if(cond, msg) \
-  if ( (cond) ) { ns_log::debug()(msg); continue; }
+  if ( (cond) ) { ns_log::error()(msg); continue; }
 
 #define icontinue_if(cond, msg) \
   if ( (cond) ) { ns_log::info()(msg); continue; }
 
 #define dcontinue_if(cond, msg) \
-  if ( (cond) ) { ns_log::error()(msg); continue; }
+  if ( (cond) ) { ns_log::debug()(msg); continue; }

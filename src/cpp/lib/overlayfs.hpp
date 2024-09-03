@@ -72,8 +72,8 @@ class Overlayfs
       );
 
       // Create string to represent argument of lowerdirs
-      std::string arg_lowerdir="lowerdir={}"_fmt(vec_path_dir_lowerdir.at(0));
-      for (auto&& path_dir_lowerdir : std::ranges::subrange(vec_path_dir_lowerdir.begin()+1, vec_path_dir_lowerdir.end()))
+      std::string arg_lowerdir="lowerdir={}"_fmt(vec_path_dir_lowerdir.back());
+      for (auto&& path_dir_lowerdir : std::ranges::subrange(vec_path_dir_lowerdir.rbegin()+1, vec_path_dir_lowerdir.rend()))
       {
         arg_lowerdir += ":{}"_fmt(path_dir_lowerdir);
       } // for

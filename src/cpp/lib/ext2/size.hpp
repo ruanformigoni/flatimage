@@ -41,7 +41,8 @@ struct FilesystemFile
 } // namespace
 
 // resize_free_space() {{{
-inline void resize_free_space(fs::path const& path_file_image, off_t offset, uint64_t size_free_min) {
+inline void resize_free_space(fs::path const& path_file_image, off_t offset, uint64_t bytes_size_free_min)
+{
   // Check if image exists and is a regular file
   ereturn_if(not fs::is_regular_file(path_file_image)
     , "'{}' does not exist or is not a regular file"_fmt(path_file_image)
@@ -69,7 +70,7 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   uint64_t blocks_total     = sb.s_blocks_count;
   uint64_t size_total       = blocks_total * block_size;
   uint64_t blocks_free_curr = sb.s_free_blocks_count;
-  uint64_t blocks_free_min  = size_free_min / block_size;
+  uint64_t blocks_free_min  = bytes_size_free_min / block_size;
   uint64_t size_free        = blocks_free_curr * block_size;
 
   // Find command in PATH
@@ -93,7 +94,7 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   ns_log::debug()("Current  size   total  : {} MiB", ns_units::from_bytes(size_total).to_mebibytes());
   ns_log::debug()("Current  size   free   : {} MiB", ns_units::from_bytes(size_free).to_mebibytes());
   ns_log::debug()("Target   size   total  : {} MiB", ns_units::from_bytes(blocks_new * block_size).to_mebibytes());
-  ns_log::debug()("Target   size   free   : {} MiB", ns_units::from_bytes(size_free_min).to_mebibytes());
+  ns_log::debug()("Target   size   free   : {} MiB", ns_units::from_bytes(bytes_size_free_min).to_mebibytes());
   ns_log::debug()("----------------------------------------------------------------");
 
   // Check if filesystem already has the requested minimum free space

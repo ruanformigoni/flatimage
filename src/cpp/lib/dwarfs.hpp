@@ -68,11 +68,17 @@ class Dwarfs
       auto opt_path_file_fusermount = ns_subprocess::search_path("fusermount");
       ereturn_if (not opt_path_file_fusermount, "Could not find 'fusermount' in PATH");
 
-      // Un-mount overlayfs
-      (void) ns_subprocess::Subprocess(*opt_path_file_fusermount)
-        .with_args("-u", m_path_dir_mount)
-        .spawn()
-        .wait();
+      // Filesystem could be busy for a bit after un-mount of dwarfs
+      using namespace std::chrono_literals;
+      for(int i{0}; i < 10; ++i)
+      {
+        auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
+          .with_args("-u", m_path_dir_mount)
+          .spawn()
+          .wait();
+        qbreak_if(ret and *ret == 0);
+        std::this_thread::sleep_for(100ms);
+      } // if
     } // Dwarfs
 
     fs::path const& get_dir_mount()

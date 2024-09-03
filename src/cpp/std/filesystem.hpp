@@ -71,7 +71,6 @@ inline std::expected<fs::path,std::string> dir_self()
   return expected_path_file_self->parent_path();
 } // dir_self() }}}
 
-
 } // namespace ns_path }}}
 
 } // namespace ns_filesystem

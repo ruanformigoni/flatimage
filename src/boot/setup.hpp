@@ -55,7 +55,7 @@ struct FlatimageSetup
   fs::path path_dir_layers;
   fs::path path_dir_hooks;
 
-  uint32_t dwarfs_compression_level;
+  uint32_t layer_compression_level;
   uint32_t ext2_slack_minimum;
 
   std::string env_path;
@@ -127,8 +127,8 @@ inline FlatimageSetup setup()
   ns_env::set("PATH", setup.env_path, ns_env::Replace::Y);
 
   // Filesystem configuration
-  setup.dwarfs_compression_level = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "4"));
-  setup.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "10"));
+  setup.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "6"));
+  setup.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "50"));
   setup.env_compression_dirs     = ns_env::get_or_else("FIM_COMPRESSION_DIRS", "/usr:/opt");
 
   return setup;

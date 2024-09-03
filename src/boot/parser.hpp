@@ -401,7 +401,7 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     auto opt_path_file_mkdwarfs = ns_subprocess::search_path("mkdwarfs");
     ethrow_if(not opt_path_file_mkdwarfs, "Could not find 'mkdwarfs' binary");
     // Compress filesystem
-    fs::path path_file_layer = config.path_dir_host_config / "layer.temp";
+    fs::path path_file_layer = config.path_dir_host_config / "layer.tmp";
     ns_log::info()("Compress filesystem to '{}'", path_file_layer);
     {
       auto ret = ns_subprocess::Subprocess(*opt_path_file_mkdwarfs)
@@ -456,7 +456,12 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     {
       // Mount filesystem as RW
       [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+      // Copy compressed filesystem to ext filesystem
       fs::copy_file(path_file_layer, config.path_dir_layers / "{}-{}"_fmt(str_index_highest, str_sha256sum) );
+      // Remove compressed filesystem
+      fs::remove(path_file_layer);
+      // Remove upper directory
+      fs::remove_all(config.path_dir_data_overlayfs / "upperdir");
     }
   } // else if
   // Update default command on database

@@ -33,6 +33,11 @@ namespace
 namespace fs = std::filesystem;
 
 inline const char* str_app_descr = "Flatimage - Portable Linux Applications\n";
+inline const char* str_help =
+"fim-help:\n   See usage details for specified command\n"
+"Usage:\n   fim-help <cmd>\n"
+"Commands:\n  exec,root,resize,perms,desktop,commit,boot\n"
+"Example:\n   fim-help exec";
 inline const char* str_root_usage =
 "fim-root:\n   Executes a command as the root user\n"
 "Usage:\n   fim-root program-name [program-args...]\n"
@@ -254,8 +259,19 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     // Use the default startup command
-    ns_match::finally() >>= [&]
+    ns_match::equal("fim-help") >>= [&]
     {
+      if ( argc < 3 ) { f_error(true, str_help, "fim-help"); } // if
+      ns_match::match(std::string_view{argv[2]},
+        ns_match::equal("exec")    >>= [&]{ f_error(true, str_exec_usage, ""); },
+        ns_match::equal("root")    >>= [&]{ f_error(true, str_root_usage, ""); },
+        ns_match::equal("resize")  >>= [&]{ f_error(true, str_resize_usage, ""); },
+        ns_match::equal("perms")   >>= [&]{ f_error(true, str_perms_usage, ""); },
+        ns_match::equal("env")     >>= [&]{ f_error(true, str_env_usage, ""); },
+        ns_match::equal("desktop") >>= [&]{ f_error(true, str_desktop_usage, ""); },
+        ns_match::equal("commit")  >>= [&]{ f_error(true, str_commit_usage, ""); },
+        ns_match::equal("boot")    >>= [&]{ f_error(true, str_boot_usage, ""); }
+      );
       return CmdType(CmdNone{});
     }
   );

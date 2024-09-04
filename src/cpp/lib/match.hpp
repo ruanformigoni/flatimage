@@ -8,7 +8,9 @@
 #include <functional>
 #include <optional>
 
+#include "log.hpp"
 #include "../macro.hpp"
+#include "../std/concept.hpp"
 
 namespace ns_match
 {

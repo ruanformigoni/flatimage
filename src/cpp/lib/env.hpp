@@ -79,6 +79,10 @@ inline void prepend(const char* name, std::string const& extra)
     ns_log::debug()("ENV: {} -> {}", name, extra + var_curr);
     setenv(name, std::string{extra + var_curr}.c_str(), 1);
   } // if
+  else
+  {
+    ns_log::error()("Variable '{}' is not set"_fmt(name));
+  } // else
 } // prepend() }}}
 
 // concat() {{{
@@ -90,6 +94,10 @@ inline void concat(const char* name, std::string const& extra)
   {
     setenv(name, std::string{var_curr + extra}.c_str(), 1);
   } // if
+  else
+  {
+    ns_log::error()("Variable '{}' is not set"_fmt(name));
+  } // else
 } // concat() }}}
 
 // set_mutual_exclusion() {{{

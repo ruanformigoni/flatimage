@@ -135,7 +135,14 @@ inline FlatimageSetup setup()
   ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);
 
   // LD_LIBRARY_PATH
-  ns_env::prepend("LD_LIBRARY_PATH", "/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:");
+  if ( ns_env::exists("LD_LIBRARY_PATH") )
+  {
+    ns_env::prepend("LD_LIBRARY_PATH", "/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:");
+  }
+  else
+  {
+    ns_env::set("LD_LIBRARY_PATH", "/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu", ns_env::Replace::Y);
+  } // else
 
   return setup;
 } // setup() }}}

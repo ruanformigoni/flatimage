@@ -527,7 +527,7 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
     // Execute default command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_permissions); });
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
     f_bwrap(cmd_exec.program, cmd_exec.args, environment, permissions);
   } // else if
 

@@ -174,11 +174,14 @@ void boot(int argc, char** argv)
   // Setup environment variables
   ns_setup::FlatimageSetup config = ns_setup::setup();
 
+  // Set log file
+  ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");
+
   // Check filesystem
   ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
 
   // Copy tools
-  if (auto expected = ns_log::exception([&]{ copy_tools(config); }); not expected)
+  if (auto expected = ns_exception::to_expected([&]{ copy_tools(config); }); not expected)
   {
     ns_log::error()("Error while copying files '{}'", expected.error());
   } // if
@@ -187,7 +190,7 @@ void boot(int argc, char** argv)
   ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");
 
   // Refresh desktop integration
-  if (auto expected = ns_log::exception([&]{ ns_desktop::integrate(
+  if (auto expected = ns_exception::to_expected([&]{ ns_desktop::integrate(
       config.path_file_config_desktop
     , config.path_file_binary
     , config.path_dir_mount_ext);
@@ -209,6 +212,12 @@ void boot(int argc, char** argv)
 // main() {{{
 int main(int argc, char** argv)
 {
+  // Initialize logger level
+  if ( ns_env::exists("FIM_DEBUG", "1") )
+  {
+    ns_log::set_level(ns_log::Level::DEBUG);
+  } // if
+
   // Print version and exit
   if ( argc > 1 && std::string{argv[1]} == "fim-version" )
   {
@@ -217,31 +226,27 @@ int main(int argc, char** argv)
   } // if
   ns_env::set("FIM_VERSION", VERSION, ns_env::Replace::Y);
 
-  // Set logger level
-  if ( ns_env::exists("FIM_DEBUG", "1") )
-  {
-    ns_log::set_level(ns_log::Level::DEBUG);
-  } // if
-
   // Get path to self
   auto expected_path_file_self = ns_filesystem::ns_path::file_self();
-  ereturn_if(not expected_path_file_self, expected_path_file_self.error(), EXIT_FAILURE);
-  fs::path path_file_self = *expected_path_file_self;
+  if(not expected_path_file_self)
+  {
+    println(expected_path_file_self.error());
+    return EXIT_FAILURE;
+  } // if
 
   // If it is outside /tmp, move the binary
+  fs::path path_file_self = *expected_path_file_self;
   if (std::distance(path_file_self.begin(), path_file_self.end()) < 2 or *std::next(path_file_self.begin()) != "tmp")
   {
-    ns_log::debug()("Relocate program from {}", path_file_self);
     relocate(argv);
     // This function should not reach the return statement due to evecve
     return EXIT_FAILURE;
   } // if
 
   // Boot the main program
-  ns_log::debug()("Boot program from {}", path_file_self);
-  if ( auto expected = ns_log::exception([&]{ boot(argc, argv); }); not expected )
+  if ( auto expected = ns_exception::to_expected([&]{ boot(argc, argv); }); not expected )
   {
-    print("Program exited with error: {}\n", expected.error());
+    println("Program exited with error: {}", expected.error());
     return EXIT_FAILURE;
   } // if
 

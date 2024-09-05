@@ -23,6 +23,11 @@ inline constexpr bool is_instance_of_v<U<Args...>,U> = std::true_type {};
 
 } // namespace
 
+template<typename T>
+concept BooleanTestable = requires(T t)
+{
+  { static_cast<bool>(t) } -> std::same_as<bool>;
+};
 
 template<typename T>
 concept Enum = std::is_enum_v<T>;

@@ -17,6 +17,10 @@ namespace fs = std::filesystem;
 
 int main(int argc, char const* argv[])
 {
+  // Initialize logger
+  fs::path path_file_log = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.log";
+  ns_log::set_sink_file(path_file_log);
+
   ereturn_if(argc < 2, "Incorrect usage", EXIT_FAILURE);
 
   pid_t pid_parent = std::stoi(ns_env::get_or_throw("PID_PARENT"));

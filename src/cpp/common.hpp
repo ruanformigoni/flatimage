@@ -96,8 +96,8 @@ inline void print(T&& t, Args&&... args)
 } // print() }}}
 
 // print_if() {{{
-template<typename... Args>
-inline void print_if(bool cond, Args&&... args)
+template<ns_concept::BooleanTestable B, typename... Args>
+inline void print_if(B&& cond, Args&&... args)
 {
   if ( cond )
   {

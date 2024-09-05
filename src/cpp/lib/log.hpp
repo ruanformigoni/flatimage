@@ -29,46 +29,78 @@ namespace
 
 namespace fs = std::filesystem;
 
-struct Logger
+// class Logger {{{
+class Logger
 {
-  fs::path m_file;
-  std::ofstream m_os;
-  Level m_level;
-  Logger();
-};
+  private:
+    std::optional<std::ofstream> m_opt_os;
+    Level m_level;
+  public:
+    Logger();
+    Logger(Logger const&) = delete;
+    Logger(Logger&&) = delete;
+    Logger& operator=(Logger const&) = delete;
+    Logger& operator=(Logger&&) = delete;
+    void set_level(Level level);
+    Level get_level() const;
+    void set_sink_file(fs::path path_file_sink);
+    std::optional<std::ofstream>& get_sink_file();
+}; // class Logger }}}
 
+// fn: Logger::Logger {{{
 inline Logger::Logger()
+  : m_level(Level::QUIET)
 {
-  // Dir to self
-  auto expected_path_file_self = ns_filesystem::ns_path::file_self();
-  if(not expected_path_file_self)
-  {
-    throw std::runtime_error(expected_path_file_self.error());
-  } // if
+} // fn: Logger::Logger }}}
 
-  m_level = Level::QUIET;
-
+// fn: Logger::set_sink_file {{{
+inline void Logger::set_sink_file(fs::path path_file_sink)
+{
   // File to save logs into
-  m_file = fs::path{expected_path_file_self->string() + ".log"};
   if ( const char* var = std::getenv("FIM_DEBUG"); var && std::string_view{var} == "1" )
   {
-    "Logger file: {}\n"_print(m_file);
+    "Logger file: {}\n"_print(path_file_sink);
   } // if
 
   // File output stream
-  m_os = std::ofstream{m_file};
+  m_opt_os = std::ofstream{path_file_sink};
 
-  if( m_os.bad() ) { std::runtime_error("Could not open file '{}'"_fmt(m_file)); };
-} // Logger
+  if( m_opt_os->bad() ) { std::runtime_error("Could not open file '{}'"_fmt(path_file_sink)); };
+} // fn: Logger::set_sink_file }}}
 
-static Logger instance;
+// fn: Logger::get_sink_file {{{
+inline std::optional<std::ofstream>& Logger::get_sink_file()
+{
+  return m_opt_os;
+} // fn: Logger::get_sink_file }}}
+
+// fn: Logger::set_level {{{
+inline void Logger::set_level(Level level)
+{
+  m_level = level;
+} // fn: Logger::set_level }}}
+
+// fn: Logger::get_level {{{
+inline Level Logger::get_level() const
+{
+  return m_level;
+} // fn: Logger::get_level }}}
+
+static Logger logger;
 
 } // namespace
 
+// fn: set_level {{{
 inline void set_level(Level level)
 {
-  instance.m_level = level;
-} // info
+  logger.set_level(level);
+} // fn: set_level }}}
+
+// fn: set_sink_file {{{
+inline void set_sink_file(fs::path path_file_sink)
+{
+  logger.set_sink_file(path_file_sink);
+} // fn: set_sink_file }}}
 
 // class: Location {{{
 class Location
@@ -92,6 +124,7 @@ class Location
     } // get
 }; // class: Location }}}
 
+// class info {{{
 class info
 {
   private:
@@ -103,11 +136,13 @@ class info
     requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
     void operator()(T&& format, Args&&... args)
     {
-      print(instance.m_os, "I::{}::{}\n"_fmt(m_loc.get(), format), args...);
-      print_if((instance.m_level >= Level::INFO), "I::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+      auto& opt_ostream_sink = logger.get_sink_file();
+      print_if(opt_ostream_sink, *opt_ostream_sink, "I::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((logger.get_level() >= Level::INFO), std::cout, "I::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
     } // info
-};
+}; // class info }}}
 
+// class error {{{
 class error
 {
   private:
@@ -119,11 +154,13 @@ class error
     requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
     void operator()(T&& format, Args&&... args)
     {
-      print(instance.m_os, "E::{}::{}\n"_fmt(m_loc.get(), format), args...);
-      print_if((instance.m_level >= Level::ERROR), "E::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+      auto& opt_ostream_sink = logger.get_sink_file();
+      print_if(opt_ostream_sink, *opt_ostream_sink, "E::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((logger.get_level() >= Level::INFO), std::cerr, "E::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
     } // error
-};
+}; // class error }}}
 
+// class debug {{{
 class debug
 {
   private:
@@ -135,19 +172,11 @@ class debug
     requires ( ( ns_concept::StringRepresentable<Args> or ns_concept::IterableConst<Args> ) and ... )
     void operator()(T&& format, Args&&... args)
     {
-      print(instance.m_os, "D::{}::{}\n"_fmt(m_loc.get(), format), args...);
-      print_if((instance.m_level >= Level::DEBUG), "D::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+      auto& opt_ostream_sink = logger.get_sink_file();
+      print_if(opt_ostream_sink, *opt_ostream_sink, "D::{}::{}\n"_fmt(m_loc.get(), format), args...);
+      print_if((logger.get_level() >= Level::INFO), std::cerr, "D::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
     } // debug
-};
-
-template<typename F, typename... Args>
-requires std::is_invocable_v<F, Args...>
-decltype(auto) exception(F&& f, Args... args)
-{
-  auto expected = ns_exception::to_expected(f, std::forward<Args>(args)...);
-  if ( not expected ) { error{}(expected.error()); }
-  return expected;
-} // debug
+}; // class debug }}}
 
 } // namespace ns_log
 

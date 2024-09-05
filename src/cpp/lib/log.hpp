@@ -156,7 +156,7 @@ class error
     {
       auto& opt_ostream_sink = logger.get_sink_file();
       print_if(opt_ostream_sink, *opt_ostream_sink, "E::{}::{}\n"_fmt(m_loc.get(), format), args...);
-      print_if((logger.get_level() >= Level::INFO), std::cerr, "E::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+      print_if((logger.get_level() >= Level::ERROR), std::cerr, "E::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
     } // error
 }; // class error }}}
 
@@ -174,7 +174,7 @@ class debug
     {
       auto& opt_ostream_sink = logger.get_sink_file();
       print_if(opt_ostream_sink, *opt_ostream_sink, "D::{}::{}\n"_fmt(m_loc.get(), format), args...);
-      print_if((logger.get_level() >= Level::INFO), std::cerr, "D::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
+      print_if((logger.get_level() >= Level::DEBUG), std::cerr, "D::{}::{}\n"_fmt(m_loc.get(), format), std::forward<Args>(args)...);
     } // debug
 }; // class debug }}}
 

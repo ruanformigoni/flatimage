@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "subprocess.hpp"
+#include "fuse.hpp"
 
 namespace
 {
@@ -93,22 +94,7 @@ class Overlayfs
 
     ~Overlayfs()
     {
-      // Find fusermount
-      auto opt_path_file_fusermount = ns_subprocess::search_path("fusermount");
-      ereturn_if (not opt_path_file_fusermount, "Could not find 'fusermount' in PATH");
-
-      // Filesystem could be busy for a bit after un-mount of dwarfs
-      using namespace std::chrono_literals;
-      for(int i{0}; i < 10; ++i)
-      {
-        auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
-          .with_piped_outputs()
-          .with_args("-zu", m_path_dir_mountpoint)
-          .spawn()
-          .wait();
-        dbreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(*opt_path_file_fusermount));
-        std::this_thread::sleep_for(100ms);
-      } // if
+      ns_fuse::unmount(m_path_dir_mountpoint);
     } // ~Overlayfs
 }; // class: Overlayfs
 

@@ -302,7 +302,8 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
     // Mount filesystem as RO
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+    auto mount = ns_filesystems::Filesystems(config);
+    mount.spawn_janitor();
     // Execute specified command
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -312,7 +313,8 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
     // Mount filesystem as RO
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+    auto mount = ns_filesystems::Filesystems(config);
+    mount.spawn_janitor();
     // Execute specified command as 'root'
     config.is_root = true;
     auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
@@ -430,7 +432,7 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
       ethrow_if(not ret, "mkdwarfs process exited abnormally");
       ethrow_if(ret and *ret != 0, "mkdwarfs process exited with error code '{}'"_fmt(*ret));
     }
-    // Create SHA from file 
+    // Create SHA from file
     std::string str_sha256sum;
     {
       auto opt_path_file_bash = ns_subprocess::search_path("bash");
@@ -503,7 +505,8 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
     // Mount filesystem as RO
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+    auto mount = ns_filesystems::Filesystems(config);
+    mount.spawn_janitor();
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash

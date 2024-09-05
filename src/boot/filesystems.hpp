@@ -20,6 +20,8 @@ namespace ns_filesystems
 class Filesystems
 {
   private:
+    fs::path m_path_dir_mount;
+    std::vector<fs::path> m_vec_path_dir_mountpoints;
     std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
     std::vector<std::unique_ptr<ns_dwarfs::Dwarfs>> m_layers;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
@@ -50,10 +52,13 @@ class Filesystems
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
     Filesystems& operator=(Filesystems&&) = delete;
+    // In case the parent process fails to clean the mountpoints, this child does it
+    void spawn_janitor();
 }; // class Filesystems }}}
 
 // fn: Filesystems::Filesystems {{{
 inline Filesystems::Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer)
+  : m_path_dir_mount(config.path_dir_mount)
 {
   // Mount main filesystem
   mount_ext2(config.path_file_binary
@@ -74,7 +79,7 @@ inline Filesystems::Filesystems(ns_setup::FlatimageSetup const& config, Filesyst
   // Push additional layers mounted with dwarfs
   for (auto&& layer : m_layers)
   {
-    vec_path_dir_layers.push_back(layer->get_dir_mount());
+    vec_path_dir_layers.push_back(layer->get_dir_mountpoint());
   } // for
   mount_overlayfs(vec_path_dir_layers
     , config.path_dir_data_overlayfs
@@ -93,6 +98,7 @@ inline void Filesystems::mount_ext2(fs::path const& path_file_binary
     , mode
     , offset_ext2
   );
+  m_vec_path_dir_mountpoints.push_back(path_dir_mount_ext);
 } // fn: mount_ext2 }}}
 
 // fn: mount_dwarfs {{{
@@ -129,6 +135,7 @@ inline void Filesystems::mount_dwarfs(fs::path const& path_dir_layers
       econtinue_if(ec, "Could not create overlay mountpoint '{}'"_fmt(ec.message()));
     } // if
     m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_filesystem, path_dir_submount));
+    m_vec_path_dir_mountpoints.push_back(path_dir_submount);
   } // for
 } // fn: mount_dwarfs }}}
 
@@ -141,7 +148,53 @@ inline void Filesystems::mount_overlayfs(std::vector<fs::path> const& vec_path_d
     , path_dir_data
     , path_dir_mount
   );
+  m_vec_path_dir_mountpoints.push_back(path_dir_mount);
 } // fn: mount_overlayfs }}}
+
+// fn: spawn_janitor {{{
+inline void Filesystems::spawn_janitor()
+{
+  // Find janitor binary
+  fs::path path_file_janitor = fs::path{ns_env::get_or_throw("FIM_DIR_APP_BIN")} / "janitor";
+
+  // Fork and execve into the janitor process
+  pid_t pid_parent = getpid();
+  pid_t pid_fork = fork();
+  ethrow_if(pid_fork < 0, "Failed to fork janitor");
+
+  // Is parent
+  dreturn_if(pid_fork > 0, "Spawned janitor with PID '{}'"_fmt(pid_fork));
+
+  // Redirect stdout/stderr to a log file
+  fs::path path_stdout = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.stdout.log";
+  fs::path path_stderr = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.stderr.log";
+  int fd_stdout = open(path_stdout.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  int fd_stderr = open(path_stderr.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  ereturn_if(fd_stdout < 0, "Failed to open stdout janitor file");
+  ereturn_if(fd_stderr < 0, "Failed to open stderr janitor file");
+  dup2(fd_stdout, STDOUT_FILENO);
+  dup2(fd_stderr, STDERR_FILENO);
+  close(fd_stdout);
+  close(fd_stderr);
+  close(STDIN_FILENO);
+
+  // Keep parent pid in a variable
+  ns_env::set("PID_PARENT", pid_parent, ns_env::Replace::Y);
+
+  // Create args to janitor
+  std::vector<std::string> vec_argv_custom;
+  vec_argv_custom.push_back(path_file_janitor);
+  std::copy(m_vec_path_dir_mountpoints.rbegin(), m_vec_path_dir_mountpoints.rend(), std::back_inserter(vec_argv_custom));
+  auto argv_custom = std::make_unique<const char*[]>(vec_argv_custom.size() + 1);
+  argv_custom[vec_argv_custom.size()] = nullptr;
+  std::ranges::transform(vec_argv_custom, argv_custom.get(), [](auto&& e) { return e.c_str(); });
+
+  // Execve to janitor
+  execve(path_file_janitor.c_str(), (char**) argv_custom.get(), environ);
+
+  // Exit process in case of an error
+  exit(1);
+} // fn: spawn_janitor }}}
 
 } // namespace ns_filesystems
 

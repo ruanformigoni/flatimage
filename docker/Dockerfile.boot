@@ -27,3 +27,6 @@ RUN "$CONAN" profile detect
 RUN "$CONAN" install . --build=missing -g CMakeDeps -g CMakeToolchain
 RUN cmake --preset conan-release -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build --preset conan-release
+
+# Compile janitor
+RUN g++ --std=c++23 -O3 -static -o janitor janitor.cpp

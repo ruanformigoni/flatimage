@@ -51,6 +51,7 @@ struct Portal
   ~Portal()
   {
     m_process->kill(SIGTERM);
+    (void) m_process->wait();
   } // ~Portal()
 }; // struct Portal }}}
 

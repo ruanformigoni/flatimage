@@ -239,7 +239,7 @@ inline Bwrap& Bwrap::bind_home()
   if ( m_is_root ) { return *this; }
   ns_log::debug()("PERM(HOME)");
   const char* str_dir_home = ns_env::get_or_throw("HOME");
-  ns_vector::push_back(m_args, "--ro-bind-try", str_dir_home, str_dir_home);
+  ns_vector::push_back(m_args, "--bind-try", str_dir_home, str_dir_home);
   return *this;
 } // bind_home() }}}
 

@@ -5,9 +5,11 @@
 
 #pragma once
 
+#include <cstring>
 #include <filesystem>
 #include <numeric>
 #include <expected>
+#include <climits>
 
 #include "../common.hpp"
 
@@ -70,6 +72,17 @@ inline std::expected<fs::path,std::string> dir_self()
 
   return expected_path_file_self->parent_path();
 } // dir_self() }}}
+
+// realpath() {{{
+inline std::expected<fs::path, std::string> realpath(fs::path const& path_file_src)
+{
+  char str_path_file_resolved[PATH_MAX];
+  if ( ::realpath(path_file_src.c_str(), str_path_file_resolved) == nullptr )
+  {
+    return std::unexpected(strerror(errno));
+  } // if
+  return str_path_file_resolved;
+} // realpath() }}}
 
 } // namespace ns_path }}}
 

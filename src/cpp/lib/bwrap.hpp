@@ -65,6 +65,12 @@ class Bwrap
     std::vector<std::string> m_program_args;
     std::vector<std::string> m_program_env;
 
+    // Path to container's root directory
+    fs::path m_path_dir_root;
+
+    // Access host root from container
+    fs::path m_path_dir_runtime_host;
+
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
 
@@ -75,6 +81,7 @@ class Bwrap
     bool m_is_root;
 
     void set_xdg_runtime_dir();
+    void symlink_nvidia();
 
   public:
     template<ns_concept::StringRepresentable... Args>
@@ -113,6 +120,8 @@ inline Bwrap::Bwrap(
     , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
   , m_program_args(program_args)
+  , m_path_dir_root(path_dir_root)
+  , m_path_dir_runtime_host(path_dir_runtime_host)
   , m_is_root(is_root)
 {
   // Push passed environment
@@ -164,6 +173,57 @@ inline void Bwrap::set_xdg_runtime_dir()
   m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(m_path_dir_xdg_runtime));
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_path_dir_xdg_runtime);
 } // set_xdg_runtime_dir() }}}
+
+// fn: symlink_nvidia() {{{
+inline void Bwrap::symlink_nvidia()
+{
+  auto f_find_and_bind = [&]<typename... Args>(fs::path const& path_dir_search, Args&&... args)
+  {
+    std::vector<std::string> query_items{std::forward<Args>(args)...};
+    ireturn_if(not fs::exists(path_dir_search), "Search path does not exist: '{}'"_fmt(path_dir_search));
+    for(auto&& entry : fs::directory_iterator(path_dir_search)
+      | std::views::filter([](auto&& e){ return e.is_regular_file(); })
+      | std::views::transform([](auto&& e){ return ns_filesystem::ns_path::realpath(e.path()); }))
+    {
+      econtinue_if(not entry, entry.error());
+      fs::path path_link_target = m_path_dir_runtime_host / entry->relative_path();
+      fs::path path_link_name = m_path_dir_root / entry->relative_path();
+      for(std::string query : query_items)
+      {
+        if ( entry->filename().string().contains(query) )
+        {
+          // Create parent directories
+          std::error_code ec;
+          fs::create_directories(path_link_name.parent_path(), ec);
+          econtinue_if (ec, ec.message());
+          // Remove existing link
+          if (fs::exists(path_link_name, ec)) { fs::remove(path_link_name, ec); }
+          // Symlink
+          econtinue_if(symlink(path_link_target.c_str(), path_link_name.c_str()) < 0, strerror(errno));
+          // Log symlink successful
+          ns_log::debug()("PERM(NVIDIA): {} -> {}", path_link_name, path_link_target);
+        } // if
+      } // for
+    } // for
+  };
+
+  // Bind files
+  f_find_and_bind("/usr/lib", "nvidia", "cuda", "nvcuvid", "nvoptix");
+  f_find_and_bind("/usr/lib/x86_64-linux-gnu", "nvidia", "cuda", "nvcuvid", "nvoptix");
+  f_find_and_bind("/usr/lib/i386-linux-gnu", "nvidia", "cuda", "nvcuvid", "nvoptix");
+  f_find_and_bind("/usr/bin", "nvidia");
+  f_find_and_bind("/usr/share", "nvidia");
+  f_find_and_bind("/usr/share/vulkan/icd.d", "nvidia");
+  f_find_and_bind("/usr/lib32", "nvidia", "cuda");
+
+  // Bind devices
+  for(auto&& entry : fs::directory_iterator("/dev")
+    | std::views::transform([](auto&& e){ return e.path(); })
+    | std::views::filter([](auto&& e){ return e.filename().string().contains("nvidia"); }))
+  {
+    ns_vector::push_back(m_args, "--dev-bind-try", entry, entry);
+  } // for
+} // fn: symlink_nvidia() }}}
 
 // bind_root() {{{
 inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
@@ -334,7 +394,7 @@ inline Bwrap& Bwrap::bind_gpu()
 {
   ns_log::debug()("PERM(GPU)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/dri", "/dev/dri");
-  // TODO Nvidia symlinks
+  symlink_nvidia();
   return *this;
 } // bind_gpu() }}}
 

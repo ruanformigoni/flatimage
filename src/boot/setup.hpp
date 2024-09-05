@@ -131,6 +131,12 @@ inline FlatimageSetup setup()
   setup.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "50"));
   setup.env_compression_dirs     = ns_env::get_or_else("FIM_COMPRESSION_DIRS", "/usr:/opt");
 
+  // PID
+  ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);
+
+  // LD_LIBRARY_PATH
+  ns_env::prepend("LD_LIBRARY_PATH", "/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:");
+
   return setup;
 } // setup() }}}
 

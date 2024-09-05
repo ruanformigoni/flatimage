@@ -162,14 +162,10 @@ decltype(auto) validate(std::string_view msg) noexcept
 // main() {{{
 int main(int argc, char** argv)
 {
-  if ( ns_env::exists("FIM_DEBUG", "1") )
-  {
-    ns_log::set_level(ns_log::Level::DEBUG);
-  } // if
-  else
-  {
-    ns_log::set_level(ns_log::Level::ERROR);
-  } // else
+  // Configure logger
+  fs::path path_file_log = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".portal.daemon.log";
+  ns_log::set_sink_file(path_file_log);
+  ns_log::set_level((ns_env::exists("FIM_DEBUG", "1"))? ns_log::Level::DEBUG : ns_log::Level::ERROR);
 
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);

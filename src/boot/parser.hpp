@@ -255,7 +255,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     // Set the default startup command
     ns_match::equal("fim-boot", "fim-cmd") >>= [&]
     {
-      f_error(argc != 3, str_boot_usage, "Incorrect number of arguments");
+      f_error(argc < 3, str_boot_usage, "Incorrect number of arguments");
       return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     // Use the default startup command

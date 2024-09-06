@@ -138,10 +138,53 @@ read-only:
 
 ## How to use
 
+You can use `./arch.flatimage fim-help env` to get the following usage details:
+
+```
+Flatimage - Portable Linux Applications
+fim-env:
+   Edit current permissions for the flatimage
+Usage:
+   fim-env add|set <'key=value'>...
+   fim-env del <key>...
+   fim-env list
+Example:
+   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'
+```
+
+The `env` command allows you to set new environment variables as so:
+
+```bash
+$ ./arch.flatimage fim-env add 'MY_NAME=user' 'MY_STATE=sad'
+```
+
+To use these variables in the default boot command:
+
+```bash
+$ ./arch.flatimage fim-boot sh -c 'echo "My name is $MY_NAME and I am $MY_STATE"'
+$ ./arch.flatimage
+My name is user and I am sad
+```
+
+To list the set variables:
+```bash
+$ ./arch.flatimage fim-env list
+MY_NAME=user
+MY_STATE=sad
+```
+
+To delete the set variables:
+```bash
+$ ./arch.flatimage fim-env del MY_NAME MY_STATE
+```
+
 To enable debugging you can use:
 
 ```bash
-FIM_DEBUG=1 ./arch.flatimage
+$ FIM_DEBUG=1 ./arch.flatimage
+# or
+$ export FIM_DEBUG=1
+$ ./arch.flatimage
 ```
 
 ## How it works
@@ -161,7 +204,7 @@ own mimetype.
 
 **Configure**
 
-You can use `./arch.flatimage fim-desktop` to get the following usage details:
+You can use `./arch.flatimage fim-help desktop` to get the following usage details:
 
 ```
 fim-desktop:
@@ -231,7 +274,7 @@ Examples:
 
 FlatImage installs desktop entries in `$HOME/.local/share/applications`, icons
 are installed in `$HOME/.local/share/icons` and mimetypes are installed in
-`$HOME/.local/share/mime`. The use must define `XDG_DATA_HOME` to `$HOME/.local/share`
+`$HOME/.local/share/mime`. The user must define `XDG_DATA_HOME` to `$HOME/.local/share`
 or `XDG_DATA_DIRS` to contain the path `$HOME/.local/share`.
 
 # Transparent Command Portal

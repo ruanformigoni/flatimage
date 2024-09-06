@@ -20,6 +20,7 @@
 #include "../cpp/macro.hpp"
 
 #include "config/environment.hpp"
+#include "cmd/layers.hpp"
 #include "desktop.hpp"
 #include "setup.hpp"
 #include "filesystems.hpp"
@@ -415,72 +416,17 @@ inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
     {
       ns_log::set_level(ns_log::Level::INFO);
     } // if
-    // Compress changes
-    auto opt_path_file_mkdwarfs = ns_subprocess::search_path("mkdwarfs");
-    ethrow_if(not opt_path_file_mkdwarfs, "Could not find 'mkdwarfs' binary");
-    // Compress filesystem
+    // Set source directory and target compressed file
     fs::path path_file_layer = config.path_dir_host_config / "layer.tmp";
-    ns_log::info()("Compress filesystem to '{}'", path_file_layer);
-    {
-      auto ret = ns_subprocess::Subprocess(*opt_path_file_mkdwarfs)
-        .with_args("-f")
-        .with_args("-l", config.layer_compression_level)
-        .with_args("-i", config.path_dir_data_overlayfs / "upperdir")
-        .with_args("-o", path_file_layer)
-        .spawn()
-        .wait();
-      ethrow_if(not ret, "mkdwarfs process exited abnormally");
-      ethrow_if(ret and *ret != 0, "mkdwarfs process exited with error code '{}'"_fmt(*ret));
-    }
-    // Create SHA from file
-    std::string str_sha256sum;
-    {
-      auto opt_path_file_bash = ns_subprocess::search_path("bash");
-      ethrow_if(not opt_path_file_bash, "Could not find 'bash' binary");
-      auto opt_path_file_sha256sum = ns_subprocess::search_path("sha256sum");
-      ethrow_if(not opt_path_file_sha256sum, "Could not find 'sha256sum' binary");
-      auto ret = ns_subprocess::Subprocess(*opt_path_file_bash)
-        .with_args("-c", *opt_path_file_sha256sum + " " + path_file_layer.string() + " | awk '{print $1}'" )
-        .with_piped_outputs()
-        .with_stdout_handle([&](auto&& str){ str_sha256sum = str; })
-        .spawn()
-        .wait();
-      ethrow_if(not ret, "sha256sum process exited abnormally");
-      ethrow_if(ret and *ret != 0, "sha256sum process exited with error code '{}'"_fmt(*ret));
-      ethrow_if(str_sha256sum.empty(), "Could not calculate SHA for overlay");
-    }
-    ns_log::info()("Filesystem sha256sum: {}", str_sha256sum);
-    std::string str_index_highest{};
-    // Get highest filesystem index
-    {
-      // Mount filesystem as RW
-      [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
-      std::vector<fs::path> vec_path_dir_layers;
-      std::ranges::for_each(fs::directory_iterator(config.path_dir_layers)
-        , [&](auto&& e){ vec_path_dir_layers.push_back(e); }
-      );
-      std::ranges::sort(vec_path_dir_layers);
-      str_index_highest = vec_path_dir_layers.back().filename().string();
-      str_index_highest.erase(str_index_highest.find('-'), std::string::npos);
-      str_index_highest = std::to_string(std::stoi(str_index_highest) + 1);
-    }
-    ns_log::info()("Filesystem index: {}", str_index_highest);
-    // Make space available in the main filesystem to fit novel layer
-    ns_ext2::ns_size::resize_free_space(config.path_file_binary
-      , config.offset_ext2
-      , fs::file_size(path_file_layer) + ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
-    );
-    // Move filesystem file to ext filesystem
-    {
-      // Mount filesystem as RW
-      [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
-      // Copy compressed filesystem to ext filesystem
-      fs::copy_file(path_file_layer, config.path_dir_layers / "{}-{}"_fmt(str_index_highest, str_sha256sum) );
-      // Remove compressed filesystem
-      fs::remove(path_file_layer);
-      // Remove upper directory
-      fs::remove_all(config.path_dir_data_overlayfs / "upperdir");
-    }
+    fs::path path_dir_src = config.path_dir_data_overlayfs / "upperdir";
+    // Create filesystem based on the contents of src
+    ns_layers::create(path_dir_src, path_file_layer, config.layer_compression_level);
+    // Include filesystem in the image
+    ns_layers::add(config, path_file_layer);
+    // Remove compressed filesystem
+    fs::remove(path_file_layer);
+    // Remove upper directory
+    fs::remove_all(path_dir_src);
   } // else if
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )

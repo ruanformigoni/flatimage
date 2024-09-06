@@ -10,6 +10,7 @@
 
 #include "../../cpp/std/functional.hpp"
 #include "../../cpp/lib/db.hpp"
+#include "../../cpp/lib/subprocess.hpp"
 
 namespace ns_config::ns_environment
 {
@@ -59,7 +60,22 @@ inline void add(fs::path const& path_file_config_environment, std::vector<std::s
 
 inline std::vector<std::string> get(fs::path const& path_file_config_environment)
 {
-  return ns_db::Db(path_file_config_environment, ns_db::Mode::READ).as_vector();
+  std::vector<std::string> environment = ns_db::Db(path_file_config_environment, ns_db::Mode::READ).as_vector();
+  // Expand variables
+  for(auto& variable : environment)
+  {
+    auto opt_path_dash = ns_subprocess::search_path("sh");
+    ebreak_if(not opt_path_dash, "Could not find 'dash' binary");
+    auto ret = ns_subprocess::Subprocess(*opt_path_dash)
+      .with_piped_outputs()
+      .with_stdout_handle([&](auto&& e){ variable = e; })
+      .with_args("-c", "echo {}"_fmt(variable))
+      .spawn()
+      .wait();
+    econtinue_if(not ret, "echo subprocess quit abnormally");
+    econtinue_if(*ret != 0, "echo subprocess quit with code '{}'"_fmt(*ret));
+  } // for
+  return environment;
 }
 
 } // namespace ns_config::ns_environment

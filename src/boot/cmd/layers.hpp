@@ -38,7 +38,7 @@ std::string generate_sha(fs::path const& path_file_layer)
 } // fn: generate_sha() }}}
 
 // fn: query_highest_layer_index() {{{
-uint64_t query_highest_layer_index(ns_setup::FlatimageSetup const& config, fs::path const& path_dir_layers)
+uint64_t query_highest_layer_index(ns_config::FlatimageConfig const& config, fs::path const& path_dir_layers)
 {
   std::string str_index_highest{};
   [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
@@ -55,7 +55,7 @@ uint64_t query_highest_layer_index(ns_setup::FlatimageSetup const& config, fs::p
 } // fn: query_highest_layer_index() }}}
 
 // fn: generate_layer_name() {{{
-std::string generate_layer_name(ns_setup::FlatimageSetup const& config, fs::path const& path_file_layer, fs::path const& path_dir_layers)
+std::string generate_layer_name(ns_config::FlatimageConfig const& config, fs::path const& path_file_layer, fs::path const& path_dir_layers)
 {
   std::string sha = generate_sha(path_file_layer);
   uint64_t index = query_highest_layer_index(config, path_dir_layers);
@@ -73,7 +73,7 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
   // Find mkdwarfs binary
   auto opt_path_file_mkdwarfs = ns_subprocess::search_path("mkdwarfs");
   ethrow_if(not opt_path_file_mkdwarfs, "Could not find 'mkdwarfs' binary");
- 
+
   // Compress filesystem
   ns_log::info()("Compress filesystem to '{}'", path_file_dst);
   auto ret = ns_subprocess::Subprocess(*opt_path_file_mkdwarfs)
@@ -88,7 +88,7 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
 } // fn: create() }}}
 
 // fn: add() {{{
-inline void add(ns_setup::FlatimageSetup const& config, fs::path const& path_file_layer)
+inline void add(ns_config::FlatimageConfig const& config, fs::path const& path_file_layer)
 {
   // Create novel path for layer
   fs::path path_file_layer_new = config.path_dir_layers / generate_layer_name(config, path_file_layer, config.path_dir_layers);

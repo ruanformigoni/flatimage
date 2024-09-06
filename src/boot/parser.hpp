@@ -20,9 +20,9 @@
 #include "../cpp/macro.hpp"
 
 #include "config/environment.hpp"
+#include "config/config.hpp"
 #include "cmd/layers.hpp"
 #include "cmd/desktop.hpp"
-#include "setup.hpp"
 #include "filesystems.hpp"
 
 namespace ns_parser
@@ -279,7 +279,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
 } // parse() }}}
 
 // parse_cmds() {{{
-inline int parse_cmds(ns_setup::FlatimageSetup config, int argc, char** argv)
+inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
 {
   // Parse args
   auto variant_cmd = ns_parser::parse(argc, argv);

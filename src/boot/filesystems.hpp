@@ -11,7 +11,7 @@
 #include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/dwarfs.hpp"
 
-#include "setup.hpp"
+#include "config/config.hpp"
 
 namespace ns_filesystems
 {
@@ -47,7 +47,7 @@ class Filesystems
       OVERLAYFS
     };
 
-    Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS);
+    Filesystems(ns_config::FlatimageConfig const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS);
     Filesystems(Filesystems const&) = delete;
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
@@ -57,7 +57,7 @@ class Filesystems
 }; // class Filesystems }}}
 
 // fn: Filesystems::Filesystems {{{
-inline Filesystems::Filesystems(ns_setup::FlatimageSetup const& config, FilesystemsLayer layer)
+inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config, FilesystemsLayer layer)
   : m_path_dir_mount(config.path_dir_mount)
 {
   // Mount main filesystem

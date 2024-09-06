@@ -34,9 +34,9 @@
 #include "../cpp/lib/ext2/check.hpp"
 #include "../cpp/lib/ext2/size.hpp"
 
+#include "config/config.hpp"
 #include "parser.hpp"
 #include "portal.hpp"
-#include "setup.hpp"
 
 // Unix environment variables
 extern char** environ;
@@ -44,7 +44,7 @@ extern char** environ;
 namespace fs = std::filesystem;
 
 // copy_tools() {{{
-void copy_tools(ns_setup::FlatimageSetup const& config)
+void copy_tools(ns_config::FlatimageConfig const& config)
 {
   // Mount filesystem as RO
   [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
@@ -171,7 +171,7 @@ void relocate(char** argv)
 void boot(int argc, char** argv)
 {
   // Setup environment variables
-  ns_setup::FlatimageSetup config = ns_setup::setup();
+  ns_config::FlatimageConfig config = ns_config::config();
 
   // Set log file
   ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");

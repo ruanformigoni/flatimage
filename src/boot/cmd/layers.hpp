@@ -84,7 +84,7 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
     .spawn()
     .wait();
   ethrow_if(not ret, "mkdwarfs process exited abnormally");
-  ethrow_if(ret and *ret != 0, "mkdwarfs process exited with error code '{}'"_fmt(*ret));
+  ethrow_if(*ret != 0, "mkdwarfs process exited with error code '{}'"_fmt(*ret));
 } // fn: create() }}}
 
 // fn: add() {{{

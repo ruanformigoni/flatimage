@@ -49,16 +49,19 @@ inline void unmount(fs::path const& path_dir_mountpoint)
   ereturn_if (not opt_path_file_fusermount, "Could not find 'fusermount' in PATH");
 
   // Filesystem could be busy for a bit after un-mount of dwarfs
-  for(auto is_fuse = ns_fuse::is_fuse(path_dir_mountpoint); is_fuse and *is_fuse == true;)
+  for(auto is_fuse = ns_fuse::is_fuse(path_dir_mountpoint)
+    ; is_fuse and *is_fuse == true
+    ; is_fuse = ns_fuse::is_fuse(path_dir_mountpoint))
   {
     auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
       .with_piped_outputs()
       .with_args("-zu", path_dir_mountpoint)
       .spawn()
       .wait();
-    dbreak_if(ret and *ret == 0, "Un-mounted filesystem '{}'"_fmt(path_dir_mountpoint));
+    if(ret and *ret == 0) { ns_log::debug()("Un-mounted filesystem '{}'"_fmt(path_dir_mountpoint)); }
     std::this_thread::sleep_for(100ms);
-  } // if
+  } // for
+
 } // function: unmount
 
 } // namespace ns_fuse

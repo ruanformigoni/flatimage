@@ -35,7 +35,6 @@
 #include "../cpp/lib/ext2/size.hpp"
 
 #include "parser.hpp"
-#include "desktop.hpp"
 #include "portal.hpp"
 #include "setup.hpp"
 

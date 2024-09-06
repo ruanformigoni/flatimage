@@ -7,13 +7,13 @@
 
 #include <filesystem>
 
-#include "../cpp/std/exception.hpp"
-#include "../cpp/std/functional.hpp"
-#include "../cpp/lib/db.hpp"
-#include "../cpp/lib/subprocess.hpp"
-#include "../cpp/lib/image.hpp"
-#include "../cpp/lib/env.hpp"
-#include "../cpp/macro.hpp"
+#include "../../cpp/std/exception.hpp"
+#include "../../cpp/std/functional.hpp"
+#include "../../cpp/lib/db.hpp"
+#include "../../cpp/lib/subprocess.hpp"
+#include "../../cpp/lib/image.hpp"
+#include "../../cpp/lib/env.hpp"
+#include "../../cpp/macro.hpp"
 
 namespace ns_desktop
 {

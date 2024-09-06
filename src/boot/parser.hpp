@@ -21,7 +21,7 @@
 
 #include "config/environment.hpp"
 #include "cmd/layers.hpp"
-#include "desktop.hpp"
+#include "cmd/desktop.hpp"
 #include "setup.hpp"
 #include "filesystems.hpp"
 

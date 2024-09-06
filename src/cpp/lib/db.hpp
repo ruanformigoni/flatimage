@@ -284,7 +284,7 @@ inline bool Db::empty() const
 } // empty() }}}
 
 // as_bool() {{{
-bool Db::as_bool() const
+inline bool Db::as_bool() const
 {
   json_t& json = data();
   ethrow_if(not json.is_boolean(), "Tried to access non-boolean as boolean in DB");
@@ -314,7 +314,7 @@ std::vector<T> Db::as_vector() const
 } // as_vector() }}}
 
 // as_string() {{{
-std::string Db::as_string() const
+inline std::string Db::as_string() const
 {
   return data().dump();
 } // as_string() }}}

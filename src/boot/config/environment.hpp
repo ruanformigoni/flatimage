@@ -58,22 +58,39 @@ inline void add(fs::path const& path_file_config_environment, std::vector<std::s
   ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE_OR_CREATE).set_insert(entries);
 }
 
+inline std::expected<std::string, std::string> expand(std::string_view var)
+{
+  std::string expanded;
+
+  auto opt_path_sh = ns_subprocess::search_path("sh");
+  qreturn_if(not opt_path_sh, std::unexpected("Could not find 'dash' binary"));
+
+  auto ret = ns_subprocess::Subprocess(*opt_path_sh)
+    .with_piped_outputs()
+    .with_stdout_handle([&](auto&& e){ expanded = e; })
+    .with_args("-c", "echo {}"_fmt(var))
+    .spawn()
+    .wait();
+  qreturn_if(not ret, std::unexpected("echo subprocess quit abnormally"));
+  qreturn_if(*ret != 0, std::unexpected("echo subprocess quit with code '{}'"_fmt(*ret)));
+
+  return expanded;
+}
+
 inline std::vector<std::string> get(fs::path const& path_file_config_environment)
 {
   std::vector<std::string> environment = ns_db::Db(path_file_config_environment, ns_db::Mode::READ).as_vector();
   // Expand variables
   for(auto& variable : environment)
   {
-    auto opt_path_dash = ns_subprocess::search_path("sh");
-    ebreak_if(not opt_path_dash, "Could not find 'dash' binary");
-    auto ret = ns_subprocess::Subprocess(*opt_path_dash)
-      .with_piped_outputs()
-      .with_stdout_handle([&](auto&& e){ variable = e; })
-      .with_args("-c", "echo {}"_fmt(variable))
-      .spawn()
-      .wait();
-    econtinue_if(not ret, "echo subprocess quit abnormally");
-    econtinue_if(*ret != 0, "echo subprocess quit with code '{}'"_fmt(*ret));
+    if(auto expanded = expand(variable))
+    {
+      variable = *expanded;
+    } // if
+    else
+    {
+      ns_log::error()("Failed to expand variable: {}", expanded.error());
+    } // else
   } // for
   return environment;
 }

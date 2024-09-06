@@ -69,6 +69,12 @@ inline const char* str_desktop_usage =
 "   fim-desktop enable <items...>\n"
 "items:\n   entry,mimetype,icon\n"
 "Example:\n   fim-desktop enable entry,mimetype,icon";
+inline const char* str_layer_usage =
+"fim-layer:\n   Manage the layers of the current FlatImage\n"
+"Usage:\n   fim-layer create <in-dir> <out-file>\n"
+"   fim-layer add <in-file>\n"
+"create:\n   Creates a novel layer from <in-dir> and save in <out-file>\n"
+"add:\n   Includes the novel layer <in-file> in the image in the top of the layer stack";
 inline const char* str_commit_usage =
 "fim-commit:\n   Compresses current changes and inserts them into the FlatImage\n"
 "Usage:\n   fim-commit";
@@ -132,13 +138,20 @@ struct CmdBoot
   std::vector<std::string> args;
 };
 
+ENUM(CmdLayerOp,CREATE,ADD);
+struct CmdLayer
+{
+  CmdLayerOp op;
+  std::vector<std::string> args;
+};
+
 struct CmdCommit
 {
 };
 
 struct CmdNone {};
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop,CmdCommit,CmdBoot,CmdNone>;
+using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop,CmdLayer,CmdCommit,CmdBoot,CmdNone>;
 // }}}
 
 // parse() {{{
@@ -230,10 +243,9 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     {
       // Check if is other command with valid args
       f_error(argc != 4,  str_desktop_usage, "Incorrect number of arguments");
-      CmdDesktopOp op = CmdDesktopOp(argv[2]);
       CmdDesktop cmd;
-      cmd.op = op;
-      if ( op == CmdDesktopOp::SETUP )
+      cmd.op = CmdDesktopOp(argv[2]);
+      if ( cmd.op == CmdDesktopOp::SETUP )
       {
         cmd.arg = fs::path{argv[3]};
       } // if
@@ -244,6 +256,29 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
         std::set<ns_desktop::EnableItem> set_enum;
         std::ranges::transform(vec_strs, std::inserter(set_enum, set_enum.end()), [](auto&& e){ return ns_desktop::EnableItem(e); });
         cmd.arg = set_enum;
+      } // else
+      return CmdType(cmd);
+    },
+    // Manage layers
+    ns_match::equal("fim-layer") >>= [&]
+    {
+      f_error(argc < 3, str_layer_usage, "Incorrect number of arguments");
+
+      // Create cmd
+      CmdLayer cmd;
+
+      // Get op
+      cmd.op = CmdLayerOp(argv[2]);
+
+      if ( cmd.op == CmdLayerOp::ADD )
+      {
+        f_error(argc < 4, str_layer_usage, "add requires exactly one argument");
+        ns_vector::push_back(cmd.args, argv[3]);
+      } // if
+      else
+      {
+        f_error(argc < 5, str_layer_usage, "add requires exactly two arguments");
+        ns_vector::push_back(cmd.args, argv[3], argv[4]);
       } // else
       return CmdType(cmd);
     },
@@ -408,6 +443,23 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       break;
     } // switch
   } // if
+  // Manager layers
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdLayer>(*variant_cmd) )
+  {
+    // Update log level
+    if ( not ns_env::get("FIM_DEBUG") )
+    {
+      ns_log::set_level(ns_log::Level::INFO);
+    } // if
+    if ( cmd->op == CmdLayerOp::ADD )
+    {
+      ns_layers::add(config, cmd->args.front());
+    } // if
+    else
+    {
+      ns_layers::create(cmd->args.at(0), cmd->args.at(1), config.layer_compression_level);
+    } // else
+  } // else if
   // Commit changes as a novel layer into the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCommit>(*variant_cmd) )
   {
@@ -461,8 +513,16 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       ns_db::from_file(config.path_file_config_boot, [&](auto& db)
       {
         cmd_exec.program = db["program"];
-        auto& args = db["args"];
-        std::for_each(args.cbegin(), args.cend(), [&](auto&& e){ cmd_exec.args.push_back(e); });
+        cmd_exec.args = db["args"].as_vector();
+        // Expand 'program'
+        if ( auto expected = ns_config::ns_environment::expand(cmd_exec.program) )
+        {
+          cmd_exec.program = *expected;
+        } // if
+        else
+        {
+          ns_log::error()("Failed to expand 'program': {}", expected.error());
+        } // else
       }, ns_db::Mode::UPDATE_OR_CREATE);
     }, [&]
     {

@@ -17,6 +17,7 @@
 #include <thread>
 
 #include "../lib/env.hpp"
+#include "log.hpp"
 #include "../macro.hpp"
 #include "../std/vector.hpp"
 
@@ -138,7 +139,7 @@ Subprocess::Subprocess(T&& t)
 } // Subprocess }}}
 
 // Subprocess::~Subprocess {{{
-Subprocess::~Subprocess()
+inline Subprocess::~Subprocess()
 {
   (void) this->wait();
 } // Subprocess::~Subprocess }}}
@@ -420,6 +421,26 @@ inline Subprocess& Subprocess::spawn()
   // Child should stop here
   exit(1);
 } // spawn() }}}
+
+// wait_busy_file() {{{
+inline std::optional<std::string> wait_busy_file(fs::path const& path_file_target)
+{
+  auto path_file_lsof = search_path("lsof");
+  qreturn_if(not path_file_lsof, std::optional("Could not locate lsof binary"));
+
+  while(true)
+  {
+    auto ret = Subprocess(*path_file_lsof)
+      .with_piped_outputs()
+      .with_args(path_file_target)
+      .spawn()
+      .wait();
+    ebreak_if(not ret, "Failed to query status for busy file");
+    dbreak_if(*ret != 0, "break, file is not busy");
+  } // while
+
+  return std::nullopt;
+} // wait_busy_file()}}}
 
 } // namespace ns_subprocess
 

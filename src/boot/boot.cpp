@@ -206,6 +206,12 @@ void boot(int argc, char** argv)
 
   // Parse flatimage command if exists
   ns_parser::parse_cmds(config, argc, argv);
+
+  // Wait until flatimage is not busy
+  if (auto error = ns_subprocess::wait_busy_file(config.path_file_binary); error)
+  {
+    ns_log::error()(*error);
+  } // if
 } // boot() }}}
 
 // main() {{{

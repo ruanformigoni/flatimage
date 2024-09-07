@@ -60,7 +60,7 @@ inline const char* str_perms_usage =
 inline const char* str_env_usage =
 "fim-env:\n   Edit current permissions for the flatimage\n"
 "Usage:\n   fim-env add|set <'key=value'>...\n"
-"   fim-env del <key>\n"
+"   fim-env del <key>...\n"
 "   fim-env list\n"
 "Example:\n   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'";
 inline const char* str_desktop_usage =
@@ -305,6 +305,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
         ns_match::equal("perms")   >>= [&]{ f_error(true, str_perms_usage, ""); },
         ns_match::equal("env")     >>= [&]{ f_error(true, str_env_usage, ""); },
         ns_match::equal("desktop") >>= [&]{ f_error(true, str_desktop_usage, ""); },
+        ns_match::equal("layer")   >>= [&]{ f_error(true, str_layer_usage, ""); },
         ns_match::equal("commit")  >>= [&]{ f_error(true, str_commit_usage, ""); },
         ns_match::equal("boot")    >>= [&]{ f_error(true, str_boot_usage, ""); }
       );

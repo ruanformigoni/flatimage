@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 struct message_buffer
 {
   long message_type;
-  char message_text[1024];
+  char message_text[2048];
 };
 
 // class Ipc {{{

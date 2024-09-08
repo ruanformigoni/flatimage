@@ -20,9 +20,11 @@ namespace fs = std::filesystem;
 
 // mkdtemp() {{{
 // Creates a temporary directory in path_dir_parent with the template provided by 'dir_template'
-inline fs::path mkdtemp(fs::path const& path_dir_parent, std::string dir_template = "XXXXXX")
+[[nodiscard]] inline fs::path mkdtemp(fs::path const& path_dir_parent, std::string dir_template = "XXXXXX")
 {
-  fs::create_directories(path_dir_parent);
+  std::error_code ec;
+  fs::create_directories(path_dir_parent, ec);
+  ethrow_if(ec, "Failed to create temporary dir {}: '{}'"_fmt(path_dir_parent, ec.message()));
   fs::path path_dir_template = path_dir_parent / dir_template;
   const char* cstr_path_dir_temp = ::mkdtemp(path_dir_template.string().data()); 
   ethrow_if(cstr_path_dir_temp == nullptr, "Failed to create temporary dir {}"_fmt(path_dir_template));

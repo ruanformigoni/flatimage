@@ -113,6 +113,7 @@ class Db
     template<typename T = std::string>
     std::vector<T> as_vector() const;
     std::string as_string() const;
+    std::string dump() const;
 
     // Modifying
     template<ns_concept::StringRepresentable T>
@@ -316,8 +317,16 @@ std::vector<T> Db::as_vector() const
 // as_string() {{{
 inline std::string Db::as_string() const
 {
-  return data().dump();
+  auto& json = data();
+  ethrow_if(not json.is_string(), "Tried to access non-string in DB");
+  return json.get<std::string>();
 } // as_string() }}}
+
+// dump() {{{
+inline std::string Db::dump() const
+{
+  return data().dump();
+} // dump() }}}
 
 // obj_erase() {{{
 template<ns_concept::StringRepresentable T>

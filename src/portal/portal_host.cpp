@@ -121,22 +121,37 @@ void fork_execve(std::string msg)
   vec_argv[0] = opt_path_file_command->c_str();
 
   // Create arguments for execve
-  const char **argv_custom = new const char* [vec_argv.size()+1];
-
+  auto argv_custom = std::make_unique<const char*[]>(vec_argv.size()+1);
   // Set last arg to nullptr
   argv_custom[vec_argv.size()] = nullptr;
-
-  // Copy arguments
+  // Copy entries
   for(size_t i = 0; i < vec_argv.size(); ++i)
   {
     argv_custom[i] = vec_argv[i].c_str();
   } // for
 
-  // Perform execve
-  execve(argv_custom[0], (char**) argv_custom, environ);
+  // Fetch environment from db
+  fs::path path_file_environment = db["environment"].as_string();
+  std::vector<std::string> vec_environment;
+  std::ifstream file_environment(path_file_environment);
+  ereturn_if(not file_environment.is_open(), "Could not open {}"_fmt(path_file_environment));
+  for (std::string entry; std::getline(file_environment, entry);)
+  {
+    vec_environment.push_back(entry);
+  } // for
+  file_environment.close();
+  // Create environment for execve
+  auto env_custom = std::make_unique<const char*[]>(vec_environment.size()+1);
+  // Set last arg to nullptr
+  env_custom[vec_environment.size()] = nullptr;
+  // Copy entries
+  for(size_t i = 0; i < vec_environment.size(); ++i)
+  {
+    env_custom[i] = vec_environment[i].c_str();
+  } // for
 
-  // If got here, execve failed
-  delete[] argv_custom;
+  // Perform execve
+  execve(argv_custom[0], (char**) argv_custom.get(), (char**) env_custom.get());
 
   // Child should stop here
   exit(1);
@@ -151,7 +166,8 @@ decltype(auto) validate(std::string_view msg) noexcept
     return db["command"].is_array()
       and db["stdout"].is_string()
       and db["stderr"].is_string()
-      and db["exit"].is_string();
+      and db["exit"].is_string()
+      and db["environment"].is_string();
   } // try
   catch(...)
   {

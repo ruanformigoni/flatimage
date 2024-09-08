@@ -13,6 +13,9 @@
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/db.hpp"
 #include "../cpp/lib/ipc.hpp"
+#include "../cpp/lib/linux.hpp"
+
+extern char** environ;
 
 namespace fs = std::filesystem;
 
@@ -96,13 +99,24 @@ int main(int argc, char** argv)
     close(fd_stderr);
   });
 
+  // Save environment
+  fs::path path_file_env = fs::path{str_dir_mount} / "portal" / "environments" / std::to_string(getpid());
+  std::ofstream ofile_env(path_file_env);
+  ereturn_if(not ofile_env.good(), "Could not open file '{}'"_fmt(path_file_env), EXIT_FAILURE);
+  for(char **env = environ; *env != NULL; ++env)
+  {
+    ofile_env << *env << '\n';
+  } // for
+  ofile_env.close();
+  
   // Send message
   auto db = ns_db::Db("{}");
   db("command") = std::vector(argv+1, argv+argc);
   db("stdout") = path_file_fifo_stdout->c_str();
   db("stderr") = path_file_fifo_stderr->c_str();
   db("exit") = path_file_fifo_exit->c_str();
-  ipc.send(db.as_string());
+  db("environment") = path_file_env;
+  ipc.send(db.dump());
 
   // Read stdout and stderr while program is running
   thread_stdout.join();

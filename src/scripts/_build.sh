@@ -263,7 +263,9 @@ function _create_subsystem_debootstrap()
 function _create_subsystem_alpine()
 {
   mkdir -p dist
-  mkdir -p bin
+
+  # Fetch static binaries, creates a bin folder
+  _fetch_static
 
   local dist="alpine"
 
@@ -271,6 +273,7 @@ function _create_subsystem_alpine()
   chmod -R +x ./bin/.
 
   # Build
+  rm -rf /tmp/"$dist"
   wget http://dl-cdn.alpinelinux.org/alpine/v3.12/main/x86_64/apk-tools-static-2.10.8-r1.apk
   tar zxf apk-tools-static-*.apk
   ./sbin/apk.static --arch x86_64 -X http://dl-cdn.alpinelinux.org/alpine/latest-stable/main/ -U --allow-untrusted --root /tmp/"$dist" --initdb add alpine-base
@@ -303,28 +306,33 @@ function _create_subsystem_alpine()
   chmod +x ./bin/proot
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
-  ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa'
+  ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa' || true
 
   # Create fim dir
   mkdir -p "/tmp/$dist/fim"
 
-  # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/symlinks "/tmp/$dist/fim/mount"
-
-  # Create fim dwarfs dir
-  mkdir -p "/tmp/$dist/fim/dwarfs"
-
-  # Create fim tools dir
-  mkdir -p "/tmp/$dist/fim/static"
-
   # Embed static binaries
+  mkdir -p "/tmp/$dist/fim/static"
   cp -r ./bin/* "/tmp/$dist/fim/static"
 
-  # Embed runner
-  cp "$FIM_DIR_SCRIPT/_boot.sh" "/tmp/$dist/fim/boot"
+  # Compile and include runner
+  (
+    cd "$FIM_DIR"
+    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker run -it --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
+    docker run -it --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/janitor /host/bin
+  )
 
-  # Embed permissions
-  cp "$FIM_DIR_SCRIPT/_perms.sh" "/tmp/$dist/fim/perms"
+  # Compile and include portal
+  (
+    cd "$FIM_DIR"
+    docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+  )
+
+  cp ./bin/fim_portal ./bin/fim_portal_daemon           /tmp/"$dist"/fim/static
+  cp ./bin/boot       /tmp/"$dist"/fim/static/boot
+  cp ./bin/janitor    /tmp/"$dist"/fim/static/janitor
 
   # Set permissions
   chown -R "$(id -u)":users "/tmp/$dist"
@@ -332,11 +340,23 @@ function _create_subsystem_alpine()
 
   # MIME
   mkdir -p "/tmp/$dist/fim/desktop"
-  cp ./mime/icon.svg      "/tmp/$dist/fim/desktop"
-  cp ./mime/flatimage.xml "/tmp/$dist/fim/desktop"
+  cp "$FIM_DIR"/mime/icon.svg      "/tmp/$dist/fim/desktop"
+  cp "$FIM_DIR"/mime/flatimage.xml "/tmp/$dist/fim/desktop"
+
+  # Create root filesystem and layers folder
+  mkdir ./root
+  mv /tmp/"$dist"/fim ./root
+  mkdir ./root/fim/layers
+
+  # Create layer 0 compressed filesystem
+  "$FIM_DIR_BUILD"/bin/mkdwarfs -l 7 -i /tmp/"$dist" -o ./alpine.dwarfs
+  rm -rf /tmp/"$dist"
+
+  # Change filesystem name to index:sha
+  mv ./alpine.dwarfs ./root/fim/layers/"0-$(sha256sum ./alpine.dwarfs | awk '{print $1}')"
 
   # Create image
-  _create_image  "/tmp/$dist" "$dist.img"
+  _create_image ./root "$dist.img"
 
   # Create elf
   _create_elf "$dist.img" "$dist.flatimage"
@@ -529,8 +549,8 @@ function _create_subsystem_arch()
   # Compile and include portal
   (
     cd "$FIM_DIR"
-    docker build . -t "flatimage-portal:arch" -f docker/Dockerfile.portal
-    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal:arch" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+    docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
   )
 
   # Embed static binaries

@@ -101,6 +101,9 @@ int main(int argc, char** argv)
 
   // Save environment
   fs::path path_file_env = fs::path{str_dir_mount} / "portal" / "environments" / std::to_string(getpid());
+  std::error_code ec;
+  fs::create_directories(path_file_env.parent_path(), ec);
+  ereturn_if(ec, "Could not open file '{}': '{}'"_fmt(path_file_env, ec.message()), EXIT_FAILURE);
   std::ofstream ofile_env(path_file_env);
   ereturn_if(not ofile_env.good(), "Could not open file '{}'"_fmt(path_file_env), EXIT_FAILURE);
   for(char **env = environ; *env != NULL; ++env)

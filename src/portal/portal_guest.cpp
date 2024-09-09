@@ -70,31 +70,68 @@ int main(int argc, char** argv)
   // Open fifos for reading
   auto thread_stdout = std::jthread([=]
   {
-    int fd_stdout = open(path_file_fifo_stdout->c_str(), O_RDONLY);
+    using namespace std::chrono_literals;
+    int fd_stdout = open(path_file_fifo_stdout->c_str(), O_RDONLY | O_NONBLOCK);
     ereturn_if(fd_stdout == -1, strerror(errno));
-    // Read a message from the FIFO
+    // Wait for the portal daemon to connect a child to the fifo
+    std::this_thread::sleep_for(1s);
+    // Read messages from the FIFO
+    char buffer[16384];
     while(true)
     {
-      char buffer[16384];
-      ssize_t bytes_read = read(fd_stdout, buffer, sizeof(buffer));
-      ereturn_if(bytes_read == -1, "failed to read fifo");
-      ireturn_if(bytes_read == 0, "stdout fifo has closed");
-      std::cout << buffer;
+      ssize_t bytesRead = read(fd_stdout, buffer, sizeof(buffer));
+      if (bytesRead == -1 and (errno == EWOULDBLOCK or errno == EAGAIN))
+      {
+        continue;
+      } // if
+      else if (bytesRead == -1)
+      {
+        perror("read");
+        break;
+      } // else if
+      else if (bytesRead == 0)
+      {
+        ns_log::debug()("No data received, the process either finished of did not start\n");
+        break;
+      } // else if
+      else
+      {
+        std::cout << buffer;
+      } // else
     } // while
     close(fd_stdout);
   });
 
   auto thread_stderr = std::jthread([=]
   {
-    int fd_stderr = open(path_file_fifo_stderr->c_str(), O_RDONLY);
+    using namespace std::chrono_literals;
+    int fd_stderr = open(path_file_fifo_stderr->c_str(), O_RDONLY | O_NONBLOCK);
     ereturn_if(fd_stderr == -1, strerror(errno));
+    // Wait for the portal daemon to connect a child to the fifo
+    std::this_thread::sleep_for(1s);
+    // Read messages from the FIFO
+    char buffer[16384];
     while(true)
     {
-      char buffer[16384];
-      ssize_t bytes_read = read(fd_stderr, buffer, sizeof(buffer));
-      ereturn_if(bytes_read == -1, "failed to read fifo");
-      ireturn_if(bytes_read == 0, "stderr fifo has closed");
-      std::cerr << buffer;
+      ssize_t bytesRead = read(fd_stderr, buffer, sizeof(buffer));
+      if (bytesRead == -1 and (errno == EWOULDBLOCK or errno == EAGAIN))
+      {
+        continue;
+      } // if
+      else if (bytesRead == -1)
+      {
+        perror("read");
+        break;
+      } // else if
+      else if (bytesRead == 0)
+      {
+        ns_log::debug()("No data received, the process either finished of did not start\n");
+        break;
+      } // else if
+      else
+      {
+        std::cerr << buffer;
+      } // else
     } // while
     close(fd_stderr);
   });

@@ -54,7 +54,7 @@ std::optional<fs::path> search_path(fs::path query)
     qcontinue_if(env_dir_static and path_parent == fs::path(env_dir_static));
     qcontinue_if(env_dir_global_bin and path_parent == fs::path(env_dir_global_bin));
     fs::path path_full = path_parent / query;
-    ireturn_if(fs::exists(path_full), "Found '{}' in PATH"_fmt(path_full), path_full);
+    qreturn_if(fs::exists(path_full), path_full);
   } // while
 
   return std::nullopt;
@@ -86,23 +86,29 @@ void fork_execve(std::string msg)
     int ret_waitpid = waitpid(pid, &status, 0);
     // Check for failures
     ereturn_if(ret_waitpid == -1, "waitpid failed");
-    ereturn_if(not WIFEXITED(status), "child did not terminate normally");
     // Get exit code
-    int code = WEXITSTATUS(status);
+    int code = (not WIFEXITED(status))? 1 : WEXITSTATUS(status);
     // Send exit code of child through a fifo
     std::string str_exit = db["exit"];
     int fd_exit = open(str_exit.c_str(), O_WRONLY);
     ereturn_if(fd_exit == -1, "Failed to open exit fifo");
     int ret_write = write(fd_exit, &code, sizeof(code));
+    ns_log::debug()("Exit code: {}", code);
     close(fd_exit);
     ereturn_if(ret_write == -1, "Failed to write to exit FIFO");
     return;
   } // if
 
+  // Write pid to fifo
+  std::string str_pid_fifo = db["pid"];
+  pid_t pid_child = getpid();
+  int fd_pid = open(str_pid_fifo.c_str(), O_WRONLY);
+  eexit_if(write(fd_pid, &pid_child, sizeof(pid_child)) == -1, "Could not write pid to fifo", 1);
+  close(fd_pid);
+
+  // Open stdout/stderr FIFOs
   std::string str_stdout_fifo = db["stdout"];
   std::string str_stderr_fifo = db["stderr"];
-
-  // Open FIFOs
   int fd_stdout = open(str_stdout_fifo.c_str(), O_WRONLY);
   int fd_stderr = open(str_stderr_fifo.c_str(), O_WRONLY);
   eexit_if(fd_stdout == -1 or fd_stderr == -1, strerror(errno), 1);
@@ -134,7 +140,7 @@ void fork_execve(std::string msg)
   fs::path path_file_environment = db["environment"].as_string();
   std::vector<std::string> vec_environment;
   std::ifstream file_environment(path_file_environment);
-  ereturn_if(not file_environment.is_open(), "Could not open {}"_fmt(path_file_environment));
+  eexit_if(not file_environment.is_open(), "Could not open {}"_fmt(path_file_environment), 1);
   for (std::string entry; std::getline(file_environment, entry);)
   {
     vec_environment.push_back(entry);
@@ -167,6 +173,7 @@ decltype(auto) validate(std::string_view msg) noexcept
       and db["stdout"].is_string()
       and db["stderr"].is_string()
       and db["exit"].is_string()
+      and db["pid"].is_string()
       and db["environment"].is_string();
   } // try
   catch(...)

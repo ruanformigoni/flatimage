@@ -21,81 +21,60 @@ requires std::is_default_constructible_v<Comp>
 class compare
 {
   private:
-    std::tuple<std::reference_wrapper<Args>...> m_tuple;
+    std::tuple<std::decay_t<Args>...> m_tuple;
   public:
     // Constructor
-    compare(Args&... args) : m_tuple(std::reference_wrapper(args)...) {}
+    compare(Args&&... args)
+      : m_tuple(std::forward<Args>(args)...)
+    {}
     // Comparison
     template<typename U>
     requires ( std::predicate<Comp,U,Args> and ... )
     bool operator()(U&& u) const
     {
-      return ( Comp{}(std::forward<U>(u), std::get<std::reference_wrapper<Args>>(m_tuple).get()) or ... );
-    }
+      return std::apply([&](auto&&... e){ return (Comp{}(e, u) && ...); }, m_tuple);
+    } // operator()
 }; // }}}
 
-// struct less {{{
+// fn: equal() {{{
 template<typename... Args>
-struct less : public compare<std::less<>, Args...>
+requires ns_concept::Uniform<std::remove_cvref_t<Args>...>
+  and (not ns_concept::SameAs<char const*, std::decay_t<Args>...>)
+[[nodiscard]] decltype(auto) equal(Args&&... args)
 {
-  less(Args&... args) : compare<std::less<>,Args...>(args...) {}
-}; // }}}
+  return compare<std::equal_to<>,Args...>(std::forward<Args>(args)...);
+}; // fn: equal() }}}
 
-// struct greater {{{
+// fn: equal() {{{
 template<typename... Args>
-struct greater : public compare<std::less<>, Args...>
+requires ns_concept::SameAs<char const*, std::decay_t<Args>...>
+[[nodiscard]] decltype(auto) equal(Args&&... args)
 {
-  greater(Args&... args) : compare<std::greater<>,Args...>(args...) {}
-}; // }}}
-
-// struct equal {{{
-template<typename... Args>
-struct equal : public compare<std::equal_to<>, Args...>
-{
-  equal(Args&... args) : compare<std::equal_to<>,Args...>(args...) {}
-}; // }}}
-
-// struct always_true {{{
-struct always_true
-{
-  template<typename... Args>
-  bool operator()(Args&&...) { return true; }
-}; // }}}
-
-// struct finally {{{
-template<typename... Args>
-struct finally : public compare<always_true, Args...>
-{
-  finally(Args&... args) : compare<always_true,Args...>(args...) {}
-}; // }}}
-
-// operator>> {{{
-template<typename T, typename U>
-requires std::is_default_constructible_v<U>
-decltype(auto) operator>>(compare<T> const& partial_comp, U const& u)
-{
-  // Make it lazy
-  return [&](auto&& e) { return (partial_comp(e))? std::make_optional<U>(u) : std::nullopt; };
-} // }}}
+  auto to_string = [](auto&& e){ return std::string(e); };
+  return compare<std::equal_to<>, std::invoke_result_t<decltype(to_string), Args>...>(std::string(args)...);
+}; // fn: equal() }}}
 
 // operator>>= {{{
 template<typename... T, typename U>
-decltype(auto) operator>>=(compare<T...> const& partial_comp, U const& u)
+[[nodiscard]] decltype(auto) operator>>=(compare<T...> const& partial_comp, U const& u)
 {
   // Make it lazy
   return [&](auto&& e)
   {
-    if constexpr ( std::regular_invocable<U> and std::is_void_v<std::invoke_result_t<U>> )
+    if constexpr ( std::regular_invocable<U> )
     {
-      return (partial_comp(e))? (u(), std::make_optional(true)) : std::nullopt;
+      if constexpr ( std::is_void_v<std::invoke_result_t<U>>  )
+      {
+        return (partial_comp(e))? (u(), std::make_optional(true)) : std::nullopt;
+      } // if
+      else
+      {
+        return (partial_comp(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt;
+      } // else
     } // if
-    else if constexpr ( std::regular_invocable<U> )
-    {
-      return (partial_comp(e))? std::make_optional<std::invoke_result_t<U>>(u()) : std::nullopt;
-    } // else if
     else
     {
-      return (partial_comp(e))? u : std::nullopt;
+      return (partial_comp(e))? std::make_optional(u) : std::nullopt;
     } // else if
   };
 } // }}}
@@ -105,7 +84,7 @@ template<typename T, typename... Args>
 requires ( sizeof...(Args) > 0 )
 and ( std::is_invocable_v<Args,T> and ... )
 and ( ns_concept::IsInstanceOf<std::invoke_result_t<Args,T>, std::optional> and ... )
-inline auto match(T&& t, Args&&... args)
+[[nodiscard]] auto match(T&& t, Args&&... args)
   -> typename std::invoke_result_t<std::tuple_element_t<0,std::tuple<Args...>>, T>::value_type
 {
   std::invoke_result_t<std::tuple_element_t<0,std::tuple<Args...>>, T> result = std::nullopt;

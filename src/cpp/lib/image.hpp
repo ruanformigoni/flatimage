@@ -38,7 +38,7 @@ inline void resize_impl(fs::path const& path_file_src
   ethrow_if(not fs::is_regular_file(path_file_src), "File '{}' does not exist or is not a regular file"_fmt(path_file_src));
 
   gil::rgba8_image_t img;
-  ns_match::match(path_file_src.extension()
+  (void) ns_match::match(path_file_src.extension()
     , ns_match::equal(".jpg", ".jpeg") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::jpeg_tag()); }
     , ns_match::equal(".png") >>= [&]{ gil::read_and_convert_image(path_file_src, img, gil::png_tag()); }
   );

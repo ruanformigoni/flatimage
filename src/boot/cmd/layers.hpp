@@ -46,11 +46,13 @@ uint64_t query_highest_layer_index(ns_config::FlatimageConfig const& config, fs:
   std::ranges::for_each(fs::directory_iterator(path_dir_layers)
     , [&](auto&& e){ vec_path_dir_layers.push_back(e); }
   );
+  // First index is 0
+  qreturn_if(vec_path_dir_layers.size() == 0, 0);
+  // Get highest index plus one
   std::ranges::sort(vec_path_dir_layers);
   str_index_highest = vec_path_dir_layers.back().filename().string();
   str_index_highest.erase(str_index_highest.find('-'), std::string::npos);
   uint64_t int_index_highest = std::stoi(str_index_highest) + 1;
-  ns_log::info()("Filesystem index: {}", int_index_highest);
   return int_index_highest;
 } // fn: query_highest_layer_index() }}}
 
@@ -59,6 +61,7 @@ std::string generate_layer_name(ns_config::FlatimageConfig const& config, fs::pa
 {
   std::string sha = generate_sha(path_file_layer);
   uint64_t index = query_highest_layer_index(config, path_dir_layers);
+  ns_log::info()("Filesystem index: {}", index);
   return "{}-{}"_fmt(std::to_string(index), sha);
 } // fn: generate_layer_name() }}}
 

@@ -383,7 +383,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       , program
       , args
       , environment)
-      .run(permissions);
+      .with_binds_from_file(config.path_file_config_bindings)
+      .run( permissions);
   };
 
   // Execute a command as a regular user

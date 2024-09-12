@@ -14,6 +14,7 @@
 #include "../macro.hpp"
 #include "log.hpp"
 #include "db.hpp"
+#include "match.hpp"
 #include "subprocess.hpp"
 #include "env.hpp"
 
@@ -92,6 +93,7 @@ class Bwrap
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
       , std::vector<std::string> const& program_env);
+    Bwrap& with_binds_from_file(fs::path const& path_file_bindings);
     Bwrap& bind_root(fs::path const& path_dir_runtime_host);
     Bwrap& bind_home();
     Bwrap& bind_media();
@@ -225,6 +227,27 @@ inline void Bwrap::symlink_nvidia()
     ns_vector::push_back(m_args, "--dev-bind-try", entry, entry);
   } // for
 } // fn: symlink_nvidia() }}}
+
+// load_bindings() {{{
+inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
+{
+  // Load bindings from the filesystem if any
+  ns_exception::ignore([&]
+  {
+    for(auto const& binding : ns_db::Db(path_file_bindings, ns_db::Mode::READ))
+    {
+      m_args.push_back(ns_match::match(std::string{binding["type"]}
+        , ns_match::equal("ro") >>= std::string{"--ro-bind-try"}
+        , ns_match::equal("rw") >>= std::string{"--bind-try"}
+        , ns_match::equal("dev") >>= std::string{"--dev-bind-try"}
+      ));
+      m_args.push_back(binding["src"]);
+      m_args.push_back(binding["dst"]);
+    } // for
+  });
+
+  return *this;
+} // load_bindings() }}}
 
 // bind_root() {{{
 inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)

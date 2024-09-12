@@ -176,7 +176,7 @@ inline void Bwrap::set_xdg_runtime_dir()
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_path_dir_xdg_runtime);
 } // set_xdg_runtime_dir() }}}
 
-// fn: symlink_nvidia() {{{
+// symlink_nvidia() {{{
 inline void Bwrap::symlink_nvidia()
 {
   auto f_find_and_bind = [&]<typename... Args>(fs::path const& path_dir_search, Args&&... args)
@@ -226,9 +226,9 @@ inline void Bwrap::symlink_nvidia()
   {
     ns_vector::push_back(m_args, "--dev-bind-try", entry, entry);
   } // for
-} // fn: symlink_nvidia() }}}
+} // symlink_nvidia() }}}
 
-// load_bindings() {{{
+// with_binds_from_file() {{{
 inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
 {
   // Load bindings from the filesystem if any
@@ -247,7 +247,7 @@ inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
   });
 
   return *this;
-} // load_bindings() }}}
+} // with_binds_from_file() }}}
 
 // bind_root() {{{
 inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)

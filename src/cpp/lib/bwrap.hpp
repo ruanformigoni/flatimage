@@ -87,14 +87,11 @@ class Bwrap
   public:
     template<ns_concept::StringRepresentable... Args>
     Bwrap(bool is_root
-      , fs::path const& path_dir_root
-      , fs::path const& path_dir_runtime_host
       , fs::path const& path_file_bashrc
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
       , std::vector<std::string> const& program_env);
     Bwrap& with_binds_from_file(fs::path const& path_file_bindings);
-    Bwrap& bind_root(fs::path const& path_dir_runtime_host);
     Bwrap& bind_home();
     Bwrap& bind_media();
     Bwrap& bind_audio();
@@ -107,6 +104,8 @@ class Bwrap
     Bwrap& bind_usb();
     Bwrap& bind_network();
     Bwrap& bind_gpu();
+    Bwrap& with_bind(fs::path const& src, fs::path const& dst);
+    Bwrap& with_bind_ro(fs::path const& src, fs::path const& dst);
     void run(std::set<ns_permissions::Permission> const& permissions);
 }; // class: Bwrap
 
@@ -114,16 +113,12 @@ class Bwrap
 template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(
       bool is_root
-    , fs::path const& path_dir_root
-    , fs::path const& path_dir_runtime_host
     , fs::path const& path_file_bashrc
     , fs::path const& path_file_program
     , std::vector<std::string> const& program_args
     , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
   , m_program_args(program_args)
-  , m_path_dir_root(path_dir_root)
-  , m_path_dir_runtime_host(path_dir_runtime_host)
   , m_is_root(is_root)
 {
   // Push passed environment
@@ -141,19 +136,13 @@ inline Bwrap::Bwrap(
   std::ofstream of{path_file_bashrc};
   if ( of.good() )
   {
-    of << "export PS1=\"(flatimage@\"${FIM_DIST,,}\") → \"";
+    of << R"(export PS1="[flatimage-${FIM_DIST,,}] \W → ")";
   } // if
   of.close();
   ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
 
-  // Check if root exists and is a directory
-  ethrow_if(not fs::is_directory(path_dir_root)
-    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
-  );
-
   // Basic bindings
   if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
-  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
   ns_vector::push_back(m_args, "--dev", "/dev");
   ns_vector::push_back(m_args, "--proc", "/proc");
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
@@ -162,9 +151,6 @@ inline Bwrap::Bwrap(
 
   // Check if XDG_RUNTIME_DIR is set or try to set it manually
   set_xdg_runtime_dir();
-
-  // Make root filesystem accessible from the guest
-  bind_root(path_dir_runtime_host);
 } // Bwrap() }}}
 
 // set_xdg_runtime_dir() {{{
@@ -249,12 +235,19 @@ inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
   return *this;
 } // with_binds_from_file() }}}
 
-// bind_root() {{{
-inline Bwrap& Bwrap::bind_root(fs::path const& path_dir_runtime_host)
+// with_bind() {{{
+inline Bwrap& Bwrap::with_bind(fs::path const& src, fs::path const& dst)
 {
-  ns_vector::push_back(m_args, "--ro-bind-try", "/", path_dir_runtime_host);
+  ns_vector::push_back(m_args, "--bind-try", src, dst);
   return *this;
-} // bind_root() }}}
+} // with_bind() }}}
+
+// with_bind_ro() {{{
+inline Bwrap& Bwrap::with_bind_ro(fs::path const& src, fs::path const& dst)
+{
+  ns_vector::push_back(m_args, "--ro-bind-try", src, dst);
+  return *this;
+} // with_bind_ro() }}}
 
 // bind_home() {{{
 inline Bwrap& Bwrap::bind_home()

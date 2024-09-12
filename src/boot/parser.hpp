@@ -377,12 +377,12 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
   {
     ns_bwrap::Bwrap(config.is_root
-      , config.path_dir_mount_overlayfs
-      , config.path_dir_runtime_host
       , config.path_file_bashrc
       , program
       , args
       , environment)
+      .with_bind(config.path_dir_mount_overlayfs, "/")
+      .with_bind_ro("/", config.path_dir_runtime_host)
       .with_binds_from_file(config.path_file_config_bindings)
       .run( permissions);
   };

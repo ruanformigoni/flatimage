@@ -87,6 +87,7 @@ class Bwrap
   public:
     template<ns_concept::StringRepresentable... Args>
     Bwrap(bool is_root
+      , fs::path const& path_dir_root
       , fs::path const& path_file_bashrc
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
@@ -113,6 +114,7 @@ class Bwrap
 template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(
       bool is_root
+    , fs::path const& path_dir_root
     , fs::path const& path_file_bashrc
     , fs::path const& path_file_program
     , std::vector<std::string> const& program_args
@@ -141,8 +143,14 @@ inline Bwrap::Bwrap(
   of.close();
   ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
 
+  // Check if root exists and is a directory
+  ethrow_if(not fs::is_directory(path_dir_root)
+    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
+  );
+
   // Basic bindings
   if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
   ns_vector::push_back(m_args, "--dev", "/dev");
   ns_vector::push_back(m_args, "--proc", "/proc");
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");

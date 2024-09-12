@@ -23,6 +23,7 @@
 #include "config/config.hpp"
 #include "cmd/layers.hpp"
 #include "cmd/desktop.hpp"
+#include "cmd/bind.hpp"
 #include "filesystems.hpp"
 
 namespace ns_parser
@@ -75,6 +76,17 @@ inline const char* str_layer_usage =
 "   fim-layer add <in-file>\n"
 "create:\n   Creates a novel layer from <in-dir> and save in <out-file>\n"
 "add:\n   Includes the novel layer <in-file> in the image in the top of the layer stack";
+inline const char* str_bind_usage =
+"fim-bind:\n   Bind paths from the host to inside the container\n"
+"Usage:\n   fim-bind add <type> <src> <dst>\n"
+"   fim-bind del <index>\n"
+"   fim-bind list\n"
+"<type>:\n   ro, rw, dev\n"
+"<src>:\n   A file, directory, or device\n"
+"<dst>:\n   A file, directory, or device\n"
+"add:\n   Create a novel binding of type <type> from <src> to <dst>\n"
+"del:\n   Deletes a binding with the specified index\n"
+"list:\n   List current bindings";
 inline const char* str_commit_usage =
 "fim-commit:\n   Compresses current changes and inserts them into the FlatImage\n"
 "Usage:\n   fim-commit";
@@ -151,7 +163,18 @@ struct CmdCommit
 
 struct CmdNone {};
 
-using CmdType = std::variant<CmdRoot,CmdExec,CmdResize,CmdPerms,CmdEnv,CmdDesktop,CmdLayer,CmdCommit,CmdBoot,CmdNone>;
+using CmdType = std::variant<CmdRoot
+  , CmdExec
+  , CmdResize
+  , CmdPerms
+  , CmdEnv
+  , CmdDesktop
+  , CmdLayer
+  , ns_cmd::ns_bind::CmdBind
+  , CmdCommit
+  , CmdBoot
+  , CmdNone
+>;
 // }}}
 
 // parse() {{{
@@ -282,6 +305,33 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       } // else
       return CmdType(cmd);
     },
+    // Bind a path or device to inside the flatimage
+    ns_match::equal("fim-bind") >>= [&]
+    {
+      f_error(argc < 3, str_bind_usage, "Incorrect number of arguments");
+      // Create command
+      ns_cmd::ns_bind::CmdBind cmd;
+      // Check op
+      cmd.op = ns_cmd::ns_bind::CmdBindOp(argv[2]);
+      cmd.data = ns_match::match(cmd.op
+        , ns_match::equal(ns_cmd::ns_bind::CmdBindOp::ADD) >>= [&]
+        {
+          f_error(argc != 6, str_bind_usage, "Incorrect number of arguments");
+          return ns_cmd::ns_bind::data_t(ns_cmd::ns_bind::bind_t(std::string{argv[3]}, argv[4], argv[5]));
+        }
+        , ns_match::equal(ns_cmd::ns_bind::CmdBindOp::DEL) >>= [&]
+        {
+          f_error(argc != 4, str_bind_usage, "Incorrect number of arguments");
+          f_error(not std::ranges::all_of(std::string_view{argv[3]}, [](char c){ return std::isdigit(c); })
+              , str_bind_usage
+              , "Invalid index specifier"
+          );
+          return ns_cmd::ns_bind::data_t(ns_cmd::ns_bind::index_t(std::stoi(argv[3])));
+        }
+        , ns_match::equal(ns_cmd::ns_bind::CmdBindOp::LIST) >>= ns_cmd::ns_bind::data_t(std::false_type{})
+      );
+      return CmdType(cmd);
+    },
     // Commit current files to a novel compressed layer
     ns_match::equal("fim-commit") >>= [&]
     {
@@ -298,7 +348,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-help") >>= [&]
     {
       if ( argc < 3 ) { f_error(true, str_help, "fim-help"); } // if
-      ns_match::match(std::string_view{argv[2]},
+      (void) ns_match::match(std::string_view{argv[2]},
         ns_match::equal("exec")    >>= [&]{ f_error(true, str_exec_usage, ""); },
         ns_match::equal("root")    >>= [&]{ f_error(true, str_root_usage, ""); },
         ns_match::equal("resize")  >>= [&]{ f_error(true, str_resize_usage, ""); },
@@ -306,6 +356,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
         ns_match::equal("env")     >>= [&]{ f_error(true, str_env_usage, ""); },
         ns_match::equal("desktop") >>= [&]{ f_error(true, str_desktop_usage, ""); },
         ns_match::equal("layer")   >>= [&]{ f_error(true, str_layer_usage, ""); },
+        ns_match::equal("bind")    >>= [&]{ f_error(true, str_bind_usage, ""); },
         ns_match::equal("commit")  >>= [&]{ f_error(true, str_commit_usage, ""); },
         ns_match::equal("boot")    >>= [&]{ f_error(true, str_boot_usage, ""); }
       );
@@ -421,8 +472,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     {
       ns_log::set_level(ns_log::Level::INFO);
     } // if
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+    // Mount filesystems
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
@@ -439,7 +490,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
         ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(config.path_dir_mount_ext, *opt_path_file_src_json, config.path_file_config_desktop);
+        ns_desktop::setup(config.path_dir_mount_overlayfs, *opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
     } // switch
@@ -460,6 +511,27 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     {
       ns_layers::create(cmd->args.at(0), cmd->args.at(1), config.layer_compression_level);
     } // else
+  } // else if
+  // Bind a device or file to the flatimage
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_cmd::ns_bind::CmdBind>(*variant_cmd) )
+  {
+    // Update log level
+    if ( not ns_env::get("FIM_DEBUG") )
+    {
+      ns_log::set_level(ns_log::Level::INFO);
+    } // if
+
+    // Mount filesystem as RW
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+
+    // Perform selected op
+    switch(cmd->op)
+    {
+      case ns_cmd::ns_bind::CmdBindOp::ADD: ns_cmd::ns_bind::add(config.path_file_config_bindings, *cmd); break;
+      case ns_cmd::ns_bind::CmdBindOp::DEL: ns_cmd::ns_bind::del(config.path_file_config_bindings, *cmd); break;
+      case ns_cmd::ns_bind::CmdBindOp::LIST: ns_cmd::ns_bind::list(config.path_file_config_bindings); break;
+    } // switch
+
   } // else if
   // Commit changes as a novel layer into the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCommit>(*variant_cmd) )

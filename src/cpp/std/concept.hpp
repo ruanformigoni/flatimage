@@ -35,8 +35,12 @@ concept Enum = std::is_enum_v<T>;
 template <typename T>
 concept Variant = requires(T){ std::variant_size_v<T>; };
 
-template<typename T, typename U>
-concept SameAs = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
+template<typename T, typename... U>
+concept SameAs = ( std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>> and ... );
+
+template<typename... U>
+concept Uniform = sizeof...(U) > 0
+ and std::conjunction_v<std::is_same<std::tuple_element_t<0, std::tuple<U...>>, U>...>;
 
 template<typename T, template<typename...> typename U>
 concept IsInstanceOf = is_instance_of_v<T, U>;

@@ -52,6 +52,7 @@ struct FlatimageConfig
   fs::path path_file_config_environment;
   fs::path path_file_config_permissions;
   fs::path path_file_config_desktop;
+  fs::path path_file_config_bindings;
   fs::path path_dir_layers;
   fs::path path_dir_hooks;
 
@@ -99,6 +100,7 @@ inline FlatimageConfig config()
   config.path_file_config_environment = config.path_dir_mount_ext / "fim/config/environment.json";
   config.path_file_config_permissions = config.path_dir_mount_ext / "fim/config/permissions.json";
   config.path_file_config_desktop     = config.path_dir_mount_ext / "fim/config/desktop.json";
+  config.path_file_config_bindings    = config.path_dir_mount_ext / "fim/config/bindings.json";
   config.path_dir_layers              = config.path_dir_mount_ext / "fim/layers";
   config.path_dir_hooks               = config.path_dir_mount_ext / "fim/hooks";
 

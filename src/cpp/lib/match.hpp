@@ -32,7 +32,7 @@ class compare
     requires ( std::predicate<Comp,U,Args> and ... )
     bool operator()(U&& u) const
     {
-      return std::apply([&](auto&&... e){ return (Comp{}(e, u) && ...); }, m_tuple);
+      return std::apply([&](auto&&... e){ return (Comp{}(e, u) or ...); }, m_tuple);
     } // operator()
 }; // }}}
 

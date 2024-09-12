@@ -12,8 +12,10 @@
 #include "../../cpp/lib/db.hpp"
 #include "../../cpp/lib/subprocess.hpp"
 #include "../../cpp/lib/image.hpp"
+#include "../../cpp/lib/ext2/size.hpp"
 #include "../../cpp/lib/env.hpp"
 #include "../../cpp/macro.hpp"
+#include "../filesystems.hpp"
 
 namespace ns_desktop
 {
@@ -232,10 +234,13 @@ void integrate_bash(fs::path const& path_dir_home)
 ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
 
 // integrate() {{{
-inline void integrate(fs::path const& path_file_json
-  , fs::path const& path_file_binary
-  , fs::path const& path_dir_mount_ext2)
+inline void integrate(ns_config::FlatimageConfig const& config
+  , fs::path const& path_file_json
+  , fs::path const& path_file_binary)
 {
+  // Mount filesystem
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
+
   // Check if is enabled
   auto expected_enable_item = ns_exception::to_expected([&]
   {
@@ -251,7 +256,7 @@ inline void integrate(fs::path const& path_file_json
   );
 
   // Get desktop info
-  Desktop desktop = Desktop(path_file_json, path_dir_mount_ext2);
+  Desktop desktop = Desktop(path_file_json, config.path_dir_mount_ext);
 
   // Get HOME directory
   const char* cstr_home = ns_env::get("HOME");
@@ -299,7 +304,7 @@ inline void integrate(fs::path const& path_file_json
 } // integrate() }}}
 
 // setup() {{{
-inline void setup(fs::path const& path_dir_mount_ext2, fs::path const& path_file_json_src, fs::path const& path_file_json_dst)
+inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path_file_json_src, fs::path const& path_file_json_dst)
 {
   // Application icon
   fs::path path_file_icon;
@@ -331,23 +336,36 @@ inline void setup(fs::path const& path_dir_mount_ext2, fs::path const& path_file
   // Check if file type is valid
   ethrow_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
 
+  // Make space available to fit icon
+  ns_ext2::ns_size::resize_free_space(config.path_file_binary
+    , config.offset_ext2
+    ,  fs::file_size(path_file_icon) + ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
+  );
+
+  // Mount filesystem
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+
+  // Create config dir if not exists
+  fs::create_directories(config.path_file_config_desktop.parent_path());
+
   // Copy the icon to inside the image
-  fs::copy_file(path_file_icon, "{}/fim/desktop/icon.{}"_fmt(path_dir_mount_ext2, *opt_str_ext), fs::copy_options::overwrite_existing);
+  fs::copy_file(path_file_icon, "{}/fim/desktop/icon.{}"_fmt(config.path_dir_mount_ext, *opt_str_ext), fs::copy_options::overwrite_existing);
 
   // Copy configuration file
   fs::copy_file(path_file_json_src, path_file_json_dst, fs::copy_options::overwrite_existing);
 
   // Update icon path in the json file
   ns_db::from_file(path_file_json_dst, [&](auto& db){ db("icon") = "/fim/desktop/icon.{}"_fmt(*opt_str_ext); }, ns_db::Mode::UPDATE);
-
 } // setup() }}}
 
 // enable() {{{
-inline void enable(fs::path const& path_file_json, std::set<EnableItem> set_enable_items)
+inline void enable(ns_config::FlatimageConfig const& config, std::set<EnableItem> set_enable_items)
 {
+  // Mount filesystem
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
   std::vector<std::string> vec_enable_items;
   std::ranges::transform(set_enable_items, std::back_inserter(vec_enable_items), [](auto&& e){ return std::string{e}; });
-  ns_db::Db(path_file_json, ns_db::Mode::UPDATE_OR_CREATE)("enable") = vec_enable_items;
+  ns_db::Db(config.path_file_config_desktop, ns_db::Mode::UPDATE_OR_CREATE)("enable") = vec_enable_items;
 } // enable() }}}
 
 } // namespace ns_desktop

@@ -310,11 +310,11 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
   {
     ns_bwrap::Bwrap(config.is_root
+      , config.path_dir_mount_overlayfs
       , config.path_file_bashrc
       , program
       , args
       , environment)
-      .with_bind(config.path_dir_mount_overlayfs, "/")
       .with_bind_ro("/", config.path_dir_runtime_host)
       .with_binds_from_file(config.path_file_config_bindings)
       .run( permissions);
@@ -406,10 +406,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     {
       ns_log::set_level(ns_log::Level::INFO);
     } // if
-    // Mount filesystems
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_desktop.parent_path());
     // Determine open mode
     switch( cmd->op )
     {
@@ -417,14 +413,14 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       {
         auto opt_should_enable = ns_variant::get_if_holds_alternative<std::set<ns_desktop::EnableItem>>(cmd->arg);
         ethrow_if(not opt_should_enable.has_value(), "Could not get items to configure desktop integration");
-        ns_desktop::enable(config.path_file_config_desktop, *opt_should_enable);
+        ns_desktop::enable(config, *opt_should_enable);
       }
       break;
       case ns_parser::CmdDesktopOp::SETUP:
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
         ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(config.path_dir_mount_overlayfs, *opt_path_file_src_json, config.path_file_config_desktop);
+        ns_desktop::setup(config, *opt_path_file_src_json, config.path_file_config_desktop);
       } // case
       break;
     } // switch

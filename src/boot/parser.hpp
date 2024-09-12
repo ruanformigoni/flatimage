@@ -24,6 +24,7 @@
 #include "cmd/layers.hpp"
 #include "cmd/desktop.hpp"
 #include "cmd/bind.hpp"
+#include "cmd/help.hpp"
 #include "filesystems.hpp"
 
 namespace ns_parser
@@ -33,74 +34,6 @@ namespace
 {
 
 namespace fs = std::filesystem;
-
-inline const char* str_app_descr = "Flatimage - Portable Linux Applications\n";
-inline const char* str_help =
-"fim-help:\n   See usage details for specified command\n"
-"Usage:\n   fim-help <cmd>\n"
-"Commands:\n  exec,root,resize,perms,desktop,commit,boot\n"
-"Example:\n   fim-help exec";
-inline const char* str_root_usage =
-"fim-root:\n   Executes a command as the root user\n"
-"Usage:\n   fim-root program-name [program-args...]\n"
-"Example:\n   fim-root bash";
-inline const char* str_exec_usage =
-"fim-exec:\n   Executes a command as a regular user\n"
-"Usage:\n   fim-exec program-name [program-args...]\n"
-"Example:\n   fim-exec bash";
-inline const char* str_resize_usage =
-"fim-resize:\n   Resizes the free space of the image to have at least the provided value\n"
-"Usage:\n   fim-resize [0-9]+<M|G>\n"
-"Example:\n   fim-resize 500M";
-inline const char* str_perms_usage =
-"fim-perms:\n   Edit current permissions for the flatimage\n"
-"Usage:\n   fim-perms add|del|set <perms>...\n"
-"   fim-perms list\n"
-"Permissions:\n  home,media,audio,wayland,xorg,dbus_user,dbus_system,udev,usb,input,gpu,network\n"
-"Example:\n   fim-perms add home,media";
-inline const char* str_env_usage =
-"fim-env:\n   Edit current permissions for the flatimage\n"
-"Usage:\n   fim-env add|set <'key=value'>...\n"
-"   fim-env del <key>...\n"
-"   fim-env list\n"
-"Example:\n   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'";
-inline const char* str_desktop_usage =
-"fim-desktop:\n   Configure the desktop integration\n"
-"Usage:\n   fim-desktop setup <json-file>\n"
-"   fim-desktop enable <items...>\n"
-"items:\n   entry,mimetype,icon\n"
-"Example:\n   fim-desktop enable entry,mimetype,icon";
-inline const char* str_layer_usage =
-"fim-layer:\n   Manage the layers of the current FlatImage\n"
-"Usage:\n   fim-layer create <in-dir> <out-file>\n"
-"   fim-layer add <in-file>\n"
-"create:\n   Creates a novel layer from <in-dir> and save in <out-file>\n"
-"add:\n   Includes the novel layer <in-file> in the image in the top of the layer stack";
-inline const char* str_bind_usage =
-"fim-bind:\n   Bind paths from the host to inside the container\n"
-"Usage:\n   fim-bind add <type> <src> <dst>\n"
-"   fim-bind del <index>\n"
-"   fim-bind list\n"
-"<type>:\n   ro, rw, dev\n"
-"<src>:\n   A file, directory, or device\n"
-"<dst>:\n   A file, directory, or device\n"
-"add:\n   Create a novel binding of type <type> from <src> to <dst>\n"
-"del:\n   Deletes a binding with the specified index\n"
-"list:\n   List current bindings";
-inline const char* str_commit_usage =
-"fim-commit:\n   Compresses current changes and inserts them into the FlatImage\n"
-"Usage:\n   fim-commit";
-inline const char* str_boot_usage =
-"fim-boot:\n   Configure the default startup command\n"
-"Usage:\n   fim-boot <command> [args...]\n"
-"Example:\n   fim-boot echo test";
-
-inline std::string cmd_error(std::string_view str)
-{
-  std::stringstream ss;
-  ss << str_app_descr << str;
-  return ss.str();
-} // cmd_error
 
 } // namespace
 
@@ -190,24 +123,24 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
   auto f_error = [&](bool cond, std::string_view msg_help, std::string_view msg_exception)
   {
     if ( not cond ) { return; }
-    println(cmd_error(msg_help));
+    println(msg_help);
     throw std::runtime_error(msg_exception.data());
   };
 
   return ns_match::match(std::string_view{argv[1]},
     ns_match::equal("fim-exec") >>= [&]
     {
-      f_error(argc < 3, str_exec_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::exec_usage(), "Incorrect number of arguments");
       return CmdType(CmdExec(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::equal("fim-root") >>= [&]
     {
-      f_error(argc < 3, str_root_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::root_usage(), "Incorrect number of arguments");
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     ns_match::equal("fim-resize") >>= [&]
     {
-      f_error(argc != 3, str_resize_usage, "Incorrect number of arguments");
+      f_error(argc != 3, ns_cmd::ns_help::resize_usage(), "Incorrect number of arguments");
       // Get size string
       std::string str_size = argv[2];
       // Convert to appropriate unit
@@ -223,7 +156,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       } // else
       else
       {
-        f_error(true, str_resize_usage, "Invalid argument for filesystem size");
+        f_error(true, ns_cmd::ns_help::resize_usage(), "Invalid argument for filesystem size");
       } // else
       return CmdType(CmdResize(size));
     },
@@ -231,13 +164,13 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-perms") >>= [&]
     {
       // Check if is list subcommand
-      f_error(argc != 3 and argc != 4, str_perms_usage, "Incorrect number of arguments");
+      f_error(argc != 3 and argc != 4, ns_cmd::ns_help::perms_usage(), "Incorrect number of arguments");
       // Get op
       CmdPermsOp op = CmdPermsOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdPermsOp::LIST,  CmdType(CmdPerms{ .op = op, .permissions = {} }));
       // Check if is other command with valid args
-      f_error(argc != 4, str_perms_usage, "Incorrect number of arguments");
+      f_error(argc != 4, ns_cmd::ns_help::perms_usage(), "Incorrect number of arguments");
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
@@ -249,13 +182,13 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-env") >>= [&]
     {
       // Check if is list subcommand
-      f_error(argc < 3, str_env_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::env_usage(), "Incorrect number of arguments");
       // Get op
       CmdEnvOp op = CmdEnvOp(argv[2]);
       // Check if is list
       qreturn_if( op == CmdEnvOp::LIST,  CmdType(CmdEnv{ .op = op, .environment = {} }));
       // Check if is other command with valid args
-      f_error(argc < 4, str_env_usage, "Incorrect number of arguments");
+      f_error(argc < 4, ns_cmd::ns_help::env_usage(), "Incorrect number of arguments");
       return CmdType(CmdEnv({
         .op = op,
         .environment = std::vector<std::string>(argv+3, argv+argc)
@@ -265,7 +198,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-desktop") >>= [&]
     {
       // Check if is other command with valid args
-      f_error(argc != 4,  str_desktop_usage, "Incorrect number of arguments");
+      f_error(argc != 4,  ns_cmd::ns_help::desktop_usage(), "Incorrect number of arguments");
       CmdDesktop cmd;
       cmd.op = CmdDesktopOp(argv[2]);
       if ( cmd.op == CmdDesktopOp::SETUP )
@@ -285,7 +218,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     // Manage layers
     ns_match::equal("fim-layer") >>= [&]
     {
-      f_error(argc < 3, str_layer_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::layer_usage(), "Incorrect number of arguments");
 
       // Create cmd
       CmdLayer cmd;
@@ -295,12 +228,12 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
 
       if ( cmd.op == CmdLayerOp::ADD )
       {
-        f_error(argc < 4, str_layer_usage, "add requires exactly one argument");
+        f_error(argc < 4, ns_cmd::ns_help::layer_usage(), "add requires exactly one argument");
         ns_vector::push_back(cmd.args, argv[3]);
       } // if
       else
       {
-        f_error(argc < 5, str_layer_usage, "add requires exactly two arguments");
+        f_error(argc < 5, ns_cmd::ns_help::layer_usage(), "add requires exactly two arguments");
         ns_vector::push_back(cmd.args, argv[3], argv[4]);
       } // else
       return CmdType(cmd);
@@ -308,7 +241,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     // Bind a path or device to inside the flatimage
     ns_match::equal("fim-bind") >>= [&]
     {
-      f_error(argc < 3, str_bind_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::bind_usage(), "Incorrect number of arguments");
       // Create command
       ns_cmd::ns_bind::CmdBind cmd;
       // Check op
@@ -316,14 +249,14 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       cmd.data = ns_match::match(cmd.op
         , ns_match::equal(ns_cmd::ns_bind::CmdBindOp::ADD) >>= [&]
         {
-          f_error(argc != 6, str_bind_usage, "Incorrect number of arguments");
+          f_error(argc != 6, ns_cmd::ns_help::bind_usage(), "Incorrect number of arguments");
           return ns_cmd::ns_bind::data_t(ns_cmd::ns_bind::bind_t(std::string{argv[3]}, argv[4], argv[5]));
         }
         , ns_match::equal(ns_cmd::ns_bind::CmdBindOp::DEL) >>= [&]
         {
-          f_error(argc != 4, str_bind_usage, "Incorrect number of arguments");
+          f_error(argc != 4, ns_cmd::ns_help::bind_usage(), "Incorrect number of arguments");
           f_error(not std::ranges::all_of(std::string_view{argv[3]}, [](char c){ return std::isdigit(c); })
-              , str_bind_usage
+              , ns_cmd::ns_help::bind_usage()
               , "Invalid index specifier"
           );
           return ns_cmd::ns_bind::data_t(ns_cmd::ns_bind::index_t(std::stoi(argv[3])));
@@ -335,30 +268,30 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     // Commit current files to a novel compressed layer
     ns_match::equal("fim-commit") >>= [&]
     {
-      f_error(argc != 2, str_commit_usage, "Incorrect number of arguments");
+      f_error(argc != 2, ns_cmd::ns_help::commit_usage(), "Incorrect number of arguments");
       return CmdType(CmdCommit{});
     },
     // Set the default startup command
     ns_match::equal("fim-boot", "fim-cmd") >>= [&]
     {
-      f_error(argc < 3, str_boot_usage, "Incorrect number of arguments");
+      f_error(argc < 3, ns_cmd::ns_help::boot_usage(), "Incorrect number of arguments");
       return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     // Use the default startup command
-    ns_match::equal("fim-help") >>= [&]
+    ns_match::equal("fim-ns_cmd::ns_help::help") >>= [&]
     {
-      if ( argc < 3 ) { f_error(true, str_help, "fim-help"); } // if
+      if ( argc < 3 ) { f_error(true, ns_cmd::ns_help::help_usage(), "fim-help"); } // if
       (void) ns_match::match(std::string_view{argv[2]},
-        ns_match::equal("exec")    >>= [&]{ f_error(true, str_exec_usage, ""); },
-        ns_match::equal("root")    >>= [&]{ f_error(true, str_root_usage, ""); },
-        ns_match::equal("resize")  >>= [&]{ f_error(true, str_resize_usage, ""); },
-        ns_match::equal("perms")   >>= [&]{ f_error(true, str_perms_usage, ""); },
-        ns_match::equal("env")     >>= [&]{ f_error(true, str_env_usage, ""); },
-        ns_match::equal("desktop") >>= [&]{ f_error(true, str_desktop_usage, ""); },
-        ns_match::equal("layer")   >>= [&]{ f_error(true, str_layer_usage, ""); },
-        ns_match::equal("bind")    >>= [&]{ f_error(true, str_bind_usage, ""); },
-        ns_match::equal("commit")  >>= [&]{ f_error(true, str_commit_usage, ""); },
-        ns_match::equal("boot")    >>= [&]{ f_error(true, str_boot_usage, ""); }
+        ns_match::equal("exec")    >>= [&]{ f_error(true, ns_cmd::ns_help::exec_usage(), ""); },
+        ns_match::equal("root")    >>= [&]{ f_error(true, ns_cmd::ns_help::root_usage(), ""); },
+        ns_match::equal("resize")  >>= [&]{ f_error(true, ns_cmd::ns_help::resize_usage(), ""); },
+        ns_match::equal("perms")   >>= [&]{ f_error(true, ns_cmd::ns_help::perms_usage(), ""); },
+        ns_match::equal("env")     >>= [&]{ f_error(true, ns_cmd::ns_help::env_usage(), ""); },
+        ns_match::equal("desktop") >>= [&]{ f_error(true, ns_cmd::ns_help::desktop_usage(), ""); },
+        ns_match::equal("layer")   >>= [&]{ f_error(true, ns_cmd::ns_help::layer_usage(), ""); },
+        ns_match::equal("bind")    >>= [&]{ f_error(true, ns_cmd::ns_help::bind_usage(), ""); },
+        ns_match::equal("commit")  >>= [&]{ f_error(true, ns_cmd::ns_help::commit_usage(), ""); },
+        ns_match::equal("boot")    >>= [&]{ f_error(true, ns_cmd::ns_help::boot_usage(), ""); }
       );
       return CmdType(CmdNone{});
     }

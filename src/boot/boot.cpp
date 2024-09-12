@@ -189,11 +189,7 @@ void boot(int argc, char** argv)
   ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");
 
   // Refresh desktop integration
-  if (auto expected = ns_exception::to_expected([&]{ ns_desktop::integrate(
-      config.path_file_config_desktop
-    , config.path_file_binary
-    , config.path_dir_mount_ext);
-  }); not expected)
+  if (auto expected = ns_exception::to_expected([&]{ ns_desktop::integrate(config); }); not expected)
   {
     ns_log::error()("Error in desktop integration '{}'", expected.error());
   } // if

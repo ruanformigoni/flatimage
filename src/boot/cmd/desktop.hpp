@@ -234,9 +234,7 @@ void integrate_bash(fs::path const& path_dir_home)
 ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
 
 // integrate() {{{
-inline void integrate(ns_config::FlatimageConfig const& config
-  , fs::path const& path_file_json
-  , fs::path const& path_file_binary)
+inline void integrate(ns_config::FlatimageConfig const& config)
 {
   // Mount filesystem
   [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
@@ -244,7 +242,7 @@ inline void integrate(ns_config::FlatimageConfig const& config
   // Check if is enabled
   auto expected_enable_item = ns_exception::to_expected([&]
   {
-    return ns_db::Db(path_file_json, ns_db::Mode::READ)["enable"].as_vector();
+    return ns_db::Db(config.path_file_config_desktop, ns_db::Mode::READ)["enable"].as_vector();
   });
   ethrow_if(not expected_enable_item, expected_enable_item.error());
 
@@ -256,7 +254,7 @@ inline void integrate(ns_config::FlatimageConfig const& config
   );
 
   // Get desktop info
-  Desktop desktop = Desktop(path_file_json, config.path_dir_mount_ext);
+  Desktop desktop = Desktop(config.path_file_config_desktop, config.path_dir_mount_ext);
 
   // Get HOME directory
   const char* cstr_home = ns_env::get("HOME");
@@ -285,14 +283,14 @@ inline void integrate(ns_config::FlatimageConfig const& config
   if(set_enable_items.contains(EnableItem::ENTRY))
   {
     ns_log::info()("Integrating desktop entry...");
-    integrate_desktop_entry(desktop, cstr_home, path_file_binary);
+    integrate_desktop_entry(desktop, cstr_home, config.path_file_binary);
   } // if
 
   // Create and update mime
   if(set_enable_items.contains(EnableItem::MIMETYPE))
   {
     ns_log::info()("Integrating mime database...");
-    integrate_mime_database(desktop, cstr_home, path_file_binary);
+    integrate_mime_database(desktop, cstr_home, config.path_file_binary);
   } // if
 
   // Create desktop icons

@@ -113,7 +113,7 @@ class Db
     template<typename T = std::string>
     std::vector<T> as_vector() const;
     std::string as_string() const;
-    std::string dump() const;
+    std::string dump(const int indent = -1, const char indent_char = ' ', const bool ensure_ascii = false) const;
 
     // Modifying
     template<ns_concept::StringRepresentable T>
@@ -323,9 +323,9 @@ inline std::string Db::as_string() const
 } // as_string() }}}
 
 // dump() {{{
-inline std::string Db::dump() const
+inline std::string Db::dump(const int indent, const char indent_char, const bool ensure_ascii) const
 {
-  return data().dump();
+  return data().dump(indent, indent_char, ensure_ascii);
 } // dump() }}}
 
 // obj_erase() {{{

@@ -12,15 +12,12 @@
 
 set -e
 
-# Max size (M) = actual occupied size + offset
-export FIM_IMG_SIZE_OFFSET="${FIM_IMG_SIZE_OFFSET:=50}"
-
 FIM_DIR_SCRIPT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-FIM_DIR="$(dirname "$(dirname -- "$FIM_DIR_SCRIPT")")"
+FIM_DIR="$(dirname "$FIM_DIR_SCRIPT")"
 FIM_DIR_BUILD="$FIM_DIR"/build
 
 # shellcheck source=/dev/null
-source "${FIM_DIR_SCRIPT}/_common.sh"
+source "${FIM_DIR_SCRIPT}/common.sh"
 
 function _fetch_static()
 {
@@ -107,156 +104,6 @@ function _create_elf()
   cat bin/{fuse2fs,e2fsck,bash} >> "$out"
   cat "$img" >> "$out"
 
-}
-
-# Extracts the filesystem of a docker image
-# $1 = Dockerfile
-# $2 = Docker Tag, e.g, ubuntu:subsystem
-# $3 = Output tarball name
-function _create_subsystem_docker()
-{
-  local dockerfile="$1"
-  local tag="$2"
-  local out="$3"
-
-  [ -f "$1" ] || _die "Invalid dockerfile $1"
-  [ -n "$2" ] || _die "Empty tag parameter"
-  [ -n "$3" ] || _die "Empty output filename"
-
-  _msg "dockerfile: $(readlink -f "$dockerfile")"
-  _msg "tag: $tag"
-  _msg "outfile: $out"
-
-  # Build image
-  docker build -f "$dockerfile" -t "$tag" "$(dirname "$dockerfile")"
-  # Start docker
-  docker run --rm -t "$tag" sleep 10 &
-  sleep 5 # Wait for mount
-  # Extract subsystem
-  local container="$(docker container list | grep "$tag" | awk '{print $1}')"
-  # Create subsystem snapshot
-  docker export "$container" > "${out%.tar}.tar"
-  # Finish background job
-  kill %1
-}
-
-# Creates a subsystem with debootstrap
-# Requires root permissions
-# $1 = Distribution, e.g., bionic, focal, jammy
-function _create_subsystem_debootstrap()
-{
-  mkdir -p dist
-  mkdir -p bin
-
-  local dist="$1"
-    
-  [[ "$dist" =~ bionic|focal|jammy|lunar ]] || _die "Invalid distribution $1"
-
-  # Update exec permissions
-  chmod -R +x ./bin/.
-
-  # Build
-  debootstrap "$dist" "/tmp/$dist" http://archive.ubuntu.com/ubuntu/
-
-  # Bind mounts
-  mount -t proc /proc "/tmp/$dist/proc/"
-  mount -t sysfs /sys "/tmp/$dist/sys/"
-  mount --rbind /dev "/tmp/$dist/dev/"
-  mount --make-rslave "/tmp/$dist/dev/"
-
-  # Update sources
-  # shellcheck disable=2002
-  cat "$FIM_DIR_SCRIPT/../../sources/apt.list" | sed "s|DISTRO|$dist|" | tee "/tmp/$dist/etc/apt/sources.list"
-
-  # Update packages
-  pkglist=(
-	  'rsync'
-	  'alsa-utils'
-	  'alsa-base'
-	  'alsa-oss'
-	  'pulseaudio'
-	  'libc6'
-	  'libc6-i386'
-	  'libpaper1'
-	  'fontconfig-config'
-	  'ppp'
-	  'man-db'
-	  'libnss-mdns'
-	  'gdm3'
-  )
-
-  # Ubuntu 20.04 and earlier use 'ippusbxd', but 'ipp-usb' is used as a replacement in all further releases.
-  case "$dist" in
-    bionic|focal) pkglist+=('ippusbxd') ;;
-    *)            pkglist+=('ipp-usb') ;;
-  esac
-
-  chroot "/tmp/$dist" /bin/bash -c 'apt -y update && apt -y upgrade'
-  chroot "/tmp/$dist" /bin/bash -c 'apt -y clean && apt -y autoclean && apt -y autoremove'
-  chroot "/tmp/$dist" /bin/bash -c "apt install -y ${pkglist[*]}"
-
-  # Umount binds
-  umount  "/tmp/$dist/proc/"
-  umount  "/tmp/$dist/sys/"
-  umount -R "/tmp/$dist/dev/"
-
-  # Remove mount dirs that may have leftover files
-  rm -rf /tmp/"$dist"/{tmp,proc,sys,dev,run}
-
-  # Create required mount point folders
-  mkdir -p /tmp/"$dist"/{tmp,proc,sys,dev,run/media,mnt,media,home}
-
-  # Create required files for later binding
-  rm -f /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
-  touch /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
-
-  # Create share symlink
-  ln -s /usr/share "/tmp/$dist/share"
-
-  # Create fim dir
-  mkdir -p "/tmp/$dist/fim"
-
-  # Create mounts symlink
-  ln -sf /tmp/fim/run/mounts/symlinks "/tmp/$dist/fim/mount"
-
-  # Create fim dwarfs dir
-  mkdir -p "/tmp/$dist/fim/dwarfs"
-
-  # Create fim tools dir
-  mkdir -p "/tmp/$dist/fim/static"
-
-  # Embed static binaries
-  cp -r ./bin/* "/tmp/$dist/fim/static"
-
-  # Embed runner
-  cp "$FIM_DIR_SCRIPT/_boot.sh" "/tmp/$dist/fim/boot"
-
-  # Embed permissions
-  cp "$FIM_DIR_SCRIPT/_perms.sh" "/tmp/$dist/fim/perms"
-
-  # Set permissions
-  chown -R "$(id -u)":users "/tmp/$dist"
-  chmod 777 -R "/tmp/$dist"
-
-  # MIME
-  mkdir -p "/tmp/$dist/fim/desktop"
-  cp ./mime/icon.svg      "/tmp/$dist/fim/desktop"
-  cp ./mime/flatimage.xml "/tmp/$dist/fim/desktop"
-
-  # Create image
-  _create_image  "/tmp/$dist" "$dist.img"
-
-  # Create elf
-  _create_elf "$dist.img" "$dist.flatimage"
-
-  # Create sha256sum
-  sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
-
-  tar -cf "$dist.tar" "$dist.flatimage"
-  xz -3zv "$dist.tar"
-  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
-
-  mv "$dist.tar.xz" dist/
 }
 
 # Creates an empty subsystem
@@ -463,7 +310,7 @@ function _create_subsystem_arch()
   ./arch-bootstrap/arch-bootstrap.sh arch
 
   # Update mirrorlist
-  cp "$FIM_DIR_SCRIPT/../../sources/arch.list" arch/etc/pacman.d/mirrorlist
+  cp "$FIM_DIR_SCRIPT/../sources/arch.list" arch/etc/pacman.d/mirrorlist
 
   # Enable multilib
   gawk -i inplace '/#\[multilib\]/,/#Include = (.*)/ { sub("#", ""); } 1' ./arch/etc/pacman.conf

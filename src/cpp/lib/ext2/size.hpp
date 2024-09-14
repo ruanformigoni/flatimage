@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <filesystem>
 #include <cstring>
 #include <unistd.h>
@@ -66,23 +67,26 @@ inline void resize_free_space(fs::path const& path_file_image, off_t offset, uin
   // Check if read was successful
   ereturn_if(sb.s_magic != EXT2_SUPER_MAGIC, "Not a valid ext2 filesystem");
 
-  uint32_t block_size       = 1024 << sb.s_log_block_size;
-  uint64_t blocks_total     = sb.s_blocks_count;
-  uint64_t size_total       = blocks_total * block_size;
-  uint64_t blocks_free_curr = sb.s_free_blocks_count;
-  uint64_t blocks_free_min  = bytes_size_free_min / block_size;
-  uint64_t size_free        = blocks_free_curr * block_size;
+  uint32_t block_size           = 1024 << sb.s_log_block_size;
+  uint64_t blocks_total         = sb.s_blocks_count;
+  uint64_t size_total           = blocks_total * block_size;
+  uint64_t blocks_free_curr     = sb.s_free_blocks_count - sb.s_r_blocks_count;
+  uint64_t blocks_free_min      = bytes_size_free_min / block_size;
+  // Must be multiplied by an overhead of filesystem metadata
+  uint64_t blocks_free_required = ( blocks_free_min - blocks_free_curr ) * 1.10;
+  uint64_t size_free            = blocks_free_curr * block_size;
 
   // Find command in PATH
   auto opt_path_file_resize2fs = ns_subprocess::search_path("resize2fs");
   ereturn_if(not opt_path_file_resize2fs.has_value(), "Could not find resize2fs");
 
   // Resize by the free space
-  // New number of blocks is blocks total + new free blocks
-  uint64_t blocks_new = blocks_total + blocks_free_min - blocks_free_curr;
+  uint64_t blocks_new =
+    blocks_total                                            // Total number of blocks
+    + blocks_free_required                                  // Number of required free blocks
+    + ns_units::from_mebibytes(20).to_bytes() / block_size; // Additional free space
   // Increase by 5% the number of blocks, this is required because the number of free blocks is by
   // default less than the expected amount due metadata to overhead
-  blocks_new *= 1.05;
   ns_log::debug()("Filesystem size statistics for: {}", path_file_image);
   ns_log::debug()("----------------------------------------------------------------");
   ns_log::debug()("State  | Type          | Value");

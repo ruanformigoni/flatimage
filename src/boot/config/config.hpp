@@ -127,7 +127,7 @@ inline FlatimageConfig config()
 
   // Filesystem configuration
   config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "6"));
-  config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "50"));
+  config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "20"));
 
   // PID
   ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);

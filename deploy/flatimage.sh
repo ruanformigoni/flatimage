@@ -670,14 +670,14 @@ function _create_subsystem_arch()
   # Create elf
   _create_elf "arch.img" "arch.flatimage"
 
-  # # Create sha256sum
-  # sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
+  # Create sha256sum
+  sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
 
-  # tar -cf arch.tar arch.flatimage
-  # xz -3zv arch.tar
-  # sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
+  tar -cf arch.tar arch.flatimage
+  xz -3zv arch.tar
+  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
 
-  # mv "arch.tar.xz" dist/
+  mv "arch.tar.xz" dist/
 }
 
 function main()

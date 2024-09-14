@@ -92,6 +92,7 @@ function _create_image()
   # Create filesystem
   truncate -s "$size" "$out"
   bin/mke2fs -d "$dir" -b1024 -t ext2 "$out"
+  tune2fs -m 1 "$out"
 }
 
 # Concatenates binary files and filesystem to create fim image
@@ -258,6 +259,75 @@ function _create_subsystem_debootstrap()
   mv "$dist.tar.xz" dist/
 }
 
+# Creates an empty subsystem
+function _create_subsystem_empty()
+{
+  local dist="empty"
+
+  mkdir -p dist
+
+  # Fetch static binaries, creates a bin folder
+  _fetch_static
+
+  # Create fim dir
+  mkdir -p "/tmp/$dist/fim"
+
+  # Create config dir
+  mkdir -p "/tmp/$dist/fim/config"
+
+  # Embed static binaries
+  mkdir -p "/tmp/$dist/fim/static"
+  cp -r ./bin/* "/tmp/$dist/fim/static"
+
+  # Compile and include runner
+  (
+    cd "$FIM_DIR"
+    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker run -it --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
+    docker run -it --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/janitor /host/bin
+  )
+
+  # Compile and include portal
+  (
+    cd "$FIM_DIR"
+    docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+  )
+
+  cp ./bin/fim_portal ./bin/fim_portal_daemon           /tmp/"$dist"/fim/static
+  cp ./bin/boot       /tmp/"$dist"/fim/static/boot
+  cp ./bin/janitor    /tmp/"$dist"/fim/static/janitor
+
+  # Set permissions
+  chown -R "$(id -u)":users "/tmp/$dist"
+  chmod 777 -R "/tmp/$dist"
+
+  # MIME
+  mkdir -p "/tmp/$dist/fim/desktop"
+  cp "$FIM_DIR"/mime/icon.svg      "/tmp/$dist/fim/desktop"
+  cp "$FIM_DIR"/mime/flatimage.xml "/tmp/$dist/fim/desktop"
+
+  # Create root filesystem and layers folder
+  mkdir ./root
+  mv /tmp/"$dist"/fim ./root
+  mkdir ./root/fim/layers
+
+  # Create image
+  _create_image ./root "$dist.img"
+
+  # Create elf
+  _create_elf "$dist.img" "$dist.flatimage"
+
+  # Create sha256sum
+  sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
+
+  tar -cf "$dist.tar" "$dist.flatimage"
+  xz -3zv "$dist.tar"
+  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
+
+  mv "$dist.tar.xz" dist/
+}
+
 # Creates an alpine subsystem
 # Requires root permissions
 function _create_subsystem_alpine()
@@ -310,6 +380,9 @@ function _create_subsystem_alpine()
 
   # Create fim dir
   mkdir -p "/tmp/$dist/fim"
+
+  # Create config dir
+  mkdir -p "/tmp/$dist/fim/config"
 
   # Embed static binaries
   mkdir -p "/tmp/$dist/fim/static"
@@ -538,6 +611,9 @@ function _create_subsystem_arch()
   # Create fim dir
   mkdir -p "./arch/fim"
 
+  # Create config dir
+  mkdir -p "./arch/fim/config"
+
   # Compile and include runner
   (
     cd "$FIM_DIR"
@@ -594,14 +670,14 @@ function _create_subsystem_arch()
   # Create elf
   _create_elf "arch.img" "arch.flatimage"
 
-  # Create sha256sum
-  sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
+  # # Create sha256sum
+  # sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
 
-  tar -cf arch.tar arch.flatimage
-  xz -3zv arch.tar
-  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
+  # tar -cf arch.tar arch.flatimage
+  # xz -3zv arch.tar
+  # sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
 
-  mv "arch.tar.xz" dist/
+  # mv "arch.tar.xz" dist/
 }
 
 function main()
@@ -614,6 +690,7 @@ function main()
     "debian")   _create_subsystem_debootstrap "${@:2}" ;;
     "arch") _create_subsystem_arch ;;
     "alpine") _create_subsystem_alpine ;;
+    "empty") _create_subsystem_empty ;;
     *) _die "Invalid option $2" ;;
   esac
 }

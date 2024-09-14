@@ -54,13 +54,11 @@ struct FlatimageConfig
   fs::path path_file_config_desktop;
   fs::path path_file_config_bindings;
   fs::path path_dir_layers;
-  fs::path path_dir_hooks;
 
   uint32_t layer_compression_level;
   uint32_t ext2_slack_minimum;
 
   std::string env_path;
-  std::string env_compression_dirs;
 }; // }}}
 
 // config() {{{
@@ -102,7 +100,6 @@ inline FlatimageConfig config()
   config.path_file_config_desktop     = config.path_dir_mount_ext / "fim/config/desktop.json";
   config.path_file_config_bindings    = config.path_dir_mount_ext / "fim/config/bindings.json";
   config.path_dir_layers              = config.path_dir_mount_ext / "fim/layers";
-  config.path_dir_hooks               = config.path_dir_mount_ext / "fim/hooks";
 
   // Paths only available inside the container (runtime)
   config.path_dir_runtime = "/tmp/fim/run";
@@ -131,7 +128,6 @@ inline FlatimageConfig config()
   // Filesystem configuration
   config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "6"));
   config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "50"));
-  config.env_compression_dirs     = ns_env::get_or_else("FIM_COMPRESSION_DIRS", "/usr:/opt");
 
   // PID
   ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);

@@ -147,9 +147,9 @@ inline std::string env_usage()
       { "add", "Include a novel environment variable" },
     })
     .with_usage("fim-env add <'key=value'...>")
-    .with_example("fim-env add 'APP_NAME=hello-world' 'HOME=$FIM_DIR_HOST_CONFIG/home'")
+    .with_example("fim-env add 'APP_NAME=hello-world' 'HOME=/home/my-app'")
     .with_usage("fim-env set <'key=value'...>")
-    .with_example("fim-env set 'APP_NAME=hello-world' 'HOME=$FIM_DIR_HOST_CONFIG/home'")
+    .with_example("fim-env set 'APP_NAME=hello-world' 'HOME=/home/my-app'")
     .get();
 }
 

@@ -115,7 +115,7 @@ inline FlatimageConfig config()
   ethrow_if(not fs::exists(config.path_dir_host_config) and not fs::create_directories(config.path_dir_host_config)
     , "Could not create configuration directory in '{}'"_fmt(config.path_dir_host_config)
   );
-  ns_env::set("FIM_DIR_HOST_CONFIG", config.path_dir_host_config, ns_env::Replace::Y);
+  ns_env::set("FIM_DIR_CONFIG", config.path_dir_host_config, ns_env::Replace::Y);
 
   // Overlayfs write data to remain on the host
   config.path_dir_data_overlayfs = config.path_dir_host_config / "overlays";

@@ -134,7 +134,7 @@ read-only:
 * `FIM_FILE_BINARY`       : Full path to the flatimage file
 * `FIM_DIR_TEMP`          : Location of the runtime directory for instances of the current flatimage
 * `FIM_DIR_MOUNT`         : Location of the runtime flatimage mountpoint
-* `FIM_DIR_HOST_CONFIG`   : Configuration directory in the host machine
+* `FIM_DIR_CONFIG`   : Configuration directory in the host machine
 
 ## How to use
 
@@ -149,7 +149,7 @@ Usage:
    fim-env del <key>...
    fim-env list
 Example:
-   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=$FIM_DIR_HOST_CONFIG/home'
+   fim-env add 'APP_NAME=hello-world' 'PS1=my-app> ' 'HOME=/home/my-app'
 ```
 
 The `env` command allows you to set new environment variables as so:

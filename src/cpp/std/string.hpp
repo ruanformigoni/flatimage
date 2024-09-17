@@ -113,15 +113,22 @@ std::pair<T,T> to_pair(T&& t, char delimiter)
 
 // from_container() {{{
 template<typename T>
-std::string from_container(T&& t, char sep = ' ')
+std::string from_container(T&& t, std::optional<char> sep = std::nullopt)
 {
   std::stringstream ret;
   for( auto it = t.begin(); it != t.end(); ++it )
   {
     ret << *it;
-    if ( std::next(it) != t.end() ) { ret << sep; }
+    if ( std::next(it) != t.end() and sep ) { ret << *sep; }
   } // if
   return ret.str();
+} // from_container() }}}
+
+// from_container() {{{
+template<std::input_iterator It>
+std::string from_container(It&& begin, It&& end, std::optional<char> sep = std::nullopt)
+{
+  return from_container(std::ranges::subrange(begin, end), sep);
 } // from_container() }}}
 
 } // namespace ns_string

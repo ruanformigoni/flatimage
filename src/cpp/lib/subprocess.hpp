@@ -403,6 +403,14 @@ inline Subprocess& Subprocess::spawn()
   // Set last entry to nullptr
   argv_custom[m_args.size()] = nullptr;
 
+  // Set environment variables
+  std::ranges::for_each(m_env, [](auto&& e)
+  {
+    auto entry = ns_vector::from_string(e, '=');
+    ereturn_if(entry.size() < 2, "Invalid environment variable '{}'"_fmt(e));
+    ns_env::set(entry.front(), ns_string::from_container(std::next(entry.begin()), entry.end()), ns_env::Replace::Y);
+  });
+
   // Create environment for execve
   auto envp_custom = std::make_unique<const char*[]>(m_env.size() + 1);
 

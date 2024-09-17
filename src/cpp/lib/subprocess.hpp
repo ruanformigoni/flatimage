@@ -241,17 +241,32 @@ Subprocess& Subprocess::with_env(Arg&& arg, Args&&... args)
 template<typename T>
 Subprocess& Subprocess::with_env(T&& t)
 {
+  auto f_erase_existing = [this](auto&& entries)
+  {
+    for (auto&& entry : entries)
+    {
+      auto parts = ns_vector::from_string(entry, '=');
+      econtinue_if(parts.size() < 2, "Entry '{}' is not valid"_fmt(entry));
+      std::string key = parts.front();
+      (void) this->rm_var(key);
+    } // for
+  };
+
   if constexpr ( ns_concept::SameAs<T, std::string> )
   {
+    f_erase_existing(std::vector<std::string>{t});
     this->m_env.push_back(std::forward<T>(t));
   } // if
   else if constexpr ( ns_concept::IterableConst<T> )
   {
-    std::copy(t.begin(), t.end(), std::back_inserter(m_env));
+    f_erase_existing(t);
+    std::ranges::copy(t, std::back_inserter(m_env));
   } // else if
   else if constexpr ( ns_concept::StringRepresentable<T> )
   {
-    this->m_env.push_back(ns_string::to_string(std::forward<T>(t)));
+    auto entry = ns_string::to_string(std::forward<T>(t));
+    f_erase_existing(std::vector<std::string>{entry});
+    this->m_env.push_back(entry);
   } // else if
   else
   {

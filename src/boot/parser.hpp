@@ -309,15 +309,27 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     , std::vector<std::string> const& environment
     , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
   {
-    ns_bwrap::Bwrap(config.is_root
+    // Create bwrap instance
+    ns_bwrap::Bwrap bwrap = ns_bwrap::Bwrap(config.is_root
       , config.path_dir_mount_overlayfs
       , config.path_file_bashrc
       , program
       , args
-      , environment)
+      , environment);
+
+    // Include root binding and custom user-defined bindings
+    (void) bwrap
       .with_bind_ro("/", config.path_dir_runtime_host)
-      .with_binds_from_file(config.path_file_config_bindings)
-      .run( permissions);
+      .with_binds_from_file(config.path_file_config_bindings);
+
+    // Check if should enable GPU
+    if ( permissions.contains(ns_bwrap::ns_permissions::Permission::GPU) )
+    {
+      (void) bwrap.with_bind_gpu(config.path_dir_mount_overlayfs, config.path_dir_runtime_host);
+    }
+
+    // Run bwrap
+    bwrap.run(permissions);
   };
 
   // Execute a command as a regular user

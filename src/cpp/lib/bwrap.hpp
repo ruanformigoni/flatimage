@@ -66,12 +66,6 @@ class Bwrap
     std::vector<std::string> m_program_args;
     std::vector<std::string> m_program_env;
 
-    // Path to container's root directory
-    fs::path m_path_dir_root;
-
-    // Access host root from container
-    fs::path m_path_dir_runtime_host;
-
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
 
@@ -82,7 +76,6 @@ class Bwrap
     bool m_is_root;
 
     void set_xdg_runtime_dir();
-    void symlink_nvidia();
 
   public:
     template<ns_concept::StringRepresentable... Args>
@@ -92,6 +85,11 @@ class Bwrap
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
       , std::vector<std::string> const& program_env);
+    Bwrap(Bwrap const&) = delete;
+    Bwrap(Bwrap&&) = delete;
+    Bwrap& operator=(Bwrap const&) = delete;
+    Bwrap& operator=(Bwrap&&) = delete;
+    Bwrap& symlink_nvidia(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host);
     Bwrap& with_binds_from_file(fs::path const& path_file_bindings);
     Bwrap& bind_home();
     Bwrap& bind_media();
@@ -104,7 +102,7 @@ class Bwrap
     Bwrap& bind_input();
     Bwrap& bind_usb();
     Bwrap& bind_network();
-    Bwrap& bind_gpu();
+    Bwrap& with_bind_gpu(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host);
     Bwrap& with_bind(fs::path const& src, fs::path const& dst);
     Bwrap& with_bind_ro(fs::path const& src, fs::path const& dst);
     void run(std::set<ns_permissions::Permission> const& permissions);
@@ -171,7 +169,7 @@ inline void Bwrap::set_xdg_runtime_dir()
 } // set_xdg_runtime_dir() }}}
 
 // symlink_nvidia() {{{
-inline void Bwrap::symlink_nvidia()
+inline Bwrap& Bwrap::symlink_nvidia(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host)
 {
   auto f_find_and_bind = [&]<typename... Args>(fs::path const& path_dir_search, Args&&... args)
   {
@@ -187,8 +185,8 @@ inline void Bwrap::symlink_nvidia()
       auto path_file_entry_realpath = ns_filesystem::ns_path::realpath(path_file_entry);
       econtinue_if(not path_file_entry_realpath, "Broken symlink: '{}'"_fmt(path_file_entry));
       // Create target and symlink names
-      fs::path path_link_target = m_path_dir_runtime_host / path_file_entry_realpath->relative_path();
-      fs::path path_link_name = m_path_dir_root / path_file_entry.relative_path();
+      fs::path path_link_target = path_dir_root_host / path_file_entry_realpath->relative_path();
+      fs::path path_link_name = path_dir_root_guest / path_file_entry.relative_path();
       // File already exists in the container as a regular file or directory, skip
       qcontinue_if(fs::exists(path_link_name) and not fs::is_symlink(path_link_name));
       // Create parent directories
@@ -220,6 +218,8 @@ inline void Bwrap::symlink_nvidia()
   {
     ns_vector::push_back(m_args, "--dev-bind-try", entry, entry);
   } // for
+
+  return *this;
 } // symlink_nvidia() }}}
 
 // with_binds_from_file() {{{
@@ -414,14 +414,14 @@ inline Bwrap& Bwrap::bind_network()
   return *this;
 } // bind_network() }}}
 
-// bind_gpu() {{{
-inline Bwrap& Bwrap::bind_gpu()
+// with_bind_gpu() {{{
+inline Bwrap& Bwrap::with_bind_gpu(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host)
 {
   ns_log::debug()("PERM(GPU)");
   ns_vector::push_back(m_args, "--dev-bind-try", "/dev/dri", "/dev/dri");
-  symlink_nvidia();
+  symlink_nvidia(path_dir_root_guest, path_dir_root_host);
   return *this;
-} // bind_gpu() }}}
+} // with_bind_gpu() }}}
 
 // run() {{{
 inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
@@ -437,7 +437,6 @@ inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
   ns_functional::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev()        ; });
   ns_functional::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input()       ; });
   ns_functional::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb()         ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::GPU)         , [&]{ bind_gpu()         ; });
   ns_functional::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network()     ; });
 
   // Find bwrap in PATH

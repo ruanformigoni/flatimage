@@ -48,11 +48,11 @@ class Dwarfs
       );
 
       // Find command in PATH
-      auto opt_path_file_fuse2fs = ns_subprocess::search_path("dwarfs");
-      ethrow_if(not opt_path_file_fuse2fs.has_value(), "Could not find dwarfs");
+      auto opt_path_file_dwarfs = ns_subprocess::search_path("dwarfs");
+      ethrow_if(not opt_path_file_dwarfs.has_value(), "Could not find dwarfs");
 
       // Create command
-      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_fuse2fs);
+      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_dwarfs);
 
       // Spawn command
       auto ret = m_subprocess->with_piped_outputs()

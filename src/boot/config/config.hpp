@@ -28,10 +28,9 @@ struct FlatimageConfig
   bool is_readonly;
   bool is_debug;
 
-  uint64_t offset_ext2;
+  uint64_t offset_filesystem;
   fs::path path_dir_global;
   fs::path path_dir_mount;
-  fs::path path_dir_mount_ext;
   fs::path path_dir_app;
   fs::path path_dir_app_bin;
   fs::path path_dir_instance;
@@ -78,7 +77,7 @@ inline FlatimageConfig config()
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
 
   // Paths in /tmp
-  config.offset_ext2              = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
+  config.offset_filesystem        = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
   config.path_dir_global          = ns_env::get_or_throw("FIM_DIR_GLOBAL");
   config.path_file_binary         = ns_env::get_or_throw("FIM_FILE_BINARY");
   config.path_dir_binary          = config.path_file_binary.parent_path();
@@ -86,20 +85,19 @@ inline FlatimageConfig config()
   config.path_dir_app_bin         = ns_env::get_or_throw("FIM_DIR_APP_BIN");
   config.path_dir_instance        = ns_env::get_or_throw("FIM_DIR_INSTANCE");
   config.path_dir_mount           = ns_env::get_or_throw("FIM_DIR_MOUNT");
-  config.path_dir_mount_ext       = ns_env::get_or_throw("FIM_DIR_MOUNT_EXT");
   config.path_file_bashrc         = config.path_dir_app / ".bashrc";
   config.path_file_bash           = config.path_dir_app_bin / "bash";
   config.path_dir_mount_layers    = config.path_dir_mount / "layers";
   config.path_dir_mount_overlayfs = config.path_dir_mount / "overlayfs";
 
   // Paths inside the ext2 filesystem
-  config.path_dir_static              = config.path_dir_mount_ext / "fim/static";
-  config.path_file_config_boot        = config.path_dir_mount_ext / "fim/config/boot.json";
-  config.path_file_config_environment = config.path_dir_mount_ext / "fim/config/environment.json";
-  config.path_file_config_permissions = config.path_dir_mount_ext / "fim/config/permissions.json";
-  config.path_file_config_desktop     = config.path_dir_mount_ext / "fim/config/desktop.json";
-  config.path_file_config_bindings    = config.path_dir_mount_ext / "fim/config/bindings.json";
-  config.path_dir_layers              = config.path_dir_mount_ext / "fim/layers";
+  config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";
+  config.path_file_config_boot        = config.path_dir_mount_overlayfs / "fim/config/boot.json";
+  config.path_file_config_environment = config.path_dir_mount_overlayfs / "fim/config/environment.json";
+  config.path_file_config_permissions = config.path_dir_mount_overlayfs / "fim/config/permissions.json";
+  config.path_file_config_desktop     = config.path_dir_mount_overlayfs / "fim/config/desktop.json";
+  config.path_file_config_bindings    = config.path_dir_mount_overlayfs / "fim/config/bindings.json";
+  config.path_dir_layers              = config.path_dir_mount_overlayfs / "fim/layers";
 
   // Paths only available inside the container (runtime)
   config.path_dir_runtime = "/tmp/fim/run";
@@ -126,7 +124,7 @@ inline FlatimageConfig config()
   ns_env::set("PATH", config.env_path, ns_env::Replace::Y);
 
   // Filesystem configuration
-  config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "6"));
+  config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "15"));
   config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "20"));
 
   // PID

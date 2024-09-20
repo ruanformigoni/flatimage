@@ -27,34 +27,20 @@ function _fetch_static()
   # Extracts a bin/... folder
   tar xf "coreutils-x86_64.tar.xz"
 
-  # Fetch Magick
-  wget -O bin/magick "https://github.com/ruanformigoni/imagemagick-static-musl/releases/download/c1c5775/magick-x86_64"
-  wget -O bin/magick-license "https://raw.githubusercontent.com/ImageMagick/ImageMagick/main/LICENSE"
-  chmod +x bin/magick
-
   # Fetch lsof
   wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/12c2552/lsof-x86_64"
-
-  # Fetch e2fsprogs
-  wget -O ./bin/fuse2fs   "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/fuse2fs-x86_64"
-  wget -O ./bin/mke2fs    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/mke2fs-x86_64"
-  wget -O ./bin/e2fsck    "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/e2fsck-x86_64"
-  wget -O ./bin/resize2fs "https://github.com/ruanformigoni/e2fsprogs/releases/download/8bd2cc1/resize2fs-x86_64"
-
-  # Fetch proot
-  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/d9211c8/proot-x86_64"
 
   # Fetch bwrap
   wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/719925f/bwrap-x86_64"
 
   # Fetch overlayfs
-  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/bc2814e/fuse-overlayfs-x86_64"
+  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/1861741/fuse-overlayfs-x86_64"
 
-  # Fetch dwarfs
-  wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
-  ln -sf dwarfs_aio bin/mkdwarfs
-  ln -sf dwarfs_aio bin/dwarfsextract
-  ln -sf dwarfs_aio bin/dwarfs
+  # # Fetch dwarfs
+  # wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
+  # ln -sf dwarfs_aio bin/mkdwarfs
+  # ln -sf dwarfs_aio bin/dwarfsextract
+  # ln -sf dwarfs_aio bin/dwarfs
 
   # Fetch bash
   wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/b604d6c/bash-x86_64"
@@ -88,7 +74,7 @@ function _create_image()
 
   # Create filesystem
   truncate -s "$size" "$out"
-  bin/mke2fs -d "$dir" -b1024 -t ext2 "$out"
+  bin/mke2fs -d "$dir" -b1024 -t ext4 "$out"
   tune2fs -m 1 "$out"
 }
 
@@ -100,8 +86,15 @@ function _create_elf()
   local img="$1"
   local out="$2"
 
+  # Boot is the program on top of the image
   cp bin/boot "$out"
-  cat bin/{fuse2fs,e2fsck,bash} >> "$out"
+  # Write size of image rightafter
+  size_img="$( du -b "$img" | awk '{print $1}' | xargs -I{} printf "%016x\n" {} )"
+  for i in $(seq 0 $(( "${#size_img}" / 2 - 1 )) | sort -r); do
+    local byte="${size_img:$(( i * 2)):2}"
+    echo -ne "\\x$byte" >> "$out"
+  done
+  # Write image
   cat "$img" >> "$out"
 
 }
@@ -310,7 +303,7 @@ function _create_subsystem_arch()
   ./arch-bootstrap/arch-bootstrap.sh arch
 
   # Update mirrorlist
-  cp "$FIM_DIR_SCRIPT/../sources/arch.list" arch/etc/pacman.d/mirrorlist
+  cp "$FIM_DIR/sources/arch.list" arch/etc/pacman.d/mirrorlist
 
   # Enable multilib
   gawk -i inplace '/#\[multilib\]/,/#Include = (.*)/ { sub("#", ""); } 1' ./arch/etc/pacman.conf
@@ -490,32 +483,18 @@ function _create_subsystem_arch()
   rm -f arch/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
   touch arch/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
 
-  # Set permissions
-  chown -R "$(id -u)":users "./arch"
-  chmod 755 -R "./arch"
-
   # MIME
   mkdir -p ./arch/fim/desktop
   cp "$FIM_DIR"/mime/icon.svg      ./arch/fim/desktop
   cp "$FIM_DIR"/mime/flatimage.xml ./arch/fim/desktop
 
-  # Create root filesystem and layers folder
-  mkdir ./root
-  mv ./arch/fim ./root
-  mkdir ./root/fim/layers
-
   # Create layer 0 compressed filesystem
-  "$FIM_DIR_BUILD"/bin/mkdwarfs -l 7 -i ./arch -o ./arch.dwarfs
-  rm -rf ./arch
-
-  # Change filesystem name to index:sha
-  mv arch.dwarfs ./root/fim/layers/"0-$(sha256sum ./arch.dwarfs | awk '{print $1}')"
-
-  # Create image
-  _create_image  "./root" "arch.img"
+  chown -R "$(id -u)":users ./arch
+  chmod 777 -R ./arch
+  mksquashfs ./arch ./arch.sqfs -comp zstd -Xcompression-level 15
 
   # Create elf
-  _create_elf "arch.img" "arch.flatimage"
+  _create_elf ./arch.sqfs ./arch.flatimage
 
   # Create sha256sum
   sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"

@@ -75,7 +75,7 @@ inline std::string help_usage()
     .with_args({
       { "cmd", "Name of the command to display help details" },
     })
-    .with_note("Available commands: fim-{exec,root,resize,perms,env,desktop,layer,bind,commit,boot}")
+    .with_note("Available commands: fim-{exec,root,perms,env,desktop,layer,bind,commit,boot}")
     .with_example(R"(fim-help bind")")
     .get();
 }
@@ -103,15 +103,6 @@ inline std::string exec_usage()
       { "program-args...", "Arguments for the executed program" },
     })
     .with_example(R"(fim-exec echo -e "hello\nworld")")
-    .get();
-}
-
-inline std::string resize_usage()
-{
-  return HelpEntry{"fim-resize"}
-    .with_description("Resizes the free space of the image to have at least the provided value")
-    .with_usage("fim-resize [0-9]+<M|G>")
-    .with_example("fim-resize 500M")
     .get();
 }
 

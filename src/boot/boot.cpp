@@ -47,7 +47,7 @@ namespace fs = std::filesystem;
 void copy_tools(ns_config::FlatimageConfig const& config)
 {
   // Mount filesystem as RO
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
   // Check if path_dir_static exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory
@@ -154,7 +154,7 @@ void relocate(char** argv)
   ns_log::debug()("FIM_OFFSET: {}", offset_end);
 
   // Option to show offset and exit (to manually mount the fs with fuse2fs)
-  if( getenv("FIM_MAIN_OFFSET") ){ "{}"_print(offset_end); exit(0); }
+  if( getenv("FIM_MAIN_OFFSET") ){ println(offset_end); exit(0); }
 
   // Print copy duration
   if ( getenv("FIM_DEBUG") != nullptr )
@@ -176,9 +176,6 @@ void boot(int argc, char** argv)
   // Set log file
   ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");
 
-  // Check filesystem
-  ns_ext2::ns_check::check(config.path_file_binary, config.offset_ext2);
-
   // Copy tools
   if (auto expected = ns_exception::to_expected([&]{ copy_tools(config); }); not expected)
   {
@@ -193,12 +190,6 @@ void boot(int argc, char** argv)
   {
     ns_log::error()("Error in desktop integration '{}'", expected.error());
   } // if
-
-  // Keep at least the provided slack amount of extra free space
-  ns_ext2::ns_size::resize_free_space(config.path_file_binary
-    , config.offset_ext2
-    , ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
-  );
 
   // Parse flatimage command if exists
   ns_parser::parse_cmds(config, argc, argv);

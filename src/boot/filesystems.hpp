@@ -9,7 +9,7 @@
 
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/overlayfs.hpp"
-#include "../cpp/lib/dwarfs.hpp"
+#include "../cpp/lib/squashfs.hpp"
 
 #include "config/config.hpp"
 
@@ -23,31 +23,16 @@ class Filesystems
     fs::path m_path_dir_mount;
     std::vector<fs::path> m_vec_path_dir_mountpoints;
     std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
-    std::vector<std::unique_ptr<ns_dwarfs::Dwarfs>> m_layers;
+    std::vector<std::unique_ptr<ns_squashfs::SquashFs>> m_layers;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
-    void mount_ext2(fs::path const& path_file_binary
-      , fs::path const& path_dir_mount_ext
-      , uint64_t offset_ext2
-      , ns_ext2::ns_mount::Mode mode
-    );
-    void mount_dwarfs(fs::path const& path_dir_layers
-      , fs::path const& path_dir_mount
-    );
+    void mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
     void mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
     );
 
   public:
-    enum class FilesystemsLayer
-    {
-      EXT_RO,
-      EXT_RW,
-      DWARFS,
-      OVERLAYFS
-    };
-
-    Filesystems(ns_config::FlatimageConfig const& config, FilesystemsLayer layer = FilesystemsLayer::OVERLAYFS);
+    Filesystems(ns_config::FlatimageConfig const& config);
     Filesystems(Filesystems const&) = delete;
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
@@ -57,87 +42,55 @@ class Filesystems
 }; // class Filesystems }}}
 
 // fn: Filesystems::Filesystems {{{
-inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config, FilesystemsLayer layer)
+inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   : m_path_dir_mount(config.path_dir_mount)
 {
-  // Mount main filesystem
-  mount_ext2(config.path_file_binary
-    , config.path_dir_mount_ext
-    , config.offset_ext2
-    , (layer == FilesystemsLayer::EXT_RW)? ns_ext2::ns_mount::Mode::RW : ns_ext2::ns_mount::Mode::RO
-  );
-  qreturn_if(layer == FilesystemsLayer::EXT_RO or layer == FilesystemsLayer::EXT_RW);
-
-  // Mount dwarfs layers
-  mount_dwarfs(config.path_dir_layers, config.path_dir_mount_layers);
-  qreturn_if(layer == FilesystemsLayer::DWARFS);
-
-  // Mount overlayfs on top of read-only ext2 filesystem and dwarfs layers
+  // Mount compressed layers
+  mount_squashfs(config.path_dir_mount_layers, config.path_file_binary, config.offset_filesystem);
+  // Mount overlayfs on top of read-only layers
   std::vector<fs::path> vec_path_dir_layers;
-  // Push ext layer
-  vec_path_dir_layers.push_back(config.path_dir_mount_ext);
-  // Push additional layers mounted with dwarfs
-  for (auto&& layer : m_layers)
-  {
-    vec_path_dir_layers.push_back(layer->get_dir_mountpoint());
-  } // for
+  std::ranges::for_each(m_layers, [&](auto&& e){ vec_path_dir_layers.push_back(e->get_dir_mountpoint()); });
+  // Mount overlayfs
   mount_overlayfs(vec_path_dir_layers
     , config.path_dir_data_overlayfs
     , config.path_dir_mount_overlayfs);
 } // fn Filesystems::Filesystems }}}
 
-// fn: mount_ext2 {{{
-inline void Filesystems::mount_ext2(fs::path const& path_file_binary
-  , fs::path const& path_dir_mount_ext
-  , uint64_t offset_ext2
-  , ns_ext2::ns_mount::Mode mode)
+// fn: mount_squashfs {{{
+inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
 {
-  // Mount main filesystem
-  m_ext2 = std::make_unique<ns_ext2::ns_mount::Mount>(path_file_binary
-    , path_dir_mount_ext
-    , mode
-    , offset_ext2
-  );
-  m_vec_path_dir_mountpoints.push_back(path_dir_mount_ext);
-} // fn: mount_ext2 }}}
+  // Open the main binary
+  std::ifstream file_binary(path_file_binary, std::ios::binary);
 
-// fn: mount_dwarfs {{{
-inline void Filesystems::mount_dwarfs(fs::path const& path_dir_layers
-  , fs::path const& path_dir_mount)
-{
-  // TODO Improve this when std::ranges::to becomes available in alpine
+  // Filesystem index
+  uint64_t index_fs{};
 
-  // Get directories
-  std::vector<fs::path> vec_path_dir_layer;
-  for( auto&& entry :  fs::directory_iterator(path_dir_layers))
+  // Advance offset
+  file_binary.seekg(offset);
+
+  while (true)
   {
-    vec_path_dir_layer.push_back(entry.path());
-  } // for
+    // Read filesystem size
+    int64_t size_fs;
+    dreturn_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
+    ns_log::debug()("Filesystem size is '{}'", size_fs);
+    offset += 8;
 
-  // Filter non-directory files
-  auto f_is_regular_file = std::views::filter([](auto&& e){ return fs::is_regular_file(e); });
-  std::erase_if(vec_path_dir_layer, f_is_regular_file);
+    // Create mountpoint
+    fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
+    std::error_code ec;
+    fs::create_directories(path_dir_mount_index, ec);
+    ereturn_if(ec, "Could not create directories: {}"_fmt(ec.message()));
 
-  // Sort paths
-  std::ranges::sort(vec_path_dir_layer);
+    // Mount filesystem
+    this->m_layers.emplace_back(std::make_unique<ns_squashfs::SquashFs>(path_file_binary, path_dir_mount_index, offset));
 
-  // Mount one at the time
-  for (auto&& entry : vec_path_dir_layer)
-  {
-    // Create sub-directory in path_dir_mount with the same name as the filesystem
-    fs::path path_file_filesystem = entry;
-    fs::path path_dir_submount = path_dir_mount / path_file_filesystem.filename();
-    ns_log::info()("Mount '{}' in '{}'", path_file_filesystem.filename(), path_dir_submount);
-    if ( not fs::exists(path_dir_submount) )
-    {
-      std::error_code ec;
-      fs::create_directories(path_dir_submount, ec);
-      econtinue_if(ec, "Could not create overlay mountpoint '{}'"_fmt(ec.message()));
-    } // if
-    m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_filesystem, path_dir_submount));
-    m_vec_path_dir_mountpoints.push_back(path_dir_submount);
-  } // for
-} // fn: mount_dwarfs }}}
+    // Go to next filesystem if exists
+    index_fs += 1;
+    offset += size_fs;
+    file_binary.seekg(offset);
+  } // while
+} // fn: mount_squashfs }}}
 
 // fn: mount_overlayfs {{{
 inline void Filesystems::mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower

@@ -15,8 +15,6 @@
 #include "../cpp/std/variant.hpp"
 #include "../cpp/lib/match.hpp"
 #include "../cpp/lib/bwrap.hpp"
-#include "../cpp/lib/ext2/size.hpp"
-#include "../cpp/units.hpp"
 #include "../cpp/macro.hpp"
 
 #include "config/environment.hpp"
@@ -49,11 +47,6 @@ struct CmdExec
 {
   std::string program;
   std::vector<std::string> args;
-};
-
-struct CmdResize
-{
-  uint64_t size;
 };
 
 ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
@@ -98,7 +91,6 @@ struct CmdNone {};
 
 using CmdType = std::variant<CmdRoot
   , CmdExec
-  , CmdResize
   , CmdPerms
   , CmdEnv
   , CmdDesktop
@@ -137,28 +129,6 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     {
       f_error(argc < 3, ns_cmd::ns_help::root_usage(), "Incorrect number of arguments");
       return CmdType(CmdRoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
-    },
-    ns_match::equal("fim-resize") >>= [&]
-    {
-      f_error(argc != 3, ns_cmd::ns_help::resize_usage(), "Incorrect number of arguments");
-      // Get size string
-      std::string str_size = argv[2];
-      // Convert to appropriate unit
-      int64_t size{};
-      if ( str_size.ends_with("M") )
-      {
-        str_size.pop_back();
-        size = ns_units::from_mebibytes(std::stoll(str_size)).to_bytes();
-      } // if
-      else if ( str_size.ends_with("G")  )
-      {
-        size = ns_units::from_gibibytes(std::stoll(str_size)).to_bytes();
-      } // else
-      else
-      {
-        f_error(true, ns_cmd::ns_help::resize_usage(), "Invalid argument for filesystem size");
-      } // else
-      return CmdType(CmdResize(size));
     },
     // Configure permissions for the container
     ns_match::equal("fim-perms") >>= [&]
@@ -284,7 +254,6 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       (void) ns_match::match(std::string_view{argv[2]},
         ns_match::equal("exec")    >>= [&]{ f_error(true, ns_cmd::ns_help::exec_usage(), ""); },
         ns_match::equal("root")    >>= [&]{ f_error(true, ns_cmd::ns_help::root_usage(), ""); },
-        ns_match::equal("resize")  >>= [&]{ f_error(true, ns_cmd::ns_help::resize_usage(), ""); },
         ns_match::equal("perms")   >>= [&]{ f_error(true, ns_cmd::ns_help::perms_usage(), ""); },
         ns_match::equal("env")     >>= [&]{ f_error(true, ns_cmd::ns_help::env_usage(), ""); },
         ns_match::equal("desktop") >>= [&]{ f_error(true, ns_cmd::ns_help::desktop_usage(), ""); },
@@ -355,17 +324,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
     f_bwrap(cmd->program, cmd->args, environment, permissions);
   } // if
-  // Resize the image to contain at least the provided free space
-  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdResize>(*variant_cmd) )
-  {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
-    // Resize to fit the provided amount of free space
-    ns_ext2::ns_size::resize_free_space(config.path_file_binary, config.offset_ext2, cmd->size);
-  } // if
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
   {
@@ -375,7 +333,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       ns_log::set_level(ns_log::Level::INFO);
     } // if
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
@@ -397,7 +355,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       ns_log::set_level(ns_log::Level::INFO);
     } // if
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
@@ -447,7 +405,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     } // if
     if ( cmd->op == CmdLayerOp::ADD )
     {
-      ns_layers::add(config, cmd->args.front());
+      ns_layers::add(config.path_file_binary, cmd->args.front());
     } // if
     else
     {
@@ -464,7 +422,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     } // if
 
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
 
     // Perform selected op
     switch(cmd->op)
@@ -489,7 +447,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     // Create filesystem based on the contents of src
     ns_layers::create(path_dir_src, path_file_layer, config.layer_compression_level);
     // Include filesystem in the image
-    ns_layers::add(config, path_file_layer);
+    ns_layers::add(config.path_file_binary, path_file_layer);
     // Remove compressed filesystem
     fs::remove(path_file_layer);
     // Remove upper directory
@@ -504,7 +462,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       ns_log::set_level(ns_log::Level::INFO);
     } // if
     // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
     fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database

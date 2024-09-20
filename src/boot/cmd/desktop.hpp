@@ -31,14 +31,14 @@ struct Desktop
   std::string name;
   fs::path path_file_icon;
   std::vector<std::string> vec_categories;
-  Desktop(fs::path const& path_file_json, fs::path const& path_dir_mount_ext2)
+  Desktop(fs::path const& path_file_json, fs::path const& path_dir_mount)
   {
     ns_db::from_file(path_file_json, [&](auto&& db)
     {
       name = db["name"];
       std::string str_path_icon = std::string{db["icon"]};
       if ( str_path_icon.starts_with('/') ) { str_path_icon = str_path_icon.substr(1); }
-      path_file_icon = path_dir_mount_ext2 / str_path_icon;
+      path_file_icon = path_dir_mount / str_path_icon;
       ns_db::Db const& db_categories = db["categories"];
       std::for_each(db_categories.begin(), db_categories.end(), ns_functional::PushBack(vec_categories));
     }, ns_db::Mode::READ);
@@ -237,7 +237,7 @@ ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
 inline void integrate(ns_config::FlatimageConfig const& config)
 {
   // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RO);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
 
   // Check if is enabled
   auto expected_enable_item = ns_exception::to_expected([&]
@@ -254,7 +254,7 @@ inline void integrate(ns_config::FlatimageConfig const& config)
   );
 
   // Get desktop info
-  Desktop desktop = Desktop(config.path_file_config_desktop, config.path_dir_mount_ext);
+  Desktop desktop = Desktop(config.path_file_config_desktop, config.path_dir_mount_overlayfs);
 
   // Get HOME directory
   const char* cstr_home = ns_env::get("HOME");
@@ -336,18 +336,18 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
 
   // Make space available to fit icon
   ns_ext2::ns_size::resize_free_space(config.path_file_binary
-    , config.offset_ext2
+    , config.offset_filesystem
     ,  fs::file_size(path_file_icon) + ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
   );
 
   // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
 
   // Create config dir if not exists
   fs::create_directories(config.path_file_config_desktop.parent_path());
 
   // Copy the icon to inside the image
-  fs::copy_file(path_file_icon, "{}/fim/desktop/icon.{}"_fmt(config.path_dir_mount_ext, *opt_str_ext), fs::copy_options::overwrite_existing);
+  fs::copy_file(path_file_icon, "{}/fim/desktop/icon.{}"_fmt(config.path_dir_mount_overlayfs, *opt_str_ext), fs::copy_options::overwrite_existing);
 
   // Copy configuration file
   fs::copy_file(path_file_json_src, path_file_json_dst, fs::copy_options::overwrite_existing);
@@ -360,7 +360,7 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
 inline void enable(ns_config::FlatimageConfig const& config, std::set<EnableItem> set_enable_items)
 {
   // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config, ns_filesystems::Filesystems::FilesystemsLayer::EXT_RW);
+  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
   std::vector<std::string> vec_enable_items;
   std::ranges::transform(set_enable_items, std::back_inserter(vec_enable_items), [](auto&& e){ return std::string{e}; });
   ns_db::Db(config.path_file_config_desktop, ns_db::Mode::UPDATE_OR_CREATE)("enable") = vec_enable_items;

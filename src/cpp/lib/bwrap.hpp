@@ -48,7 +48,7 @@ inline void add(fs::path const& path_file_config_permissions, R&& r)
 template<ns_concept::Iterable R>
 inline void del(fs::path const& path_file_config_permissions, R&& r)
 {
-  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE).set_erase(r);
+  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE).array_erase(r);
 }
 
 inline std::set<Permission> get(fs::path const& path_file_config_permissions)
@@ -228,8 +228,10 @@ inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
   // Load bindings from the filesystem if any
   ns_exception::ignore([&]
   {
-    for(auto const& binding : ns_db::Db(path_file_bindings, ns_db::Mode::READ))
+    auto db = ns_db::Db(path_file_bindings, ns_db::Mode::READ);
+    for(auto&& key : ns_db::Db(path_file_bindings, ns_db::Mode::READ).keys())
     {
+      auto const& binding = db[key];
       m_args.push_back(ns_match::match(std::string{binding["type"]}
         , ns_match::equal("ro") >>= std::string{"--ro-bind-try"}
         , ns_match::equal("rw") >>= std::string{"--bind-try"}

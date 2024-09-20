@@ -49,7 +49,7 @@ void copy_tools(ns_config::FlatimageConfig const& config)
   // Mount filesystem as RO
   [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
   // Check if should enable casefold
-  if ( fs::exists(config.path_file_config_casefold) and ns_db::query_nothrow(config.path_file_config_casefold, "enable") == "ON" )
+  if ( auto expected = ns_db::query_nothrow(config.path_file_config_casefold, "enable"); expected and *expected == "ON" )
   {
     ns_env::set("FIM_CASEFOLD", "1", ns_env::Replace::Y);
   } // if

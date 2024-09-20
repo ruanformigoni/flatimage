@@ -28,36 +28,6 @@ namespace fs = std::filesystem;
 using json_t = nlohmann::json;
 using Exception = json_t::exception;
 
-// class JsonIterator {{{
-template<typename IteratorType>
-class JsonIterator
-{
-  private:
-    IteratorType m_it;
-
-  public:
-    using iterator_category = std::forward_iterator_tag;
-    using value_type = typename IteratorType::value_type;
-    using difference_type = typename IteratorType::difference_type;
-    using pointer = typename IteratorType::pointer;
-    using reference = typename IteratorType::reference;
-
-    // Construct with an nlohmann::json iterator
-    explicit JsonIterator(IteratorType it) : m_it(it) {}
-
-    // Increment operators
-    JsonIterator& operator++() { ++m_it; return *this; }
-    JsonIterator operator++(int) { JsonIterator tmp = *this; ++(*this); return tmp; }
-
-    // Dereference operators
-    reference operator*() const { return *m_it; }
-    pointer operator->() const { return &(*m_it); }
-
-    // Comparison operators
-    bool operator==(const JsonIterator& other) const { return m_it == other.m_it; }
-    bool operator!=(const JsonIterator& other) const { return m_it != other.m_it; }
-}; // }}}
-
 } // anonymous namespace
 
 // READ             : Reads existing database
@@ -79,16 +49,6 @@ class Db
     json_t& data();
     json_t& data() const;
   public:
-    // Iterators
-    using iterator = JsonIterator<json_t::iterator>;
-    using const_iterator = JsonIterator<json_t::const_iterator>;
-    const_iterator cbegin() const { return const_iterator(data().cbegin()); }
-    const_iterator cend() const { return const_iterator(data().cend()); }
-    iterator begin() { return iterator(data().begin()); }
-    iterator end() { return iterator(data().end()); }
-    const_iterator begin() const { return const_iterator(data().cbegin()); }
-    const_iterator end() const { return const_iterator(data().cend()); }
-
     // Constructors
     Db() = delete;
     Db(Db const&) = delete;
@@ -103,6 +63,8 @@ class Db
     bool is_array() const;
     bool is_object() const;
     bool is_string() const;
+    std::vector<std::string> keys() const;
+    std::vector<std::string> values() const;
     decltype(auto) items() const;
     template<ns_concept::StringRepresentable T>
     bool contains(T&& t) const;
@@ -122,12 +84,12 @@ class Db
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
     bool obj_erase(T&& t);
     template<ns_concept::StringRepresentable T>
-    bool set_erase(T&& t);
+    bool array_erase(T&& t);
     template<ns_concept::Iterable T>
     requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-    bool set_erase(T&& t);
+    bool array_erase(T&& t);
     template<std::predicate<std::string> F>
-    void set_erase_if(F&& f);
+    void array_erase_if(F&& f);
     template<ns_concept::StringRepresentable T>
     Db& set_insert(T&& t);
     template<ns_concept::Iterable T>
@@ -136,7 +98,6 @@ class Db
 
     // Operators
     operator std::string() const;
-    operator json_t() const;
     Db operator=(Db const&) = delete;
     Db operator=(Db&&) = delete;
     template<ns_concept::StringRepresentable T>
@@ -202,7 +163,7 @@ inline Db::Db(fs::path t, Mode mode)
   {
     case Mode::READ:
     case Mode::UPDATE:
-      ethrow_if(not f_read(), "Could not read file '{}'"_fmt(t));
+      dthrow_if(not f_read(), "Could not read file '{}'"_fmt(t));
       break;
     case Mode::CREATE:
       f_create();
@@ -222,7 +183,7 @@ inline Db::~Db()
   if ( m_mode != Mode::READ and std::holds_alternative<json_t>(m_json) )
   {
     std::ofstream file(m_path_file_db, std::ios::trunc);
-    ereturn_if(! file.good(), "Failed to open '{}' for writing"_fmt(m_path_file_db));
+    ereturn_if(not file.is_open(), "Failed to open '{}' for writing"_fmt(m_path_file_db));
     file << std::setw(2) << std::get<json_t>(m_json);
     file.close();
   } // if
@@ -264,6 +225,22 @@ inline bool Db::is_string() const
 {
   return data().is_string();
 } // is_string() }}}
+
+// keys() {{{
+inline std::vector<std::string> Db::keys() const
+{
+  std::vector<std::string> keys;
+  std::ranges::for_each(data().items(), [&](auto&& e){ keys.push_back(ns_string::to_string(e.key())); });
+  return keys;
+} // keys() }}}
+
+// values() {{{
+inline std::vector<std::string> Db::values() const
+{
+  std::vector<std::string> values;
+  std::ranges::for_each(data().items(), [&](auto&& e){ values.push_back(ns_string::to_string(e.value())); });
+  return values;
+} // values() }}}
 
 // items() {{{
 inline decltype(auto) Db::items() const
@@ -346,9 +323,9 @@ bool Db::obj_erase(T&& t)
   return std::ranges::all_of(t, [&]<typename E>(E&& e){ return erase(std::forward<E>(e)); });
 } // obj_erase() }}}
 
-// set_erase() {{{
+// array_erase() {{{
 template<ns_concept::StringRepresentable T>
-bool Db::set_erase(T&& t)
+bool Db::array_erase(T&& t)
 {
   std::string key = ns_string::to_string(t);
   json_t& json = data();
@@ -357,24 +334,24 @@ bool Db::set_erase(T&& t)
   if ( it_search == json.end() ) { return false; }
   json.erase(std::distance(json.begin(), it_search));
   return true;
-} // set_erase() }}}
+} // array_erase() }}}
 
-// set_erase() {{{
+// array_erase() {{{
 template<ns_concept::Iterable T>
 requires ( not std::same_as<std::string, std::remove_cvref_t<T>> )
-bool Db::set_erase(T&& t)
+bool Db::array_erase(T&& t)
 {
-  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return this->set_erase(std::forward<E>(e)); });
-} // set_erase() }}}
+  return std::ranges::all_of(t, [&]<typename E>(E&& e){ return this->array_erase(std::forward<E>(e)); });
+} // array_erase() }}}
 
-// set_erase_if() {{{
+// array_erase_if() {{{
 template<std::predicate<std::string> F>
-void Db::set_erase_if(F&& f)
+void Db::array_erase_if(F&& f)
 {
   json_t& json = data();
   ethrow_if(not json.is_array(), "Trying to erase a non-array entry");
   json.erase(std::remove_if(json.begin(), json.end(), f), json.end());
-} // set_erase_if() }}}
+} // array_erase_if() }}}
 
 // set_insert() {{{
 template<ns_concept::StringRepresentable T>
@@ -405,12 +382,6 @@ inline Db::operator std::string() const
 {
   return data();
 } // operator::string() }}}
-
-// operator::json_t() {{{
-inline Db::operator json_t() const
-{
-  return data();
-} // operator::fs::path() }}}
 
 // operator[] {{{
 // Key exists and is accessed
@@ -483,15 +454,6 @@ void from_file(T&& t, F&& f, Mode mode)
   // Access
   f(db);
 } // function: from_file }}}
-
-// to_file() {{{
-template<ns_concept::StringRepresentable T>
-void to_file(Db const& json, T&& t)
-{
-  std::ofstream ofile_json{t};
-  ofile_json << std::setw(2) << std::string{json};
-  ofile_json.close();
-} // function: to_file }}}
 
 // query() {{{
 template<typename F, typename... Args>

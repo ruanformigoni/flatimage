@@ -40,7 +40,7 @@ struct Desktop
       if ( str_path_icon.starts_with('/') ) { str_path_icon = str_path_icon.substr(1); }
       path_file_icon = path_dir_mount / str_path_icon;
       ns_db::Db const& db_categories = db["categories"];
-      std::for_each(db_categories.begin(), db_categories.end(), ns_functional::PushBack(vec_categories));
+      std::ranges::for_each(db_categories.values(), ns_functional::PushBack(vec_categories));
     }, ns_db::Mode::READ);
   } // Desktop
 }; // Desktop }}}

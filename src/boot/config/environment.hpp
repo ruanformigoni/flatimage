@@ -40,7 +40,7 @@ inline void del(fs::path const& path_file_config_environment, std::vector<std::s
 {
   for(auto&& entry : entries)
   {
-    ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE).set_erase_if(ns_functional::StartsWith(entry + "="));
+    ns_db::Db(path_file_config_environment, ns_db::Mode::UPDATE).array_erase_if(ns_functional::StartsWith(entry + "="));
   } // for
 }
 

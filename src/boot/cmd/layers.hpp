@@ -57,7 +57,7 @@ inline void add(fs::path const& path_file_binary, fs::path const& path_file_laye
   {
     file_binary.write(buff, count);
   } // while
-  ns_log::info()("Included file novel layer from file '{}'", path_file_layer);
+  ns_log::info()("Included novel layer from file '{}'", path_file_layer);
 } // fn: add() }}}
 
 } // namespace ns_layers

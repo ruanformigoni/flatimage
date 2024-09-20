@@ -489,7 +489,7 @@ function _create_subsystem_arch()
   cp "$FIM_DIR"/mime/flatimage.xml ./arch/fim/desktop
 
   # Create layer 0 compressed filesystem
-  chown -R "$(id -u)":users ./arch
+  chown -R 1000:1000 ./arch
   chmod 777 -R ./arch
   mksquashfs ./arch ./arch.sqfs -comp zstd -Xcompression-level 15
 

@@ -44,8 +44,8 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
 inline void add(fs::path const& path_file_binary, fs::path const& path_file_layer)
 {
   // Open binary file for writing
-  std::ofstream file_binary(path_file_binary, std::ios::out | std::ios::app);
-  std::ifstream file_layer(path_file_layer);
+  std::ofstream file_binary(path_file_binary, std::ios::app | std::ios::binary);
+  std::ifstream file_layer(path_file_layer, std::ios::in | std::ios::binary);
   ereturn_if(not file_binary.is_open(), "Failed to open output file '{}'"_fmt(path_file_binary))
   ereturn_if(not file_layer.is_open(), "Failed to open input file '{}'"_fmt(path_file_layer))
   // Get byte size
@@ -53,9 +53,10 @@ inline void add(fs::path const& path_file_binary, fs::path const& path_file_laye
   // Write byte size
   file_binary.write(reinterpret_cast<char*>(&file_size), sizeof(file_size));
   char buff[8192];
-  while( int64_t count = file_layer.readsome(buff, sizeof(buff)) )
+  while( file_layer.read(buff, sizeof(buff)) or file_layer.gcount() > 0 )
   {
-    file_binary.write(buff, count);
+    file_binary.write(buff, file_layer.gcount());
+    ereturn_if(not file_binary, "Error writing data to file");
   } // while
   ns_log::info()("Included novel layer from file '{}'", path_file_layer);
 } // fn: add() }}}

@@ -36,6 +36,9 @@ function _fetch_static()
   # Fetch overlayfs
   wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/1861741/fuse-overlayfs-x86_64"
 
+  # Fetch ciopfs
+  wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs/releases/download/44de517/ciopfs-x86_64"
+
   # # Fetch dwarfs
   # wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
   # ln -sf dwarfs_aio bin/mkdwarfs

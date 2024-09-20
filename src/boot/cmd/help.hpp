@@ -219,6 +219,17 @@ inline std::string commit_usage()
     .get();
 }
 
+inline std::string casefold_usage()
+{
+  return HelpEntry{"fim-casefold"}
+    .with_description("Enables casefolding for the filesystem (ignore case)")
+    .with_usage("fim-casefold <switch>")
+    .with_args({
+      { "switch", "on, off" },
+    })
+    .get();
+}
+
 inline std::string boot_usage()
 {
   return HelpEntry{"fim-boot"}

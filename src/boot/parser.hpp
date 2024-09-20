@@ -87,6 +87,12 @@ struct CmdCommit
 {
 };
 
+ENUM(CmdCaseFoldOp,ON,OFF);
+struct CmdCaseFold
+{
+  CmdCaseFoldOp op;
+};
+
 struct CmdNone {};
 
 using CmdType = std::variant<CmdRoot
@@ -97,6 +103,7 @@ using CmdType = std::variant<CmdRoot
   , CmdLayer
   , ns_cmd::ns_bind::CmdBind
   , CmdCommit
+  , CmdCaseFold
   , CmdBoot
   , CmdNone
 >;
@@ -241,6 +248,12 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       f_error(argc != 2, ns_cmd::ns_help::commit_usage(), "Incorrect number of arguments");
       return CmdType(CmdCommit{});
     },
+    // Enables or disable ignore case for paths (useful for wine)
+    ns_match::equal("fim-casefold") >>= [&]
+    {
+      f_error(argc != 3, ns_cmd::ns_help::commit_usage(), "Incorrect number of arguments");
+      return CmdType(CmdCaseFold{CmdCaseFoldOp(argv[2])});
+    },
     // Set the default startup command
     ns_match::equal("fim-boot", "fim-cmd") >>= [&]
     {
@@ -252,15 +265,16 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     {
       if ( argc < 3 ) { f_error(true, ns_cmd::ns_help::help_usage(), "fim-help"); } // if
       (void) ns_match::match(std::string_view{argv[2]},
-        ns_match::equal("exec")    >>= [&]{ f_error(true, ns_cmd::ns_help::exec_usage(), ""); },
-        ns_match::equal("root")    >>= [&]{ f_error(true, ns_cmd::ns_help::root_usage(), ""); },
-        ns_match::equal("perms")   >>= [&]{ f_error(true, ns_cmd::ns_help::perms_usage(), ""); },
-        ns_match::equal("env")     >>= [&]{ f_error(true, ns_cmd::ns_help::env_usage(), ""); },
-        ns_match::equal("desktop") >>= [&]{ f_error(true, ns_cmd::ns_help::desktop_usage(), ""); },
-        ns_match::equal("layer")   >>= [&]{ f_error(true, ns_cmd::ns_help::layer_usage(), ""); },
-        ns_match::equal("bind")    >>= [&]{ f_error(true, ns_cmd::ns_help::bind_usage(), ""); },
-        ns_match::equal("commit")  >>= [&]{ f_error(true, ns_cmd::ns_help::commit_usage(), ""); },
-        ns_match::equal("boot")    >>= [&]{ f_error(true, ns_cmd::ns_help::boot_usage(), ""); }
+        ns_match::equal("exec")     >>= [&]{ f_error(true, ns_cmd::ns_help::exec_usage(), ""); },
+        ns_match::equal("root")     >>= [&]{ f_error(true, ns_cmd::ns_help::root_usage(), ""); },
+        ns_match::equal("perms")    >>= [&]{ f_error(true, ns_cmd::ns_help::perms_usage(), ""); },
+        ns_match::equal("env")      >>= [&]{ f_error(true, ns_cmd::ns_help::env_usage(), ""); },
+        ns_match::equal("desktop")  >>= [&]{ f_error(true, ns_cmd::ns_help::desktop_usage(), ""); },
+        ns_match::equal("layer")    >>= [&]{ f_error(true, ns_cmd::ns_help::layer_usage(), ""); },
+        ns_match::equal("bind")     >>= [&]{ f_error(true, ns_cmd::ns_help::bind_usage(), ""); },
+        ns_match::equal("commit")   >>= [&]{ f_error(true, ns_cmd::ns_help::commit_usage(), ""); },
+        ns_match::equal("casefold") >>= [&]{ f_error(true, ns_cmd::ns_help::casefold_usage(), ""); },
+        ns_match::equal("boot")     >>= [&]{ f_error(true, ns_cmd::ns_help::boot_usage(), ""); }
       );
       return CmdType(CmdNone{});
     }
@@ -452,6 +466,19 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     fs::remove(path_file_layer);
     // Remove upper directory
     fs::remove_all(path_dir_src);
+  } // else if
+  // Enable or disable casefold (useful for wine)
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCaseFold>(*variant_cmd) )
+  {
+    // Update log level
+    if ( not ns_env::get("FIM_DEBUG") )
+    {
+      ns_log::set_level(ns_log::Level::INFO);
+    } // if
+    ns_db::from_file(config.path_file_config_casefold, [&](auto& db)
+    {
+      db("enable") = std::string{cmd->op};
+    }, ns_db::Mode::UPDATE_OR_CREATE);
   } // else if
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )

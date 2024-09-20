@@ -83,6 +83,7 @@ inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path
     ereturn_if(ec, "Could not create directories: {}"_fmt(ec.message()));
 
     // Mount filesystem
+    ns_log::debug()("Offset to filesystem is '{}'", offset);
     this->m_layers.emplace_back(std::make_unique<ns_squashfs::SquashFs>(path_file_binary, path_dir_mount_index, offset));
 
     // Go to next filesystem if exists

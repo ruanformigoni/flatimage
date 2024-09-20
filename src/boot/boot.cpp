@@ -144,9 +144,6 @@ void relocate(char** argv)
   // Write binaries
   auto start = std::chrono::high_resolution_clock::now();
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_instance / "ext.boot" , 0);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "fuse2fs"  , offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "e2fsck"   , offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin  / "bash"     , offset_end);
   auto end = std::chrono::high_resolution_clock::now();
 
   // Filesystem starts here

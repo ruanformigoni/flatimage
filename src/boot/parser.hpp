@@ -475,6 +475,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     {
       ns_log::set_level(ns_log::Level::INFO);
     } // if
+    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     ns_db::from_file(config.path_file_config_casefold, [&](auto& db)
     {
       db("enable") = std::string{cmd->op};

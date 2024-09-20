@@ -28,20 +28,20 @@ class Overlayfs
     fs::path m_path_dir_mountpoint;
 
   public:
-    Overlayfs(std::vector<fs::path> const& vec_path_dir_lowerdir
+    Overlayfs(fs::path const& path_dir_layers
         , fs::path const& path_dir_modifications
         , fs::path const& path_dir_mountpoint
       )
       : m_path_dir_mountpoint(path_dir_mountpoint)
     {
-      ethrow_if(vec_path_dir_lowerdir.empty(), "Empty lowerdirs vector");
+      ethrow_if (not fs::exists(path_dir_layers), "Layers directory does not exist");
 
-      for(auto&& path_dir_lowerdir : vec_path_dir_lowerdir)
+      std::vector<fs::path> vec_path_dir_lowerdir;
+      for(auto&& path_dir_lowerdir : fs::directory_iterator(path_dir_layers))
       {
-        ethrow_if (not fs::exists(path_dir_lowerdir)
-          , "Lowerdir does not exist for overlayfs mount"
-        );
+        vec_path_dir_lowerdir.push_back(path_dir_lowerdir);
       } // for
+      std::ranges::sort(vec_path_dir_lowerdir);
 
       ethrow_if (not fs::exists(path_dir_modifications) and not fs::create_directories(path_dir_modifications)
         , "Could not create modifications dir for overlayfs"

@@ -524,6 +524,13 @@ inline std::string query(F&& file, Args... args)
   return ret;
 } // query() }}}
 
+// query_nothrow() {{{
+template<typename F, typename... Args>
+[[nodiscard]] inline std::expected<std::string,std::string> query_nothrow(F&& file, Args... args)
+{
+  return ns_exception::to_expected([&]{ return query(std::forward<F>(file), std::forward<Args>(args)...); });
+} // query_nothrow() }}}
+
 } // namespace ns_db
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

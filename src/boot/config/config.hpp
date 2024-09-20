@@ -44,6 +44,7 @@ struct FlatimageConfig
   fs::path path_dir_host_home;
   fs::path path_dir_host_config;
   fs::path path_dir_data_overlayfs;
+  fs::path path_dir_upper_overlayfs;
   fs::path path_dir_mount_overlayfs;
 
   fs::path path_dir_static;
@@ -53,7 +54,6 @@ struct FlatimageConfig
   fs::path path_file_config_desktop;
   fs::path path_file_config_bindings;
   fs::path path_file_config_casefold;
-  fs::path path_dir_layers;
 
   uint32_t layer_compression_level;
   uint32_t ext2_slack_minimum;
@@ -91,16 +91,6 @@ inline FlatimageConfig config()
   config.path_dir_mount_layers    = config.path_dir_mount / "layers";
   config.path_dir_mount_overlayfs = config.path_dir_mount / "overlayfs";
 
-  // Paths inside the ext2 filesystem
-  config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";
-  config.path_file_config_boot        = config.path_dir_mount_overlayfs / "fim/config/boot.json";
-  config.path_file_config_environment = config.path_dir_mount_overlayfs / "fim/config/environment.json";
-  config.path_file_config_permissions = config.path_dir_mount_overlayfs / "fim/config/permissions.json";
-  config.path_file_config_desktop     = config.path_dir_mount_overlayfs / "fim/config/desktop.json";
-  config.path_file_config_bindings    = config.path_dir_mount_overlayfs / "fim/config/bindings.json";
-  config.path_file_config_casefold    = config.path_dir_mount_overlayfs / "fim/config/casefold.json";
-  config.path_dir_layers              = config.path_dir_mount_overlayfs / "fim/layers";
-
   // Paths only available inside the container (runtime)
   config.path_dir_runtime = "/tmp/fim/run";
   config.path_dir_runtime_host = config.path_dir_runtime / "host";
@@ -128,6 +118,15 @@ inline FlatimageConfig config()
   // Filesystem configuration
   config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "15"));
   config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "20"));
+
+  // Paths to the configuration files
+  config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";
+  config.path_file_config_boot        = config.path_dir_mount_overlayfs / "fim/config/boot.json";
+  config.path_file_config_environment = config.path_dir_mount_overlayfs / "fim/config/environment.json";
+  config.path_file_config_permissions = config.path_dir_mount_overlayfs / "fim/config/permissions.json";
+  config.path_file_config_desktop     = config.path_dir_mount_overlayfs / "fim/config/desktop.json";
+  config.path_file_config_bindings    = config.path_dir_mount_overlayfs / "fim/config/bindings.json";
+  config.path_file_config_casefold    = config.path_dir_mount_overlayfs / "fim/config/casefold.json";
 
   // PID
   ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);

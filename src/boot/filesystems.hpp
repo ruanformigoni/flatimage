@@ -10,6 +10,8 @@
 #include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/squashfs.hpp"
+#include "../cpp/lib/ciopfs.hpp"
+#include "../cpp/lib/db.hpp"
 
 #include "config/config.hpp"
 
@@ -25,8 +27,10 @@ class Filesystems
     std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
     std::vector<std::unique_ptr<ns_squashfs::SquashFs>> m_layers;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
-    void mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
-    void mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower
+    std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;
+    uint64_t mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
+    void mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper);
+    void mount_overlayfs(fs::path const& path_dir_layers
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
     );
@@ -46,18 +50,21 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   : m_path_dir_mount(config.path_dir_mount)
 {
   // Mount compressed layers
-  mount_squashfs(config.path_dir_mount_layers, config.path_file_binary, config.offset_filesystem);
-  // Mount overlayfs on top of read-only layers
-  std::vector<fs::path> vec_path_dir_layers;
-  std::ranges::for_each(m_layers, [&](auto&& e){ vec_path_dir_layers.push_back(e->get_dir_mountpoint()); });
+  uint64_t index_fs = mount_squashfs(config.path_dir_mount_layers, config.path_file_binary, config.offset_filesystem);
+  // Check if should mount ciopfs
+  if ( ns_env::exists("FIM_CASEFOLD", "1") )
+  {
+    mount_ciopfs(config.path_dir_mount_layers / std::to_string(index_fs-1)
+      , config.path_dir_mount_layers / std::to_string(index_fs)
+    );
+    ns_log::debug()("ciopfs is enabled");
+  } // if
   // Mount overlayfs
-  mount_overlayfs(vec_path_dir_layers
-    , config.path_dir_data_overlayfs
-    , config.path_dir_mount_overlayfs);
+  mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
 } // fn Filesystems::Filesystems }}}
 
 // fn: mount_squashfs {{{
-inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
+inline uint64_t Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
 {
   // Open the main binary
   std::ifstream file_binary(path_file_binary, std::ios::binary);
@@ -72,7 +79,7 @@ inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path
   {
     // Read filesystem size
     int64_t size_fs;
-    dreturn_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
+    dbreak_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
     ns_log::debug()("Filesystem size is '{}'", size_fs);
     offset += 8;
 
@@ -80,7 +87,7 @@ inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path
     fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
     std::error_code ec;
     fs::create_directories(path_dir_mount_index, ec);
-    ereturn_if(ec, "Could not create directories: {}"_fmt(ec.message()));
+    ebreak_if(ec, "Could not create directories: {}"_fmt(ec.message()));
 
     // Mount filesystem
     ns_log::debug()("Offset to filesystem is '{}'", offset);
@@ -91,19 +98,27 @@ inline void Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path
     offset += size_fs;
     file_binary.seekg(offset);
   } // while
+
+  return index_fs;
 } // fn: mount_squashfs }}}
 
 // fn: mount_overlayfs {{{
-inline void Filesystems::mount_overlayfs(std::vector<fs::path> const& vec_path_dir_lower
+inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers
   , fs::path const& path_dir_data
   , fs::path const& path_dir_mount)
 {
-  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(vec_path_dir_lower
+  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_layers
     , path_dir_data
     , path_dir_mount
   );
   m_vec_path_dir_mountpoints.push_back(path_dir_mount);
 } // fn: mount_overlayfs }}}
+
+// fn: mount_ciopfs {{{
+inline void Filesystems::mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper)
+{
+  this->m_ciopfs = std::make_unique<ns_ciopfs::Ciopfs>(path_dir_lower, path_dir_upper);
+} // fn: mount_ciopfs }}}
 
 // fn: spawn_janitor {{{
 inline void Filesystems::spawn_janitor()

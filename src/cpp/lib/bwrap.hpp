@@ -237,8 +237,8 @@ inline Bwrap& Bwrap::with_binds_from_file(fs::path const& path_file_bindings)
         , ns_match::equal("rw") >>= std::string{"--bind-try"}
         , ns_match::equal("dev") >>= std::string{"--dev-bind-try"}
       ));
-      m_args.push_back(binding["src"]);
-      m_args.push_back(binding["dst"]);
+      m_args.push_back(ns_env::expand(binding["src"]).value_or(binding["src"]));
+      m_args.push_back(ns_env::expand(binding["dst"]).value_or(binding["dst"]));
     } // for
   });
 

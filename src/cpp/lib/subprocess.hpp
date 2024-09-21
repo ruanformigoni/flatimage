@@ -34,7 +34,7 @@ namespace fs = std::filesystem;
 // search_path() {{{
 inline std::optional<std::string> search_path(std::string const& s)
 {
-  const char* cstr_path = ns_env::get("PATH");
+  const char* cstr_path = getenv("PATH");
   ereturn_if(cstr_path == nullptr, "PATH: Could not read PATH", std::nullopt);
 
   std::string str_path{cstr_path};
@@ -423,7 +423,10 @@ inline Subprocess& Subprocess::spawn()
   {
     auto entry = ns_vector::from_string(e, '=');
     ereturn_if(entry.size() < 2, "Invalid environment variable '{}'"_fmt(e));
-    ns_env::set(entry.front(), ns_string::from_container(std::next(entry.begin()), entry.end()), ns_env::Replace::Y);
+    setenv(entry.front().c_str()
+      , ns_string::from_container(std::next(entry.begin()), entry.end()).c_str()
+      , 1
+    );
   });
 
   // Create environment for execve

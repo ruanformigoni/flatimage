@@ -516,7 +516,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
         cmd_exec.program = db["program"];
         cmd_exec.args = db["args"].as_vector();
         // Expand 'program'
-        if ( auto expected = ns_config::ns_environment::expand(cmd_exec.program) )
+        if ( auto expected = ns_env::expand(cmd_exec.program) )
         {
           cmd_exec.program = *expected;
         } // if

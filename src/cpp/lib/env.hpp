@@ -12,6 +12,7 @@
 #include "../common.hpp"
 #include "../macro.hpp"
 #include "log.hpp"
+#include "subprocess.hpp"
 
 // Environment variable handling {{{
 namespace ns_env
@@ -65,7 +66,7 @@ inline fs::path file(const char* name)
 template<ns_concept::StringRepresentable T, ns_concept::StringRepresentable U>
 void set(T&& name, U&& value, Replace replace)
 {
-  ns_log::debug()("ENV: {} -> {}", name , value);
+  // ns_log::debug()("ENV: {} -> {}", name , value);
   setenv(ns_string::to_string(name).c_str(), ns_string::to_string(value).c_str(), (replace == Replace::Y));
 } // set() }}}
 
@@ -76,7 +77,7 @@ inline void prepend(const char* name, std::string const& extra)
   // Append to var
   if ( const char* var_curr = std::getenv(name); var_curr )
   {
-    ns_log::debug()("ENV: {} -> {}", name, extra + var_curr);
+    // ns_log::debug()("ENV: {} -> {}", name, extra + var_curr);
     setenv(name, std::string{extra + var_curr}.c_str(), 1);
   } // if
   else
@@ -165,6 +166,27 @@ inline bool exists(const char* var, std::string_view target)
   qreturn_if(not value, false);
   return std::string_view{value} == target;
 } // exists() }}}
+
+// expand() {{{
+inline std::expected<std::string, std::string> expand(ns_concept::StringRepresentable auto&& var)
+{
+  std::string str_var{ns_string::to_string(var)};
+  std::string expanded;
+
+  auto opt_path_sh = ns_subprocess::search_path("sh");
+  qreturn_if(not opt_path_sh, std::unexpected("Could not find 'dash' binary"));
+
+  auto ret = ns_subprocess::Subprocess(*opt_path_sh)
+    .with_piped_outputs()
+    .with_stdout_handle([&](auto&& e){ expanded = e; })
+    .with_args("-c", "echo {}"_fmt(str_var))
+    .spawn()
+    .wait();
+  qreturn_if(not ret, std::unexpected("echo subprocess quit abnormally"));
+  qreturn_if(*ret != 0, std::unexpected("echo subprocess quit with code '{}'"_fmt(*ret)));
+
+  return expanded;
+} // expand() }}}
 
 } // namespace ns_env }}}
 

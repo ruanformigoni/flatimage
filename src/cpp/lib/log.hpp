@@ -178,6 +178,15 @@ class debug
     } // debug
 }; // class debug }}}
 
+// fn: exception {{{
+inline void exception(auto&& fn)
+{
+  if (auto expected = ns_exception::to_expected(fn); not expected)
+  {
+    ns_log::error()(expected.error());
+  } // if
+} // }}}
+
 } // namespace ns_log
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

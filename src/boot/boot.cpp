@@ -43,20 +43,24 @@ extern char** environ;
 
 namespace fs = std::filesystem;
 
-// copy_tools() {{{
-void copy_tools(ns_config::FlatimageConfig const& config)
+// class OnlinePreProcessing {{{
+struct OnlinePreProcessing
 {
-  // Mount filesystem as RO
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-  // Check if should enable casefold
-  if ( auto expected = ns_db::query_nothrow(config.path_file_config_casefold, "enable"); expected and *expected == "ON" )
-  {
-    ns_env::set("FIM_CASEFOLD", "1", ns_env::Replace::Y);
-  } // if
-  else
-  {
-    ns_log::debug()("ciopfs is disabled");
-  } // else
+  private:
+    void casefold(ns_config::FlatimageConfig const& config);
+    void tools(ns_config::FlatimageConfig const& config);
+  public:
+    OnlinePreProcessing(ns_config::FlatimageConfig const& config)
+    {
+      [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+      ns_log::exception([&]{ casefold(config); });
+      ns_log::exception([&]{ tools(config); });
+    }
+}; // class: OnlinePreProcessing }}}
+
+// tools() {{{
+void OnlinePreProcessing::tools(ns_config::FlatimageConfig const& config)
+{
   // Check if path_dir_static exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
   // Check if path_dir_app_bin exists and is directory
@@ -71,7 +75,21 @@ void copy_tools(ns_config::FlatimageConfig const& config)
       ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
     } // if
   } // for
-} // copy_tools() }}}
+} // tools() }}}
+
+// casefold() {{{
+void OnlinePreProcessing::casefold(ns_config::FlatimageConfig const& config)
+{
+  // Check if should enable casefold
+  if ( auto expected = ns_db::query_nothrow(config.path_file_config_casefold, "enable"); expected and *expected == "ON" )
+  {
+    ns_env::set("FIM_CASEFOLD", "1", ns_env::Replace::Y);
+  } // if
+  else
+  {
+    ns_log::debug()("ciopfs is disabled");
+  } // else
+} // casefold() }}}
 
 // relocate() {{{
 void relocate(char** argv)
@@ -182,20 +200,14 @@ void boot(int argc, char** argv)
   // Set log file
   ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");
 
-  // Copy tools
-  if (auto expected = ns_exception::to_expected([&]{ copy_tools(config); }); not expected)
-  {
-    ns_log::error()("Error while copying files '{}'", expected.error());
-  } // if
+  // Perform pre-processing step
+  OnlinePreProcessing{config};
 
   // Start portal
   ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");
 
   // Refresh desktop integration
-  if (auto expected = ns_exception::to_expected([&]{ ns_desktop::integrate(config); }); not expected)
-  {
-    ns_log::error()("Error in desktop integration '{}'", expected.error());
-  } // if
+  ns_log::exception([&]{ ns_desktop::integrate(config); });
 
   // Parse flatimage command if exists
   ns_parser::parse_cmds(config, argc, argv);

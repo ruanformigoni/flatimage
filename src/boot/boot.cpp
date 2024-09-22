@@ -31,8 +31,6 @@
 #include "../cpp/lib/env.hpp"
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/elf.hpp"
-#include "../cpp/lib/ext2/check.hpp"
-#include "../cpp/lib/ext2/size.hpp"
 
 #include "config/config.hpp"
 #include "parser.hpp"

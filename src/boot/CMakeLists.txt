@@ -70,7 +70,6 @@ target_link_libraries(boot PRIVATE
   nlohmann_json::nlohmann_json
   /usr/lib/libturbojpeg.a
   /usr/lib/libpng.a
-  /usr/lib/libext2fs.a
   /usr/lib/libcom_err.a
   /lib/libz.a
 )

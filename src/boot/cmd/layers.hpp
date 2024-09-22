@@ -8,8 +8,6 @@
 #include <filesystem>
 
 #include "../../cpp/lib/subprocess.hpp"
-#include "../../cpp/lib/ext2/size.hpp"
-#include "../filesystems.hpp"
 
 namespace
 {

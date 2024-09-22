@@ -12,7 +12,6 @@
 #include "../../cpp/lib/db.hpp"
 #include "../../cpp/lib/subprocess.hpp"
 #include "../../cpp/lib/image.hpp"
-#include "../../cpp/lib/ext2/size.hpp"
 #include "../../cpp/lib/env.hpp"
 #include "../../cpp/macro.hpp"
 #include "../filesystems.hpp"
@@ -333,12 +332,6 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
 
   // Check if file type is valid
   ethrow_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
-
-  // Make space available to fit icon
-  ns_ext2::ns_size::resize_free_space(config.path_file_binary
-    , config.offset_filesystem
-    ,  fs::file_size(path_file_icon) + ns_units::from_mebibytes(config.ext2_slack_minimum).to_bytes()
-  );
 
   // Mount filesystem
   [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);

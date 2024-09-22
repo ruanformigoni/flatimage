@@ -56,7 +56,6 @@ struct FlatimageConfig
   fs::path path_file_config_casefold;
 
   uint32_t layer_compression_level;
-  uint32_t ext2_slack_minimum;
 
   std::string env_path;
 }; // }}}
@@ -117,7 +116,6 @@ inline FlatimageConfig config()
 
   // Filesystem configuration
   config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "15"));
-  config.ext2_slack_minimum       = std::stoi(ns_env::get_or_else("FIM_SLACK_MINIMUM", "20"));
 
   // Paths to the configuration files
   config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";

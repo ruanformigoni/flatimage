@@ -7,11 +7,9 @@
 
 #include <memory>
 
-#include "../cpp/lib/ext2/mount.hpp"
 #include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/squashfs.hpp"
 #include "../cpp/lib/ciopfs.hpp"
-#include "../cpp/lib/db.hpp"
 
 #include "config/config.hpp"
 
@@ -24,7 +22,6 @@ class Filesystems
   private:
     fs::path m_path_dir_mount;
     std::vector<fs::path> m_vec_path_dir_mountpoints;
-    std::unique_ptr<ns_ext2::ns_mount::Mount> m_ext2;
     std::vector<std::unique_ptr<ns_squashfs::SquashFs>> m_layers;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
     std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;

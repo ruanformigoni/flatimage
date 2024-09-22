@@ -33,11 +33,15 @@ function _fetch_static()
   # Fetch bwrap
   wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/719925f/bwrap-x86_64"
 
+  # Fetch proot
+  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/d9211c8/proot-x86_64"
+
   # Fetch overlayfs
   wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/1861741/fuse-overlayfs-x86_64"
 
   # Fetch ciopfs
   wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs/releases/download/44de517/ciopfs-x86_64"
+  # cp "$HOME"/Repositories/ciopfs/ciopfs ./bin/ciopfs
 
   # # Fetch dwarfs
   # wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
@@ -156,7 +160,7 @@ function _create_subsystem_empty()
   mkdir ./root/fim/layers
 
   # Create image
-  _create_image ./root "$dist.img"
+  mksquashfs ./root "$dist.img" -comp zstd -Xcompression-level 15
 
   # Create elf
   _create_elf "$dist.img" "$dist.flatimage"
@@ -202,7 +206,7 @@ function _create_subsystem_alpine()
     :#http://dl-cdn.alpinelinux.org/alpine/edge/testing
 	END
 
-  # Include additional paths in PATH for proot
+  # Include additional paths in PATH
   export PATH="$PATH:/sbin:/bin"
 
   # Remove mount dirs that may have leftover files
@@ -216,7 +220,6 @@ function _create_subsystem_alpine()
   touch /tmp/"$dist"/etc/{host.conf,hosts,passwd,group,nsswitch.conf,resolv.conf}
 
   # Update packages
-  chmod +x ./bin/proot
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk update'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk upgrade'
   ./bin/proot -R "/tmp/$dist" /bin/sh -c 'apk add bash alsa-utils alsa-utils-doc alsa-lib alsaconf alsa-ucm-conf pulseaudio pulseaudio-alsa' || true
@@ -259,23 +262,13 @@ function _create_subsystem_alpine()
   cp "$FIM_DIR"/mime/icon.svg      "/tmp/$dist/fim/desktop"
   cp "$FIM_DIR"/mime/flatimage.xml "/tmp/$dist/fim/desktop"
 
-  # Create root filesystem and layers folder
-  mkdir ./root
-  mv /tmp/"$dist"/fim ./root
-  mkdir ./root/fim/layers
-
   # Create layer 0 compressed filesystem
-  "$FIM_DIR_BUILD"/bin/mkdwarfs -l 7 -i /tmp/"$dist" -o ./alpine.dwarfs
-  rm -rf /tmp/"$dist"
-
-  # Change filesystem name to index:sha
-  mv ./alpine.dwarfs ./root/fim/layers/"0-$(sha256sum ./alpine.dwarfs | awk '{print $1}')"
-
-  # Create image
-  _create_image ./root "$dist.img"
+  chown -R 1000:1000 /tmp/"$dist"
+  chmod 777 -R /tmp/"$dist"
+  mksquashfs /tmp/"$dist" "$dist".sqfs -comp zstd -Xcompression-level 15
 
   # Create elf
-  _create_elf "$dist.img" "$dist.flatimage"
+  _create_elf "$dist".sqfs "$dist".flatimage
 
   # Create sha256sum
   sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"

@@ -17,6 +17,7 @@
 #include "match.hpp"
 #include "subprocess.hpp"
 #include "env.hpp"
+#include "reserved/permissions.hpp"
 
 namespace ns_bwrap
 {
@@ -31,30 +32,65 @@ namespace fs = std::filesystem;
 namespace ns_permissions
 {
 
-ENUM(Permission,HOME,MEDIA,AUDIO,WAYLAND,XORG,DBUS_USER,DBUS_SYSTEM,UDEV,USB,INPUT,GPU,NETWORK);
+using PermissionBits = ns_reserved::ns_permissions::Bits;
 
-template<ns_concept::Iterable R>
-inline void set(fs::path const& path_file_config_permissions, R&& r)
+class Permissions
 {
-  ns_db::Db(path_file_config_permissions, ns_db::Mode::CREATE).set_insert(r);
-}
+  private:
+    fs::path const& m_path_file_binary;
+    int64_t m_begin;
+    int64_t m_end;
+  public:
+    Permissions(fs::path const& path_file_binary
+      , int64_t begin
+      , int64_t end
+    ) : m_path_file_binary(path_file_binary)
+      , m_begin(begin)
+      , m_end(end)
+    {}
+    template<ns_concept::Iterable R>
+    inline void set(R&& r)
+    {
+      ns_reserved::ns_permissions::Bits bits;
+      std::ranges::for_each(r, [&](auto&& e){ bits.set(e, true); });
+      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, bits);
+      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
+    }
 
-template<ns_concept::Iterable R>
-inline void add(fs::path const& path_file_config_permissions, R&& r)
-{
-  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE_OR_CREATE).set_insert(r);
-}
+    template<ns_concept::Iterable R>
+    inline void add(R&& r)
+    {
+      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
+      ereturn_if(not expected, "Could not read permission bits: {}"_fmt(expected.error()));
+      std::ranges::for_each(r, [&](auto&& e){ expected->set(e, true); });
+      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, *expected);
+      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
+    }
 
-template<ns_concept::Iterable R>
-inline void del(fs::path const& path_file_config_permissions, R&& r)
-{
-  ns_db::Db(path_file_config_permissions, ns_db::Mode::UPDATE).array_erase(r);
-}
+    template<ns_concept::Iterable R>
+    inline void del(R&& r)
+    {
+      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
+      ereturn_if(not expected, "Could not read permission bits: {}"_fmt(expected.error()));
+      std::ranges::for_each(r, [&](auto&& e){ expected->set(e, false); });
+      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, *expected);
+      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
+    }
 
-inline std::set<Permission> get(fs::path const& path_file_config_permissions)
-{
-  return ns_db::Db(path_file_config_permissions, ns_db::Mode::READ).as_set<Permission>();
-}
+    inline std::expected<PermissionBits, std::string> get()
+    {
+      return ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
+    }
+
+    inline std::vector<std::string> to_vector_string()
+    {
+      std::vector<std::string> out;
+      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
+      ereturn_if(not expected, "Failed to read permissions: {}"_fmt(expected.error()), out);
+      return expected->to_vector_string();
+    }
+};
+
 
 } // namespace ns_permissions
 
@@ -105,7 +141,7 @@ class Bwrap
     Bwrap& with_bind_gpu(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host);
     Bwrap& with_bind(fs::path const& src, fs::path const& dst);
     Bwrap& with_bind_ro(fs::path const& src, fs::path const& dst);
-    void run(std::set<ns_permissions::Permission> const& permissions);
+    void run(ns_permissions::PermissionBits const& permissions);
 }; // class: Bwrap
 
 // Bwrap() {{{
@@ -426,20 +462,20 @@ inline Bwrap& Bwrap::with_bind_gpu(fs::path const& path_dir_root_guest, fs::path
 } // with_bind_gpu() }}}
 
 // run() {{{
-inline void Bwrap::run(std::set<ns_permissions::Permission> const& permissions)
+inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
 {
   // Configure bindings
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::HOME)        , [&]{ bind_home()        ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::MEDIA)       , [&]{ bind_media()       ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::AUDIO)       , [&]{ bind_audio()       ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::WAYLAND)     , [&]{ bind_wayland()     ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::XORG)        , [&]{ bind_xorg()        ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_USER)   , [&]{ bind_dbus_user()   ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::DBUS_SYSTEM) , [&]{ bind_dbus_system() ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::UDEV)        , [&]{ bind_udev()        ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::INPUT)       , [&]{ bind_input()       ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::USB)         , [&]{ bind_usb()         ; });
-  ns_functional::call_if(permissions.contains(ns_permissions::Permission::NETWORK)     , [&]{ bind_network()     ; });
+  ns_functional::call_if(permissions.home        , [&]{ bind_home()        ; });
+  ns_functional::call_if(permissions.media       , [&]{ bind_media()       ; });
+  ns_functional::call_if(permissions.audio       , [&]{ bind_audio()       ; });
+  ns_functional::call_if(permissions.wayland     , [&]{ bind_wayland()     ; });
+  ns_functional::call_if(permissions.xorg        , [&]{ bind_xorg()        ; });
+  ns_functional::call_if(permissions.dbus_user   , [&]{ bind_dbus_user()   ; });
+  ns_functional::call_if(permissions.dbus_system , [&]{ bind_dbus_system() ; });
+  ns_functional::call_if(permissions.udev        , [&]{ bind_udev()        ; });
+  ns_functional::call_if(permissions.input       , [&]{ bind_input()       ; });
+  ns_functional::call_if(permissions.usb         , [&]{ bind_usb()         ; });
+  ns_functional::call_if(permissions.network     , [&]{ bind_network()     ; });
 
   // Find bwrap in PATH
   auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");

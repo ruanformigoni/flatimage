@@ -53,7 +53,7 @@ ENUM(CmdPermsOp,SET,ADD,DEL,LIST);
 struct CmdPerms
 {
   CmdPermsOp op;
-  std::set<ns_bwrap::ns_permissions::Permission> permissions;
+  std::vector<std::string> permissions;
 };
 
 ENUM(CmdEnvOp,SET,ADD,DEL,LIST);
@@ -151,7 +151,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       CmdPerms cmd_perms;
       cmd_perms.op = op;
       std::ranges::for_each(ns_vector::from_string(argv[3], ',')
-        , [&](auto&& e){ cmd_perms.permissions.insert(ns_bwrap::ns_permissions::Permission(e)); }
+        , [&](auto&& e){ cmd_perms.permissions.push_back(e); }
       );
       return CmdType(cmd_perms);
     },
@@ -287,11 +287,20 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Parse args
   auto variant_cmd = ns_parser::parse(argc, argv);
 
+  // Initialize permissions
+  ns_bwrap::ns_permissions::Permissions permissions(config.path_file_binary
+    , config.offset_permissions.offset
+    , config.offset_permissions.size
+  );
+
   auto f_bwrap = [&](std::string const& program
     , std::vector<std::string> const& args
-    , std::vector<std::string> const& environment
-    , std::set<ns_bwrap::ns_permissions::Permission> const& permissions)
+    , std::vector<std::string> const& environment)
   {
+    // Read permissions
+    auto bits_permissions = permissions.get();
+    ereturn_if(not bits_permissions, bits_permissions.error());
+
     // Create bwrap instance
     ns_bwrap::Bwrap bwrap = ns_bwrap::Bwrap(config.is_root
       , config.path_dir_mount_overlayfs
@@ -306,13 +315,13 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       .with_binds_from_file(config.path_file_config_bindings);
 
     // Check if should enable GPU
-    if ( permissions.contains(ns_bwrap::ns_permissions::Permission::GPU) )
+    if ( bits_permissions->gpu )
     {
       (void) bwrap.with_bind_gpu(config.path_dir_mount_overlayfs, config.path_dir_runtime_host);
     }
 
     // Run bwrap
-    bwrap.run(permissions);
+    bwrap.run(*bits_permissions);
   };
 
   // Execute a command as a regular user
@@ -322,9 +331,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     auto mount = ns_filesystems::Filesystems(config);
     mount.spawn_janitor();
     // Execute specified command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment, permissions);
+    f_bwrap(cmd->program, cmd->args, environment);
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
@@ -334,9 +342,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     mount.spawn_janitor();
     // Execute specified command as 'root'
     config.is_root = true;
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment, permissions);
+    f_bwrap(cmd->program, cmd->args, environment);
   } // if
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
@@ -353,11 +360,11 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     // Determine open mode
     switch( cmd->op )
     {
-      case ns_parser::CmdPermsOp::ADD: ns_bwrap::ns_permissions::add(config.path_file_config_permissions, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::SET: ns_bwrap::ns_permissions::set(config.path_file_config_permissions, cmd->permissions); break;
-      case ns_parser::CmdPermsOp::DEL: ns_bwrap::ns_permissions::del(config.path_file_config_permissions, cmd->permissions); break;
+      case ns_parser::CmdPermsOp::ADD: permissions.add(cmd->permissions); break;
+      case ns_parser::CmdPermsOp::SET: permissions.set(cmd->permissions); break;
+      case ns_parser::CmdPermsOp::DEL: permissions.del(cmd->permissions); break;
       case ns_parser::CmdPermsOp::LIST:
-        std::ranges::for_each(ns_bwrap::ns_permissions::get(config.path_file_config_permissions), ns_functional::PrintLn{}); break;
+        std::ranges::for_each(permissions.to_vector_string(), ns_functional::PrintLn{}); break;
     } // switch
   } // if
   // Configure environment
@@ -533,9 +540,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     // Append argv args
     if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
     // Execute default command
-    auto permissions = ns_exception::or_default([&]{ return ns_bwrap::ns_permissions::get(config.path_file_config_permissions); });
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd_exec.program, cmd_exec.args, environment, permissions);
+    f_bwrap(cmd_exec.program, cmd_exec.args, environment);
   } // else if
 
   return EXIT_SUCCESS;

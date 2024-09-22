@@ -18,6 +18,12 @@ namespace
 
 namespace fs = std::filesystem;
 
+struct Offset
+{
+  uint64_t offset;
+  uint64_t size;
+};
+
 } // namespace
 
 // struct FlatimageConfig {{{
@@ -28,6 +34,8 @@ struct FlatimageConfig
   bool is_readonly;
   bool is_debug;
 
+  uint64_t offset_reserved;
+  Offset offset_permissions;
   uint64_t offset_filesystem;
   fs::path path_dir_global;
   fs::path path_dir_mount;
@@ -77,7 +85,9 @@ inline FlatimageConfig config()
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
 
   // Paths in /tmp
-  config.offset_filesystem        = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
+  config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
+  config.offset_permissions       = { config.offset_reserved, 8 };
+  config.offset_filesystem        = config.offset_reserved + 2097152;
   config.path_dir_global          = ns_env::get_or_throw("FIM_DIR_GLOBAL");
   config.path_file_binary         = ns_env::get_or_throw("FIM_FILE_BINARY");
   config.path_dir_binary          = config.path_file_binary.parent_path();

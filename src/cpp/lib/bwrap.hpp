@@ -33,64 +33,7 @@ namespace ns_permissions
 {
 
 using PermissionBits = ns_reserved::ns_permissions::Bits;
-
-class Permissions
-{
-  private:
-    fs::path const& m_path_file_binary;
-    int64_t m_begin;
-    int64_t m_end;
-  public:
-    Permissions(fs::path const& path_file_binary
-      , int64_t begin
-      , int64_t end
-    ) : m_path_file_binary(path_file_binary)
-      , m_begin(begin)
-      , m_end(end)
-    {}
-    template<ns_concept::Iterable R>
-    inline void set(R&& r)
-    {
-      ns_reserved::ns_permissions::Bits bits;
-      std::ranges::for_each(r, [&](auto&& e){ bits.set(e, true); });
-      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, bits);
-      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
-    }
-
-    template<ns_concept::Iterable R>
-    inline void add(R&& r)
-    {
-      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
-      ereturn_if(not expected, "Could not read permission bits: {}"_fmt(expected.error()));
-      std::ranges::for_each(r, [&](auto&& e){ expected->set(e, true); });
-      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, *expected);
-      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
-    }
-
-    template<ns_concept::Iterable R>
-    inline void del(R&& r)
-    {
-      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
-      ereturn_if(not expected, "Could not read permission bits: {}"_fmt(expected.error()));
-      std::ranges::for_each(r, [&](auto&& e){ expected->set(e, false); });
-      auto error = ns_reserved::ns_permissions::write(m_path_file_binary, m_begin, m_end, *expected);
-      ereturn_if(error, "Error to write permission bits: {}"_fmt(*error));
-    }
-
-    inline std::expected<PermissionBits, std::string> get()
-    {
-      return ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
-    }
-
-    inline std::vector<std::string> to_vector_string()
-    {
-      std::vector<std::string> out;
-      auto expected = ns_reserved::ns_permissions::read(m_path_file_binary, m_begin, m_end);
-      ereturn_if(not expected, "Failed to read permissions: {}"_fmt(expected.error()), out);
-      return expected->to_vector_string();
-    }
-};
-
+using Permissions = ns_reserved::ns_permissions::Permissions;
 
 } // namespace ns_permissions
 

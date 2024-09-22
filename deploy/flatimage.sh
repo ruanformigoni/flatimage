@@ -69,6 +69,8 @@ function _create_elf()
 
   # Boot is the program on top of the image
   cp bin/boot "$out"
+  # Create reserved space
+  dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter
   size_img="$( du -b "$img" | awk '{print $1}' | xargs -I{} printf "%016x\n" {} )"
   for i in $(seq 0 $(( "${#size_img}" / 2 - 1 )) | sort -r); do

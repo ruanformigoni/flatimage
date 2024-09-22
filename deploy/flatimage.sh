@@ -59,32 +59,6 @@ function _fetch_static()
   chmod +x ./bin/*
 }
 
-# Creates a filesystem image
-# $1 = folder to create image from
-# $2 = output file name
-function _create_image()
-{
-  # Check inputs
-  [ -d "$1" ] || _die "Invalid directory $1"
-  [ -n "$2" ] || _die "Empty output file name"
-
-  # Set vars & max size
-  local dir="$1"
-  local out="$(basename "$2")"
-  local slack="50" # 50M
-  local size="$(du -s "$dir" | awk '{printf "%d\n", $1/1000}')"
-  size="$((size+slack))M"
-
-  _msg "dir            : $dir"
-  _msg "file out       : $out"
-  _msg "size dir+slack : $size"
-
-  # Create filesystem
-  truncate -s "$size" "$out"
-  bin/mke2fs -d "$dir" -b1024 -t ext4 "$out"
-  tune2fs -m 1 "$out"
-}
-
 # Concatenates binary files and filesystem to create fim image
 # $1 = Path to system image
 # $2 = Output file name

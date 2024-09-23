@@ -18,6 +18,7 @@ namespace fs = std::filesystem;
 
 }
 
+// struct Bits {{{
 struct Bits
 {
   uint64_t home        : 1 = 0;
@@ -68,8 +69,9 @@ struct Bits
     if ( network )     { out.push_back("network"); }
     return out;
   }
-};
+}; // }}}
 
+// write() {{{
 inline std::optional<std::string> write(fs::path const& path_file_binary
   , int64_t begin
   , int64_t end
@@ -77,8 +79,9 @@ inline std::optional<std::string> write(fs::path const& path_file_binary
 )
 {
   return ns_reserved::write(path_file_binary, begin, end, reinterpret_cast<char*>(&bits), sizeof(bits));
-}
+} // write() }}}
 
+// read() {{{
 inline std::expected<Bits,std::string> read(fs::path const& path_file_binary
   , uint64_t begin
   , uint64_t end)
@@ -90,8 +93,9 @@ inline std::expected<Bits,std::string> read(fs::path const& path_file_binary
   qreturn_if(err, std::unexpected(*err));
   std::memcpy(&bits, buffer, sizeof(bits));
   return bits;
-}
+} // read() }}}
 
+// class Permissions {{{
 class Permissions
 {
   private:
@@ -147,9 +151,7 @@ class Permissions
       ereturn_if(not expected, "Failed to read permissions: {}"_fmt(expected.error()), out);
       return expected->to_vector_string();
     }
-};
-
-
+}; // }}}
 
 } // namespace ns_reserved::ns_permissions
 

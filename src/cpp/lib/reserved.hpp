@@ -48,22 +48,23 @@ inline std::error<std::string> write(fs::path const& path_file_binary
 // read() {{{
 // Reads data from a file in binary format
 // Returns a std::string built with the data
-inline std::error<std::string> read(fs::path const& path_file_binary
+inline std::expected<uint64_t,std::string> read(fs::path const& path_file_binary
   , uint64_t offset
   , uint64_t length
   , char* data)
 {
+  // Open binary file
   std::ifstream file_binary(path_file_binary, std::ios::binary | std::ios::in);
-
-  qreturn_if(not file_binary.is_open(), std::make_optional("Failed to open input file"));
-
+  qreturn_if(not file_binary.is_open(), std::unexpected("Failed to open input file"));
+  // Advance towards data
   file_binary.seekg(offset);
-
+  // Read data
   file_binary.read(data, length);
-
+  // Check how many bytes were actually read
+  std::streamsize bytes_read = file_binary.gcount();
   file_binary.close();
-
-  return std::nullopt;
+  // Return number of read bytes
+  return bytes_read;
 } // read() }}}
 
 } // namespace 

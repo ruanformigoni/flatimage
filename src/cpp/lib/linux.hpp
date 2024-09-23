@@ -38,10 +38,13 @@ namespace fs = std::filesystem;
 } // function: mkdtemp }}}
 
 // mkstemp() {{{
-inline std::expected<fs::path, std::string> mkstemp(fs::path const& path_dir_parent, std::string file_template = "XXXXXX")
+[[nodiscard]] inline std::expected<fs::path, std::string> mkstemps(fs::path const& path_dir_parent
+  , std::string file_template = "XXXXXX"
+  , int suffixlen = 0
+)
 {
   std::string str_template = path_dir_parent / file_template;
-  int fd = ::mkstemp(str_template.data());
+  int fd = ::mkstemps(str_template.data(), suffixlen);
   qreturn_if(fd < 0, std::unexpected(strerror(errno)));
   close(fd);
   return fs::path{str_template};

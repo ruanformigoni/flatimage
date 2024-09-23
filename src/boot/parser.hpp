@@ -67,7 +67,7 @@ ENUM(CmdDesktopOp,SETUP,ENABLE);
 struct CmdDesktop
 {
   CmdDesktopOp op;
-  std::variant<fs::path,std::set<ns_desktop::EnableItem>> arg;
+  std::variant<fs::path,std::set<ns_desktop::IntegrationItem>> arg;
 };
 
 struct CmdBoot
@@ -186,8 +186,8 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       {
         // Get comma separated argument list
         auto vec_strs = ns_vector::from_string(std::string_view(argv[3]), ',');
-        std::set<ns_desktop::EnableItem> set_enum;
-        std::ranges::transform(vec_strs, std::inserter(set_enum, set_enum.end()), [](auto&& e){ return ns_desktop::EnableItem(e); });
+        std::set<ns_desktop::IntegrationItem> set_enum;
+        std::ranges::transform(vec_strs, std::inserter(set_enum, set_enum.end()), [](auto&& e){ return ns_desktop::IntegrationItem(e); });
         cmd.arg = set_enum;
       } // else
       return CmdType(cmd);
@@ -402,7 +402,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     {
       case ns_parser::CmdDesktopOp::ENABLE:
       {
-        auto opt_should_enable = ns_variant::get_if_holds_alternative<std::set<ns_desktop::EnableItem>>(cmd->arg);
+        auto opt_should_enable = ns_variant::get_if_holds_alternative<std::set<ns_desktop::IntegrationItem>>(cmd->arg);
         ethrow_if(not opt_should_enable.has_value(), "Could not get items to configure desktop integration");
         ns_desktop::enable(config, *opt_should_enable);
       }
@@ -411,7 +411,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       {
         auto opt_path_file_src_json = ns_variant::get_if_holds_alternative<fs::path>(cmd->arg);
         ethrow_if(not opt_path_file_src_json.has_value(), "Could not convert variant value to fs::path");
-        ns_desktop::setup(config, *opt_path_file_src_json, config.path_file_config_desktop);
+        ns_desktop::setup(config, *opt_path_file_src_json);
       } // case
       break;
     } // switch

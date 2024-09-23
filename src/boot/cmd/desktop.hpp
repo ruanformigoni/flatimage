@@ -19,6 +19,8 @@
 namespace ns_desktop
 {
 
+using IntegrationItem = ns_db::ns_desktop::IntegrationItem;
+
 namespace
 {
 
@@ -29,7 +31,23 @@ constexpr const std::array<uint32_t, 9> arr_sizes {16,22,24,32,48,64,96,128,256}
 
 namespace fs = std::filesystem;
 
-using IntegrationItem = ns_db::ns_desktop::IntegrationItem;
+#pragma pack(push, 1)
+struct Image
+{
+  char m_ext[4];
+  char m_data[ns_config::SIZE_RESERVED_IMAGE - 12];
+  uint64_t m_size;
+  Image() = default;
+  Image(char* ext, char* data, uint64_t size)
+    : m_size(size)
+  {
+    // xxx + '\0'
+    std::copy(ext, ext+3, m_ext);
+    ext[3] = '\0';
+    std::copy(data, data+size, m_data);
+  } // Image
+};
+#pragma pack(pop)
 
 // read_json_from_binary() {{{
 std::expected<std::string,std::string> read_json_from_binary(ns_config::FlatimageConfig const& config)
@@ -55,17 +73,28 @@ std::error<std::string> write_json_to_binary(ns_config::FlatimageConfig const& c
 } // write_json_to_binary() }}}
 
 // read_image_from_binary() {{{
-std::expected<std::unique_ptr<char[]>,std::string> read_image_from_binary(ns_config::FlatimageConfig const& config)
+std::expected<std::pair<std::unique_ptr<char[]>,uint64_t>,std::string> read_image_from_binary(fs::path const& path_file_binary
+  , uint64_t offset
+  , uint64_t size)
 {
-  auto ptr_data = std::make_unique<char[]>(config.offset_desktop_image.size);
-  auto error = ns_reserved::read(config.path_file_binary
+  auto ptr_data = std::make_unique<char[]>(size);
+  auto expected_bytes = ns_reserved::read(path_file_binary, offset, size, ptr_data.get());
+  qreturn_if(not expected_bytes, std::unexpected(expected_bytes.error()));
+  return std::make_pair(std::move(ptr_data), *expected_bytes);
+} // read_image_from_binary() }}}
+
+// write_image_to_binary() {{{
+std::error<std::string> write_image_to_binary(ns_config::FlatimageConfig const& config
+  , char* data
+  , uint64_t size)
+{
+  return ns_reserved::write(config.path_file_binary
     , config.offset_desktop_image.offset
     , config.offset_desktop_image.size
-    , ptr_data.get()
+    , data
+    , size
   );
-  qreturn_if(error, std::unexpected(*error));
-  return ptr_data;
-} // read_image_from_binary() }}}
+} // write_image_to_binary() }}}
 
 // integrate_desktop_entry() {{{
 decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
@@ -171,20 +200,25 @@ void integrate_icons_svg(ns_db::ns_desktop::Desktop const& desktop, fs::path con
 // integrate_icons_png() {{{
 void integrate_icons_png(ns_db::ns_desktop::Desktop const& desktop, fs::path const& path_dir_home, fs::path const& path_file_icon)
 {
-  for(auto&& i : arr_sizes)
+  for(auto&& size : arr_sizes)
   {
     // Path to mimetype icon
     fs::path path_icon_mimetype = path_dir_home
-      / std::vformat(template_dir_mimetype, std::make_format_args(arr_sizes[i], arr_sizes[i]))
+      / std::vformat(template_dir_mimetype, std::make_format_args(size, size))
       / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
     // Path to app icon
+    std::error_code ec;
+    fs::create_directories(path_icon_mimetype.parent_path(), ec);
+    ereturn_if(ec, "Could not create parent directories of '{}'"_fmt(path_icon_mimetype));
     fs::path path_icon_app = path_dir_home
-      / std::vformat(template_dir_apps, std::make_format_args(arr_sizes[i], arr_sizes[i]))
+      / std::vformat(template_dir_apps, std::make_format_args(size, size))
       / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
+    fs::create_directories(path_icon_app.parent_path(), ec);
+    ereturn_if(ec, "Could not create parent directories of '{}'"_fmt(path_icon_app));
     // Avoid overwrite
     if ( not fs::exists(path_icon_mimetype) )
     {
-      auto result = ns_image::resize(path_file_icon, path_icon_mimetype, i, i, true);
+      auto result = ns_image::resize(path_file_icon, path_icon_mimetype, size, size, true);
       econtinue_if(not result.has_value(), result.error())
     } // if
     // Duplicate icon to app directory
@@ -205,17 +239,23 @@ inline void integrate_icons(ns_config::FlatimageConfig const& config, ns_db::ns_
     , "Icons are integrated with the system"
   );
   // Read picture from flatimage binary
-  auto expected_data_image = read_image_from_binary(config);
+  Image image;
+  auto expected_data_image = read_image_from_binary(config.path_file_binary
+    , config.offset_desktop_image.offset
+    , sizeof(image)
+  );
   ereturn_if(not expected_data_image, expected_data_image.error());
+  std::memcpy(&image, expected_data_image->first.get(), sizeof(image));
   // Create temporary file to write image to
-  auto expected_path_file_icon = ns_linux::mkstemp("/tmp");
+  auto expected_path_file_icon = ns_linux::mkstemps("/tmp", "XXXXXX.{}"_fmt(image.m_ext), 4);
   ereturn_if(not expected_path_file_icon, expected_path_file_icon.error());
   // Write image to temporary file
   std::ofstream file_icon(*expected_path_file_icon);
   ereturn_if(not file_icon.is_open(), "Could not open temporary image file for desktop integration");
-  file_icon.write(expected_data_image->get(), config.offset_desktop_image.size);
+  file_icon.write(image.m_data, image.m_size);
+  file_icon.close();
   // Create icons
-  if ( expected_path_file_icon->extension().string().ends_with(".svg") )
+  if ( expected_path_file_icon->string().ends_with(".svg") )
   {
     integrate_icons_svg(desktop, path_dir_home, *expected_path_file_icon);
   }
@@ -330,24 +370,24 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
   );
   // Deserialize json
   auto expected_desktop = ns_db::ns_desktop::deserialize(file_json_src);
-  ereturn_if(not expected_desktop, "Failed to deserialize json"_fmt(expected_desktop.error()));
+  ereturn_if(not expected_desktop, "Failed to deserialize json: {}"_fmt(expected_desktop.error()));
   // Application icon
   fs::path path_file_icon = expected_desktop->get_path_file_icon();
   std::optional<std::string> opt_str_ext = (path_file_icon.extension() == ".svg")? std::make_optional("svg")
     : (path_file_icon.extension() == ".png")? std::make_optional("png")
-    : (path_file_icon.extension() == ".jpg" or path_file_icon.extension() == ".jpeg")? std::make_optional("jpeg")
+    : (path_file_icon.extension() == ".jpg" or path_file_icon.extension() == ".jpeg")? std::make_optional("jpg")
     : std::nullopt;
-  ethrow_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
-  // Write image
-  auto data_image_size = config.size_reserved_image;
-  auto data_image = std::make_unique<char[]>(data_image_size);
-  ns_reserved::read(path_file_icon, 0, config.size_reserved_image, data_image.get());
-  auto err = ns_reserved::write(config.path_file_binary
-    , config.offset_desktop_image.offset
-    , config.offset_desktop_image.size
-    , data_image.get()
-    , data_image_size
+  ereturn_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
+  // Read original image
+  auto expected_image_data = read_image_from_binary(path_file_icon, 0, config.offset_desktop_image.size);
+  ereturn_if(expected_image_data->second == config.offset_desktop_image.size
+    , "File is too large, '{}' bytes"_fmt(config.offset_desktop_image.size)
   );
+  ereturn_if(not expected_image_data, "Could not read source image: {}"_fmt(expected_image_data.error()));
+  // Create image struct to deserialize into binary format
+  Image image{opt_str_ext->data(), expected_image_data->first.get(), expected_image_data->second};
+  // Serialize image struct in binary format
+  auto err = write_image_to_binary(config, reinterpret_cast<char*>(&image), sizeof(image));
   ereturn_if(err, "Could not write image data: {}"_fmt(*err));
   // Serialize json
   auto expected_str_raw_json = ns_db::ns_desktop::serialize(*expected_desktop);

@@ -26,6 +26,9 @@ struct Offset
 
 } // namespace
 
+constexpr int64_t const SIZE_RESERVED_TOTAL = 2097152;
+constexpr int64_t const SIZE_RESERVED_IMAGE = 1048576;
+
 // struct FlatimageConfig {{{
 struct FlatimageConfig
 {
@@ -33,9 +36,6 @@ struct FlatimageConfig
   bool is_root;
   bool is_readonly;
   bool is_debug;
-
-  static int64_t const size_reserved_total = 2097152;
-  static int64_t const size_reserved_image = 1048576;
 
   uint64_t offset_reserved;
   Offset offset_permissions;
@@ -96,8 +96,8 @@ inline FlatimageConfig config()
   // Desktop entry information, reserve 4096 bytes for json data
   config.offset_desktop           = { config.offset_permissions.offset + config.offset_permissions.size, 4096 };
   // Space reserved for desktop icon
-  config.offset_desktop_image     = { config.offset_reserved + config.size_reserved_total - config.size_reserved_image, config.size_reserved_image};
-  config.offset_filesystem        = config.offset_reserved + config.size_reserved_total;
+  config.offset_desktop_image     = { config.offset_reserved + SIZE_RESERVED_TOTAL - SIZE_RESERVED_IMAGE, SIZE_RESERVED_IMAGE};
+  config.offset_filesystem        = config.offset_reserved + SIZE_RESERVED_TOTAL;
   config.path_dir_global          = ns_env::get_or_throw("FIM_DIR_GLOBAL");
   config.path_file_binary         = ns_env::get_or_throw("FIM_FILE_BINARY");
   config.path_dir_binary          = config.path_file_binary.parent_path();

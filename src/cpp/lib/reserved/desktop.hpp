@@ -39,8 +39,8 @@ inline std::expected<std::unique_ptr<char[]>,std::string> read(fs::path const& p
 {
   std::string raw_json;
   auto buffer = std::make_unique<char[]>(size);
-  auto err = ns_reserved::read(path_file_binary, offset, size, buffer.get());
-  qreturn_if(err, std::unexpected(*err));
+  auto expected_read = ns_reserved::read(path_file_binary, offset, size, buffer.get());
+  qreturn_if(not expected_read, std::unexpected(expected_read.error()));
   return buffer;
 } // read() }}}
 

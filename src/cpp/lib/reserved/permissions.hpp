@@ -89,8 +89,8 @@ inline std::expected<Bits,std::string> read(fs::path const& path_file_binary
   Bits bits;
   char buffer[sizeof(Bits)];
   qreturn_if(sizeof(Bits) > size, std::unexpected("Not enough space for read"));
-  auto err = ns_reserved::read(path_file_binary, offset, sizeof(bits), buffer);
-  qreturn_if(err, std::unexpected(*err));
+  auto expected_read = ns_reserved::read(path_file_binary, offset, sizeof(bits), buffer);
+  qreturn_if(not expected_read, std::unexpected(expected_read.error()));
   std::memcpy(&bits, buffer, sizeof(bits));
   return bits;
 } // read() }}}

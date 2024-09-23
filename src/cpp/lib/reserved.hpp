@@ -20,6 +20,7 @@ namespace
   
 namespace fs = std::filesystem;
 
+// write() {{{
 // Writes data to file in binary format
 // Returns space left after write
 inline std::optional<std::string> write(fs::path const& path_file_binary
@@ -40,8 +41,9 @@ inline std::optional<std::string> write(fs::path const& path_file_binary
   file_binary.close();
 
   return std::nullopt;
-}
+} // write() }}}
 
+// read() {{{
 // Reads data from a file in binary format
 // Returns a std::string built with the data
 inline std::optional<std::string> read(fs::path const& path_file_binary
@@ -60,7 +62,7 @@ inline std::optional<std::string> read(fs::path const& path_file_binary
   file_binary.close();
 
   return std::nullopt;
-}
+} // read() }}}
 
 } // namespace 
 

@@ -35,6 +35,14 @@ struct format_args
 
 } // namespace
 
+namespace std
+{
+
+template<typename T>
+using error = optional<T>;
+
+} // namespace std
+
 // User defined literals {{{
 
 // Print to stdout

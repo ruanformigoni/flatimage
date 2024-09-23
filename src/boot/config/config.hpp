@@ -34,8 +34,13 @@ struct FlatimageConfig
   bool is_readonly;
   bool is_debug;
 
+  static int64_t const size_reserved_total = 2097152;
+  static int64_t const size_reserved_image = 1048576;
+
   uint64_t offset_reserved;
   Offset offset_permissions;
+  Offset offset_desktop;
+  Offset offset_desktop_image;
   uint64_t offset_filesystem;
   fs::path path_dir_global;
   fs::path path_dir_mount;
@@ -86,8 +91,13 @@ inline FlatimageConfig config()
 
   // Paths in /tmp
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
+  // Reserve 8 first bytes for permission data
   config.offset_permissions       = { config.offset_reserved, 8 };
-  config.offset_filesystem        = config.offset_reserved + 2097152;
+  // Desktop entry information, reserve 4096 bytes for json data
+  config.offset_desktop           = { config.offset_permissions.offset + config.offset_permissions.size, 4096 };
+  // Space reserved for desktop icon
+  config.offset_desktop_image     = { config.offset_reserved + config.size_reserved_total - config.size_reserved_image, config.size_reserved_image};
+  config.offset_filesystem        = config.offset_reserved + config.size_reserved_total;
   config.path_dir_global          = ns_env::get_or_throw("FIM_DIR_GLOBAL");
   config.path_file_binary         = ns_env::get_or_throw("FIM_FILE_BINARY");
   config.path_dir_binary          = config.path_file_binary.parent_path();

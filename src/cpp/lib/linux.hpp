@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <unistd.h>
 
 #include "log.hpp"
 #include "../common.hpp"
@@ -16,7 +17,12 @@
 namespace ns_linux
 {
 
+namespace
+{
+
 namespace fs = std::filesystem;
+
+}
 
 // mkdtemp() {{{
 // Creates a temporary directory in path_dir_parent with the template provided by 'dir_template'
@@ -30,6 +36,17 @@ namespace fs = std::filesystem;
   ethrow_if(cstr_path_dir_temp == nullptr, "Failed to create temporary dir {}"_fmt(path_dir_template));
   return cstr_path_dir_temp;
 } // function: mkdtemp }}}
+
+// mkstemp() {{{
+inline std::expected<fs::path, std::string> mkstemp(fs::path const& path_dir_parent, std::string file_template = "XXXXXX")
+{
+  std::string str_template = path_dir_parent / file_template;
+  int fd = ::mkstemp(str_template.data());
+  qreturn_if(fd < 0, std::unexpected(strerror(errno)));
+  close(fd);
+  return fs::path{str_template};
+}
+// mkstemp() }}}
 
 } // namespace ns_linux
 

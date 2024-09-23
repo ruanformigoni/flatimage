@@ -53,7 +53,7 @@ class Db
     Db() = delete;
     Db(Db const&) = delete;
     Db(Db&&) = delete;
-    Db(std::string_view json_data);
+    explicit Db(std::string_view json_data);
     Db(fs::path t, Mode mode);
 
     // Destructors

@@ -20,10 +20,12 @@ namespace
   
 namespace fs = std::filesystem;
 
+} // namespace ns_reserved
+
 // write() {{{
 // Writes data to file in binary format
 // Returns space left after write
-inline std::optional<std::string> write(fs::path const& path_file_binary
+inline std::error<std::string> write(fs::path const& path_file_binary
   , uint64_t offset
   , uint64_t size
   , const char* data
@@ -46,7 +48,7 @@ inline std::optional<std::string> write(fs::path const& path_file_binary
 // read() {{{
 // Reads data from a file in binary format
 // Returns a std::string built with the data
-inline std::optional<std::string> read(fs::path const& path_file_binary
+inline std::error<std::string> read(fs::path const& path_file_binary
   , uint64_t offset
   , uint64_t length
   , char* data)
@@ -65,7 +67,5 @@ inline std::optional<std::string> read(fs::path const& path_file_binary
 } // read() }}}
 
 } // namespace 
-
-} // namespace ns_reserved
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

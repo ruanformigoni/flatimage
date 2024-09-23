@@ -7,14 +7,14 @@
 
 #include <filesystem>
 
-#include "../../cpp/std/exception.hpp"
-#include "../../cpp/std/functional.hpp"
-#include "../../cpp/lib/db.hpp"
+#include "../../cpp/lib/reserved/desktop.hpp"
+#include "../../cpp/lib/db/desktop.hpp"
 #include "../../cpp/lib/subprocess.hpp"
 #include "../../cpp/lib/image.hpp"
 #include "../../cpp/lib/env.hpp"
+#include "../../cpp/lib/linux.hpp"
 #include "../../cpp/macro.hpp"
-#include "../filesystems.hpp"
+#include "../config/config.hpp"
 
 namespace ns_desktop
 {
@@ -22,35 +22,58 @@ namespace ns_desktop
 namespace
 {
 
+constexpr std::string_view const template_dir_mimetype = ".local/share/icons/hicolor/{}x{}/mimetypes";
+constexpr std::string_view const template_dir_apps = ".local/share/icons/hicolor/{}x{}/apps";
+constexpr std::string_view const template_file_icon = "application-flatimage_{}.png";
+constexpr const std::array<uint32_t, 9> arr_sizes {16,22,24,32,48,64,96,128,256};
+
 namespace fs = std::filesystem;
 
-// struct Desktop {{{
-struct Desktop
+using IntegrationItem = ns_db::ns_desktop::IntegrationItem;
+
+// read_json_from_binary() {{{
+std::expected<std::string,std::string> read_json_from_binary(ns_config::FlatimageConfig const& config)
 {
-  std::string name;
-  fs::path path_file_icon;
-  std::vector<std::string> vec_categories;
-  Desktop(fs::path const& path_file_json, fs::path const& path_dir_mount)
-  {
-    ns_db::from_file(path_file_json, [&](auto&& db)
-    {
-      name = db["name"];
-      std::string str_path_icon = std::string{db["icon"]};
-      if ( str_path_icon.starts_with('/') ) { str_path_icon = str_path_icon.substr(1); }
-      path_file_icon = path_dir_mount / str_path_icon;
-      ns_db::Db const& db_categories = db["categories"];
-      std::ranges::for_each(db_categories.values(), ns_functional::PushBack(vec_categories));
-    }, ns_db::Mode::READ);
-  } // Desktop
-}; // Desktop }}}
+  auto expected_json = ns_reserved::ns_desktop::read(config.path_file_binary
+    , config.offset_desktop.offset
+    , config.offset_desktop.size
+  );
+  qreturn_if(not expected_json, expected_json.error());
+  return std::string{expected_json->get()};
+} // read_json_from_binary() }}}
+
+// write_json_to_binary() {{{
+std::error<std::string> write_json_to_binary(ns_config::FlatimageConfig const& config
+  , std::string_view str_raw_json)
+{
+  return ns_reserved::ns_desktop::write(config.path_file_binary
+    , config.offset_desktop.offset
+    , config.offset_desktop.size
+    , str_raw_json.data()
+    , str_raw_json.size()
+  );
+} // write_json_to_binary() }}}
+
+// read_image_from_binary() {{{
+std::expected<std::unique_ptr<char[]>,std::string> read_image_from_binary(ns_config::FlatimageConfig const& config)
+{
+  auto ptr_data = std::make_unique<char[]>(config.offset_desktop_image.size);
+  auto error = ns_reserved::read(config.path_file_binary
+    , config.offset_desktop_image.offset
+    , config.offset_desktop_image.size
+    , ptr_data.get()
+  );
+  qreturn_if(error, std::unexpected(*error));
+  return ptr_data;
+} // read_image_from_binary() }}}
 
 // integrate_desktop_entry() {{{
-decltype(auto) integrate_desktop_entry(Desktop const& desktop
+decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
   , fs::path const& path_dir_home
   , fs::path const& path_file_binary)
 {
   // Create path to entry
-  fs::path path_file_desktop = path_dir_home / ".local/share/applications/flatimage-{}.desktop"_fmt(desktop.name);
+  fs::path path_file_desktop = path_dir_home / ".local/share/applications/flatimage-{}.desktop"_fmt(desktop.get_name());
 
   // Create parent directories for entry
   std::error_code ec_entry;
@@ -60,25 +83,25 @@ decltype(auto) integrate_desktop_entry(Desktop const& desktop
   // Create desktop entry
   std::ofstream file_desktop{path_file_desktop};
   println(file_desktop, "[Desktop Entry]");
-  println(file_desktop, "Name={}"_fmt(desktop.name));
+  println(file_desktop, "Name={}"_fmt(desktop.get_name()));
   println(file_desktop, "Type=Application");
-  println(file_desktop, "Comment=FlatImage distribution of \"{}\""_fmt(desktop.name));
+  println(file_desktop, "Comment=FlatImage distribution of \"{}\""_fmt(desktop.get_name()));
   println(file_desktop, "TryExec={}"_fmt(path_file_binary));
   println(file_desktop, "Exec=\"{}\" %F"_fmt(path_file_binary));
-  println(file_desktop, "Icon=application-flatimage_{}"_fmt(desktop.name));
-  println(file_desktop, "MimeType=application/flatimage_{}"_fmt(desktop.name));
-  println(file_desktop, "Categories={};"_fmt(ns_string::from_container(desktop.vec_categories, ';')));
+  println(file_desktop, "Icon=application-flatimage_{}"_fmt(desktop.get_name()));
+  println(file_desktop, "MimeType=application/flatimage_{}"_fmt(desktop.get_name()));
+  println(file_desktop, "Categories={};"_fmt(ns_string::from_container(desktop.get_categories(), ';')));
   file_desktop.close();
 
 } // integrate_desktop_entry() }}}
 
 // integrate_mime_database() {{{
-decltype(auto) integrate_mime_database(Desktop const& desktop
+decltype(auto) integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
   , fs::path const& path_dir_home
   , fs::path const& path_file_binary)
 {
   // Create path to mimetype
-  fs::path path_entry_mimetype = path_dir_home / ".local/share/mime/packages/flatimage-{}.xml"_fmt(desktop.name);
+  fs::path path_entry_mimetype = path_dir_home / ".local/share/mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
 
   // Create parent directories for mime
   std::error_code ec_mime;
@@ -90,7 +113,7 @@ decltype(auto) integrate_mime_database(Desktop const& desktop
   std::ofstream file_mimetype{path_entry_mimetype};
   println(file_mimetype, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
   println(file_mimetype, "<mime-info xmlns=\"http://www.freedesktop.org/standards/shared-mime-info\">");
-  println(file_mimetype, "  <mime-type type=\"application/flatimage_{}\">"_fmt(desktop.name));
+  println(file_mimetype, "  <mime-type type=\"application/flatimage_{}\">"_fmt(desktop.get_name()));
   println(file_mimetype, "    <comment>FlatImage Application</comment>");
   println(file_mimetype, "    <magic>");
   println(file_mimetype, "      <match value=\"ELF\" type=\"string\" offset=\"1\">");
@@ -123,25 +146,22 @@ decltype(auto) integrate_mime_database(Desktop const& desktop
 } // integrate_mime_database() }}}
 
 // integrate_icons_svg() {{{
-void integrate_icons_svg(Desktop const& desktop, fs::path const& path_dir_home)
+void integrate_icons_svg(ns_db::ns_desktop::Desktop const& desktop, fs::path const& path_dir_home, fs::path const& path_file_icon)
 {
-  fs::path const& path_file_icon = desktop.path_file_icon;
-
     // Path to mimetype icon
     fs::path path_icon_mimetype = path_dir_home
       / ".local/share/icons/hicolor/scalable/mimetypes"
-      / "application-flatimage_{}.svg"_fmt(desktop.name);
-
+      / "application-flatimage_{}.svg"_fmt(desktop.get_name());
     // Path to app icon
     fs::path path_icon_app = path_dir_home
       / ".local/share/icons/hicolor/scalable/apps"
-      / "application-flatimage_{}.svg"_fmt(desktop.name);
-
+      / "application-flatimage_{}.svg"_fmt(desktop.get_name());
+    // Copy mimetype icon
     if (std::error_code e; (fs::copy_file(path_file_icon, path_icon_mimetype, fs::copy_options::skip_existing, e), e) )
     {
       ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_mimetype, e.value());
     } // if
-
+    // Copy app icon
     if (std::error_code e; (fs::copy_file(path_file_icon, path_icon_app, fs::copy_options::skip_existing, e), e) )
     {
       ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
@@ -149,28 +169,25 @@ void integrate_icons_svg(Desktop const& desktop, fs::path const& path_dir_home)
 } // integrate_icons_svg() }}}
 
 // integrate_icons_png() {{{
-void integrate_icons_png(Desktop const& desktop, fs::path const& path_dir_home)
+void integrate_icons_png(ns_db::ns_desktop::Desktop const& desktop, fs::path const& path_dir_home, fs::path const& path_file_icon)
 {
-  fs::path const& path_file_icon = desktop.path_file_icon;
-
-  for(auto&& i : std::array{16,22,24,32,48,64,96,128,256})
+  for(auto&& i : arr_sizes)
   {
     // Path to mimetype icon
     fs::path path_icon_mimetype = path_dir_home
-      / ".local/share/icons/hicolor/{}x{}/mimetypes"_fmt(i,i)
-      / "application-flatimage_{}.png"_fmt(desktop.name);
-
+      / std::vformat(template_dir_mimetype, std::make_format_args(arr_sizes[i], arr_sizes[i]))
+      / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
     // Path to app icon
     fs::path path_icon_app = path_dir_home
-      / ".local/share/icons/hicolor/{}x{}/apps"_fmt(i,i)
-      / "application-flatimage_{}.png"_fmt(desktop.name);
-
+      / std::vformat(template_dir_apps, std::make_format_args(arr_sizes[i], arr_sizes[i]))
+      / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
+    // Avoid overwrite
     if ( not fs::exists(path_icon_mimetype) )
     {
       auto result = ns_image::resize(path_file_icon, path_icon_mimetype, i, i, true);
-      ereturn_if(not result.has_value(), result.error())
+      econtinue_if(not result.has_value(), result.error())
     } // if
-
+    // Duplicate icon to app directory
     if (std::error_code e; (fs::copy_file(path_icon_mimetype, path_icon_app, fs::copy_options::skip_existing, e), e) )
     {
       ns_log::error()("Could not copy file '{}' with exit code '{}'", path_icon_app, e.value());
@@ -179,15 +196,32 @@ void integrate_icons_png(Desktop const& desktop, fs::path const& path_dir_home)
 } // integrate_icons_png() }}}
 
 // integrate_icons() {{{
-void integrate_icons(Desktop const& desktop, fs::path const& path_dir_home)
+inline void integrate_icons(ns_config::FlatimageConfig const& config, ns_db::ns_desktop::Desktop const& desktop, fs::path const& path_dir_home)
 {
-  if ( desktop.path_file_icon.extension().string().ends_with(".svg") )
+  // Test if icons are integrated (if copied all up to the last one)
+  dreturn_if ( fs::exists(path_dir_home
+      / std::vformat(template_dir_mimetype, std::make_format_args(arr_sizes[8], arr_sizes[8]))
+      / std::vformat(template_file_icon, std::make_format_args(desktop.get_name())))
+    , "Icons are integrated with the system"
+  );
+  // Read picture from flatimage binary
+  auto expected_data_image = read_image_from_binary(config);
+  ereturn_if(not expected_data_image, expected_data_image.error());
+  // Create temporary file to write image to
+  auto expected_path_file_icon = ns_linux::mkstemp("/tmp");
+  ereturn_if(not expected_path_file_icon, expected_path_file_icon.error());
+  // Write image to temporary file
+  std::ofstream file_icon(*expected_path_file_icon);
+  ereturn_if(not file_icon.is_open(), "Could not open temporary image file for desktop integration");
+  file_icon.write(expected_data_image->get(), config.offset_desktop_image.size);
+  // Create icons
+  if ( expected_path_file_icon->extension().string().ends_with(".svg") )
   {
-    integrate_icons_svg(desktop, path_dir_home);
+    integrate_icons_svg(desktop, path_dir_home, *expected_path_file_icon);
   }
   else
   {
-    integrate_icons_png(desktop, path_dir_home);
+    integrate_icons_png(desktop, path_dir_home, *expected_path_file_icon);
   } // else
 } // integrate_icons() }}}
 
@@ -230,30 +264,16 @@ void integrate_bash(fs::path const& path_dir_home)
 
 } // namespace
 
-ENUM(EnableItem, ENTRY, MIMETYPE, ICON);
-
 // integrate() {{{
 inline void integrate(ns_config::FlatimageConfig const& config)
 {
-  // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
+  auto expected_json = read_json_from_binary(config);
+  ereturn_if(not expected_json, "Could not read desktop json from binary: {}"_fmt(expected_json.error()));
+  std::string str_raw_json{*expected_json};
+  ns_log::debug()("Json desktop data: {}", str_raw_json);
 
-  // Check if is enabled
-  auto expected_enable_item = ns_exception::to_expected([&]
-  {
-    return ns_db::Db(config.path_file_config_desktop, ns_db::Mode::READ)["enable"].as_vector();
-  });
-  ethrow_if(not expected_enable_item, expected_enable_item.error());
-
-  // Get expected items
-  std::set<EnableItem> set_enable_items;
-  std::ranges::transform(*expected_enable_item
-    , std::inserter(set_enable_items, set_enable_items.begin())
-    , [](auto&& e){ return EnableItem(e); }
-  );
-
-  // Get desktop info
-  Desktop desktop = Desktop(config.path_file_config_desktop, config.path_dir_mount_overlayfs);
+  auto desktop = ns_db::ns_desktop::deserialize(str_raw_json);
+  ethrow_if(not desktop, "Could not parse json data: {}"_fmt(desktop.error()));
 
   // Get HOME directory
   const char* cstr_home = ns_env::get("HOME");
@@ -279,84 +299,80 @@ inline void integrate(ns_config::FlatimageConfig const& config)
   } // else
 
   // Create desktop entry
-  if(set_enable_items.contains(EnableItem::ENTRY))
+  if(desktop->get_integrations().contains(IntegrationItem::ENTRY))
   {
     ns_log::info()("Integrating desktop entry...");
-    integrate_desktop_entry(desktop, cstr_home, config.path_file_binary);
+    integrate_desktop_entry(*desktop, cstr_home, config.path_file_binary);
   } // if
 
   // Create and update mime
-  if(set_enable_items.contains(EnableItem::MIMETYPE))
+  if(desktop->get_integrations().contains(IntegrationItem::MIMETYPE))
   {
     ns_log::info()("Integrating mime database...");
-    integrate_mime_database(desktop, cstr_home, config.path_file_binary);
+    integrate_mime_database(*desktop, cstr_home, config.path_file_binary);
   } // if
 
   // Create desktop icons
-  if(set_enable_items.contains(EnableItem::ICON))
+  if(desktop->get_integrations().contains(IntegrationItem::ICON))
   {
     ns_log::info()("Integrating desktop icons...");
-    integrate_icons(desktop, cstr_home);
+    integrate_icons(config, *desktop, cstr_home);
   } // if
 } // integrate() }}}
 
 // setup() {{{
-inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path_file_json_src, fs::path const& path_file_json_dst)
+inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path_file_json_src)
 {
+  // Read input file
+  std::ifstream file_json_src{path_file_json_src};
+  ereturn_if(not file_json_src.is_open()
+      , "Failed to open file '{}' for desktop integration"_fmt(path_file_json_src)
+  );
+  // Deserialize json
+  auto expected_desktop = ns_db::ns_desktop::deserialize(file_json_src);
+  ereturn_if(not expected_desktop, "Failed to deserialize json"_fmt(expected_desktop.error()));
   // Application icon
-  fs::path path_file_icon;
-
-  // Validate entries
-  ns_db::from_file(path_file_json_src, [&](auto&& db)
-  {
-    // Validate name field
-    ethrow_if(not db["name"].is_string(), "Field 'name' is not a string");
-    ns_log::info()("Application name: {}", db["name"]);
-    // Validate icon field
-    ethrow_if(not db["icon"].is_string(), "Field 'icon' is not a string");
-    ns_log::info()("Application icon: {}", db["icon"]);
-    path_file_icon = db["icon"];
-    ethrow_if( not fs::exists(path_file_icon) or not fs::is_regular_file(path_file_icon)
-      , "icon '{}' does not exist or is not a regular file"_fmt(path_file_icon)
-    );
-    // Validate categories array
-    ethrow_if(not db["categories"].is_array(), "Field categories is not an array");
-    ns_log::info()("Application categories: {}", db["categories"].as_vector());
-  }, ns_db::Mode::READ);
-
-  // Get icon extension
+  fs::path path_file_icon = expected_desktop->get_path_file_icon();
   std::optional<std::string> opt_str_ext = (path_file_icon.extension() == ".svg")? std::make_optional("svg")
     : (path_file_icon.extension() == ".png")? std::make_optional("png")
     : (path_file_icon.extension() == ".jpg" or path_file_icon.extension() == ".jpeg")? std::make_optional("jpeg")
     : std::nullopt;
-
-  // Check if file type is valid
   ethrow_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
-
-  // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-
-  // Create config dir if not exists
-  fs::create_directories(config.path_file_config_desktop.parent_path());
-
-  // Copy the icon to inside the image
-  fs::copy_file(path_file_icon, "{}/fim/desktop/icon.{}"_fmt(config.path_dir_mount_overlayfs, *opt_str_ext), fs::copy_options::overwrite_existing);
-
-  // Copy configuration file
-  fs::copy_file(path_file_json_src, path_file_json_dst, fs::copy_options::overwrite_existing);
-
-  // Update icon path in the json file
-  ns_db::from_file(path_file_json_dst, [&](auto& db){ db("icon") = "/fim/desktop/icon.{}"_fmt(*opt_str_ext); }, ns_db::Mode::UPDATE);
+  // Write image
+  auto data_image_size = config.size_reserved_image;
+  auto data_image = std::make_unique<char[]>(data_image_size);
+  ns_reserved::read(path_file_icon, 0, config.size_reserved_image, data_image.get());
+  auto err = ns_reserved::write(config.path_file_binary
+    , config.offset_desktop_image.offset
+    , config.offset_desktop_image.size
+    , data_image.get()
+    , data_image_size
+  );
+  ereturn_if(err, "Could not write image data: {}"_fmt(*err));
+  // Serialize json
+  auto expected_str_raw_json = ns_db::ns_desktop::serialize(*expected_desktop);
+  ereturn_if(not expected_desktop, "Failed to serialize desktop integration: {}"_fmt(expected_str_raw_json.error()));
+  // Write json configuration
+  auto error = write_json_to_binary(config, *expected_str_raw_json);
+  ereturn_if(error, "Failed to write json: {}"_fmt(error));
 } // setup() }}}
 
 // enable() {{{
-inline void enable(ns_config::FlatimageConfig const& config, std::set<EnableItem> set_enable_items)
+inline void enable(ns_config::FlatimageConfig const& config, std::set<IntegrationItem> set_integrations)
 {
-  // Mount filesystem
-  [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-  std::vector<std::string> vec_enable_items;
-  std::ranges::transform(set_enable_items, std::back_inserter(vec_enable_items), [](auto&& e){ return std::string{e}; });
-  ns_db::Db(config.path_file_config_desktop, ns_db::Mode::UPDATE_OR_CREATE)("enable") = vec_enable_items;
+  // Read json
+  auto expected_json = read_json_from_binary(config);
+  ereturn_if(not expected_json, "Could not read desktop json: {}"_fmt(expected_json.error()));
+  // Deserialize json
+  auto desktop = ns_db::ns_desktop::deserialize(*expected_json);
+  // Update integrations value
+  desktop->set_integrations(set_integrations);
+  // Serialize json
+  auto expected_str_raw_json = ns_db::ns_desktop::serialize(*desktop);
+  ereturn_if(not expected_str_raw_json, "Could not serialize json to enable desktop integration");
+  // Write json
+  auto error = write_json_to_binary(config, *expected_str_raw_json);
+  ereturn_if(error, "Failed to write json: {}"_fmt(error));
 } // enable() }}}
 
 } // namespace ns_desktop

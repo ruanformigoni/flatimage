@@ -24,17 +24,17 @@ namespace fs = std::filesystem;
 // Writes data to file in binary format
 // Returns space left after write
 inline std::optional<std::string> write(fs::path const& path_file_binary
-  , uint64_t begin
-  , uint64_t end
+  , uint64_t offset
+  , uint64_t size
   , const char* data
   , uint64_t length)
 {
-  qreturn_if(length > (end - begin), std::make_optional("Size of data exceeds available space"));
+  qreturn_if(length > size, std::make_optional("Size of data exceeds available space"));
 
   std::ofstream file_binary(path_file_binary, std::ios::binary | std::ios::in | std::ios::out);
   qreturn_if(not file_binary.is_open(), std::make_optional("Failed to open input file"));
 
-  file_binary.seekp(begin);
+  file_binary.seekp(offset);
 
   file_binary.write(data, length);
 
@@ -47,7 +47,7 @@ inline std::optional<std::string> write(fs::path const& path_file_binary
 // Reads data from a file in binary format
 // Returns a std::string built with the data
 inline std::optional<std::string> read(fs::path const& path_file_binary
-  , uint64_t begin
+  , uint64_t offset
   , uint64_t length
   , char* data)
 {
@@ -55,7 +55,7 @@ inline std::optional<std::string> read(fs::path const& path_file_binary
 
   qreturn_if(not file_binary.is_open(), std::make_optional("Failed to open input file"));
 
-  file_binary.seekg(begin);
+  file_binary.seekg(offset);
 
   file_binary.read(data, length);
 

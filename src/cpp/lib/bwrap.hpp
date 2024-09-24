@@ -252,9 +252,9 @@ inline Bwrap& Bwrap::bind_home()
 inline Bwrap& Bwrap::bind_media()
 {
   ns_log::debug()("PERM(MEDIA)");
-  ns_vector::push_back(m_args, "--ro-bind-try", "/media", "/media");
-  ns_vector::push_back(m_args, "--ro-bind-try", "/run/media", "/run/media");
-  ns_vector::push_back(m_args, "--ro-bind-try", "/mnt", "/mnt");
+  ns_vector::push_back(m_args, "--bind-try", "/media", "/media");
+  ns_vector::push_back(m_args, "--bind-try", "/run/media", "/run/media");
+  ns_vector::push_back(m_args, "--bind-try", "/mnt", "/mnt");
   return *this;
 } // bind_media() }}}
 

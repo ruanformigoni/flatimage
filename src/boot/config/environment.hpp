@@ -30,7 +30,7 @@ inline std::vector<std::string> keys(std::vector<std::string> const& entries)
 inline std::vector<std::string> validate(std::vector<std::string> const& entries)
 {
   auto view = entries
-    | std::views::filter([](auto&& e){ return std::ranges::count_if(e, [](char c){ return c == '='; }) == 1; });
+    | std::views::filter([](auto&& e){ return std::ranges::count_if(e, [](char c){ return c == '='; }) > 0; });
   return std::vector<std::string>(view.begin(), view.end());
 } // validate
 

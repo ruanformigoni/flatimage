@@ -134,8 +134,11 @@ inline FlatimageConfig config()
   config.env_path += ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";
   ns_env::set("PATH", config.env_path, ns_env::Replace::Y);
 
-  // Filesystem configuration
-  config.layer_compression_level  = std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "15"));
+  // Compression level configuration (goes from 0 to 10, default is 7)
+  config.layer_compression_level  = ns_exception::to_expected([]{ return std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "7")); })
+    .value_or(7);
+  config.layer_compression_level = (config.layer_compression_level > 0)? config.layer_compression_level : 0;
+  config.layer_compression_level = (config.layer_compression_level > 10)? 10 : config.layer_compression_level;
 
   // Paths to the configuration files
   config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";

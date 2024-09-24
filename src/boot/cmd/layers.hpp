@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <filesystem>
 
 #include "../../cpp/lib/subprocess.hpp"
@@ -26,7 +27,15 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
   auto opt_path_file_mksquashfs = ns_subprocess::search_path("mksquashfs");
   ethrow_if(not opt_path_file_mksquashfs, "Could not find 'mksquashfs' binary");
 
+  // Compression level must be at least 1 and less or equal to 10
+  compression_level = (compression_level > 0)? compression_level : 1;
+  compression_level = (compression_level > 10)? 10 : compression_level;
+
+  // Convert to non-percentual compression level
+  compression_level = std::ceil(22 * (static_cast<double>(compression_level) / 10));
+
   // Compress filesystem
+  ns_log::info()("Compression level: '{}'", compression_level);
   ns_log::info()("Compress filesystem to '{}'", path_file_dst);
   auto ret = ns_subprocess::Subprocess(*opt_path_file_mksquashfs)
     .with_args(path_dir_src, path_file_dst)

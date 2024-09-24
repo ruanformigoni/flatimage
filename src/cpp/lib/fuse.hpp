@@ -40,6 +40,22 @@ inline std::expected<bool,std::string> is_fuse(fs::path const& path_dir_mount)
   return buf.f_type == FUSE_SUPER_MAGIC;
 } // function: mountpoint
 
+inline void wait_fuse(fs::path const& path_dir_filesystem)
+{
+  using namespace std::chrono_literals;
+  auto time_beg = std::chrono::system_clock::now();
+  while ( true )
+  {
+    auto expected_is_fuse = ns_fuse::is_fuse(path_dir_filesystem);
+    ebreak_if(not expected_is_fuse, "Could not check if filesystem is fuse");
+    ibreak_if( *expected_is_fuse, "Filesystem '{}' is fuse"_fmt(path_dir_filesystem));
+    auto time_cur = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(time_cur - time_beg);
+    ebreak_if(elapsed.count() > 60, "Reached timeout to wait for fuse filesystems");
+  } // while
+} // function: wait_fuse
+
+
 inline void unmount(fs::path const& path_dir_mountpoint)
 {
   using namespace std::chrono_literals;

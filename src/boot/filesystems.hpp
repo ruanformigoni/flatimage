@@ -23,8 +23,8 @@ class Filesystems
     fs::path m_path_dir_mount;
     std::vector<fs::path> m_vec_path_dir_mountpoints;
     std::vector<std::unique_ptr<ns_squashfs::SquashFs>> m_layers;
-    std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
     std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;
+    std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
     uint64_t mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
     void mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper);
     void mount_overlayfs(fs::path const& path_dir_layers

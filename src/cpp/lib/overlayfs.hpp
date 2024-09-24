@@ -79,22 +79,32 @@ class Overlayfs
         arg_lowerdir += ":{}"_fmt(path_dir_lowerdir);
       } // for
 
-
       // Include arguments and spawn process
       (void) m_subprocess->
-         with_args("-o", "squash_to_uid={}"_fmt(user_id))
+         with_args("-f")
+        .with_args("-o", "squash_to_uid={}"_fmt(user_id))
         .with_args("-o", "squash_to_gid={}"_fmt(group_id))
         .with_args("-o", arg_lowerdir)
         .with_args("-o", "upperdir={}"_fmt(path_dir_upperdir))
         .with_args("-o", "workdir={}"_fmt(path_dir_workdir))
         .with_args(m_path_dir_mountpoint)
-        .spawn()
-        .wait();
+        .spawn();
+      // Wait for mount
+      ns_fuse::wait_fuse(path_dir_mountpoint);
     } // Overlayfs
 
     ~Overlayfs()
     {
       ns_fuse::unmount(m_path_dir_mountpoint);
+      // Tell process to exit with SIGTERM
+      if ( auto opt_pid = m_subprocess->get_pid() )
+      {
+        kill(*opt_pid, SIGTERM);
+      } // if
+      // Wait for process to exit
+      auto ret = m_subprocess->wait();
+      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mountpoint));
+      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mountpoint, *ret));
     } // ~Overlayfs
 }; // class: Overlayfs
 

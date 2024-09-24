@@ -55,18 +55,27 @@ class SquashFs
       m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_squashfs);
 
       // Spawn command
-      auto ret = m_subprocess->with_piped_outputs()
-        .with_args("-o", "offset={}"_fmt(offset))
+       (void) m_subprocess->with_piped_outputs()
+        .with_args("-f", "-o", "offset={}"_fmt(offset))
         .with_args(path_file_image, path_dir_mount)
-        .spawn()
-        .wait();
-      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mountpoint));
-      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mountpoint, *ret));
+        .spawn();
+      // Wait for mount
+      ns_fuse::wait_fuse(path_dir_mount);
     } // SquashFs
     
     ~SquashFs()
     {
+      // Un-mount
       ns_fuse::unmount(m_path_dir_mountpoint);
+      // Tell process to exit with SIGTERM
+      if ( auto opt_pid = m_subprocess->get_pid() )
+      {
+        kill(*opt_pid, SIGTERM);
+      } // if
+      // Wait for process to exit
+      auto ret = m_subprocess->wait();
+      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mountpoint));
+      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mountpoint, *ret));
     } // SquashFs
 
     fs::path const& get_dir_mountpoint()

@@ -21,11 +21,10 @@ source "${FIM_DIR_SCRIPT}/common.sh"
 
 function _fetch_static()
 {
-  # Fetch coreutils
-  wget "https://github.com/ruanformigoni/coreutils-static/releases/download/d7f4cd2/coreutils-x86_64.tar.xz"
+  mkdir -p bin
 
-  # Extracts a bin/... folder
-  tar xf "coreutils-x86_64.tar.xz"
+  # Fetch busybox
+  wget -O ./bin/busybox "https://github.com/ruanformigoni/busybox-static-musl/releases/download/46bec3b/busybox-x86_64"
 
   # Fetch lsof
   wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/12c2552/lsof-x86_64"
@@ -57,6 +56,16 @@ function _fetch_static()
 
   # Make binaries executable
   chmod +x ./bin/*
+
+  # Create symlinks
+  (
+    cd bin
+    for i in $(./busybox --list); do
+      if ! [[ -e "$i" ]]; then
+        ln -vs busybox "$i"
+      fi
+    done
+  )
 }
 
 # Concatenates binary files and filesystem to create fim image

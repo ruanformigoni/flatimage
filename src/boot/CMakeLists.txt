@@ -71,7 +71,7 @@ target_link_libraries(boot PRIVATE
   /usr/lib/libturbojpeg.a
   /usr/lib/libpng.a
   /usr/lib/libcom_err.a
-  /lib/libz.a
+  /usr/lib/libz.a
 )
 target_compile_options(boot PRIVATE -g -rdynamic -static -Wall -Os -Wextra)
 target_link_options(boot PRIVATE -static)

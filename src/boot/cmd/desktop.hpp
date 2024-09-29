@@ -8,6 +8,7 @@
 #include <filesystem>
 
 #include "../../cpp/lib/reserved/desktop.hpp"
+#include "../../cpp/lib/reserved/notify.hpp"
 #include "../../cpp/lib/db/desktop.hpp"
 #include "../../cpp/lib/subprocess.hpp"
 #include "../../cpp/lib/image.hpp"
@@ -27,6 +28,9 @@ namespace
 constexpr std::string_view const template_dir_mimetype = ".local/share/icons/hicolor/{}x{}/mimetypes";
 constexpr std::string_view const template_dir_apps = ".local/share/icons/hicolor/{}x{}/apps";
 constexpr std::string_view const template_file_icon = "application-flatimage_{}.png";
+constexpr std::string_view const template_dir_mimetype_scalable = ".local/share/icons/hicolor/scalable/mimetypes";
+constexpr std::string_view const template_dir_apps_scalable = ".local/share/icons/hicolor/scalable/apps";
+constexpr std::string_view const template_file_icon_scalable = "application-flatimage_{}.svg";
 constexpr const std::array<uint32_t, 9> arr_sizes {16,22,24,32,48,64,96,128,256};
 
 namespace fs = std::filesystem;
@@ -48,6 +52,26 @@ struct Image
   } // Image
 };
 #pragma pack(pop)
+
+decltype(auto) get_path_file_icon_png(fs::path const& path_dir_home
+  , std::string_view name_app
+  , std::string_view template_dir
+  , uint32_t size)
+{
+  return path_dir_home
+    / std::vformat(template_dir, std::make_format_args(size, size))
+    / std::vformat(template_file_icon, std::make_format_args(name_app));
+} // function: get_path_file_icon_png
+
+decltype(auto) get_path_file_icon_svg(fs::path const& path_dir_home
+  , std::string_view name_app
+  , std::string_view template_dir)
+{
+  return path_dir_home
+    / template_dir
+    / std::vformat(template_file_icon_scalable, std::make_format_args(name_app));
+} // function: get_path_file_icon_svg
+
 
 // read_json_from_binary() {{{
 std::expected<std::string,std::string> read_json_from_binary(ns_config::FlatimageConfig const& config)
@@ -178,13 +202,9 @@ decltype(auto) integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
 void integrate_icons_svg(ns_db::ns_desktop::Desktop const& desktop, fs::path const& path_dir_home, fs::path const& path_file_icon)
 {
     // Path to mimetype icon
-    fs::path path_icon_mimetype = path_dir_home
-      / ".local/share/icons/hicolor/scalable/mimetypes"
-      / "application-flatimage_{}.svg"_fmt(desktop.get_name());
+    fs::path path_icon_mimetype = get_path_file_icon_svg(path_dir_home, desktop.get_name(), template_dir_mimetype_scalable);
     // Path to app icon
-    fs::path path_icon_app = path_dir_home
-      / ".local/share/icons/hicolor/scalable/apps"
-      / "application-flatimage_{}.svg"_fmt(desktop.get_name());
+    fs::path path_icon_app = get_path_file_icon_svg(path_dir_home, desktop.get_name(), template_dir_apps_scalable);
     // Copy mimetype icon
     if (std::error_code e; (fs::copy_file(path_file_icon, path_icon_mimetype, fs::copy_options::skip_existing, e), e) )
     {
@@ -203,16 +223,12 @@ void integrate_icons_png(ns_db::ns_desktop::Desktop const& desktop, fs::path con
   for(auto&& size : arr_sizes)
   {
     // Path to mimetype icon
-    fs::path path_icon_mimetype = path_dir_home
-      / std::vformat(template_dir_mimetype, std::make_format_args(size, size))
-      / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
+    fs::path path_icon_mimetype = get_path_file_icon_png(path_dir_home, desktop.get_name(), template_dir_mimetype, size);
     // Path to app icon
     std::error_code ec;
     fs::create_directories(path_icon_mimetype.parent_path(), ec);
     ereturn_if(ec, "Could not create parent directories of '{}'"_fmt(path_icon_mimetype));
-    fs::path path_icon_app = path_dir_home
-      / std::vformat(template_dir_apps, std::make_format_args(size, size))
-      / std::vformat(template_file_icon, std::make_format_args(desktop.get_name()));
+    fs::path path_icon_app = get_path_file_icon_png(path_dir_home, desktop.get_name(), template_dir_apps, size);
     fs::create_directories(path_icon_app.parent_path(), ec);
     ereturn_if(ec, "Could not create parent directories of '{}'"_fmt(path_icon_app));
     // Avoid overwrite
@@ -357,6 +373,30 @@ inline void integrate(ns_config::FlatimageConfig const& config)
   {
     ns_log::info()("Integrating desktop icons...");
     integrate_icons(config, *desktop, cstr_home);
+  } // if
+  
+  // Check if should notify
+  if ( auto expected = ns_reserved::ns_notify::read(config.path_file_binary, config.offset_notify.offset) )
+  {
+    // Check for errors
+    ereturn_if(not expected, "Could not read notify byte: '{}'"_fmt(expected.error()));
+    // Check if is enabled
+    dreturn_if(not *expected, "Notify is disabled");
+    // Get bash binary
+    auto path_file_binary_bash = ns_subprocess::search_path("bash");
+    ereturn_if(not path_file_binary_bash, "Could not find bash in PATH");
+    // Get possible icon paths
+    fs::path path_dir_home{cstr_home};
+    fs::path path_file_icon = get_path_file_icon_png(path_dir_home, desktop->get_name(), template_dir_apps, 64);
+    if ( not fs::exists(path_file_icon) )
+    {
+      path_file_icon = get_path_file_icon_svg(path_dir_home, desktop->get_name(), template_dir_apps_scalable);
+    } // if
+    // Path to mimetype icon
+    (void) ns_subprocess::Subprocess(*path_file_binary_bash)
+      .with_piped_outputs()
+      .with_args("-c", "notify-send -i \"{}\" \"Started '{}' flatimage\""_fmt(path_file_icon, desktop->get_name()))
+      .spawn();
   } // if
 } // integrate() }}}
 

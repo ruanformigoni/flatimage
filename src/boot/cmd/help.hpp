@@ -219,6 +219,17 @@ inline std::string commit_usage()
     .get();
 }
 
+inline std::string notify_usage()
+{
+  return HelpEntry{"fim-notify"}
+    .with_description("Notify with 'notify-send' when the program starts")
+    .with_usage("fim-notify <switch>")
+    .with_args({
+      { "switch", "on, off" },
+    })
+    .get();
+}
+
 inline std::string casefold_usage()
 {
   return HelpEntry{"fim-casefold"}

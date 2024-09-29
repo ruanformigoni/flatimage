@@ -15,6 +15,7 @@
 #include "../cpp/std/variant.hpp"
 #include "../cpp/lib/match.hpp"
 #include "../cpp/lib/bwrap.hpp"
+#include "../cpp/lib/reserved/notify.hpp"
 #include "../cpp/macro.hpp"
 
 #include "config/environment.hpp"
@@ -87,6 +88,12 @@ struct CmdCommit
 {
 };
 
+ENUM(CmdNotifyOp,ON,OFF);
+struct CmdNotify
+{
+  CmdNotifyOp op;
+};
+
 ENUM(CmdCaseFoldOp,ON,OFF);
 struct CmdCaseFold
 {
@@ -103,6 +110,7 @@ using CmdType = std::variant<CmdRoot
   , CmdLayer
   , ns_cmd::ns_bind::CmdBind
   , CmdCommit
+  , CmdNotify
   , CmdCaseFold
   , CmdBoot
   , CmdNone
@@ -248,10 +256,16 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       f_error(argc != 2, ns_cmd::ns_help::commit_usage(), "Incorrect number of arguments");
       return CmdType(CmdCommit{});
     },
+    // Notifies with notify-send when the program starts
+    ns_match::equal("fim-notify") >>= [&]
+    {
+      f_error(argc != 3, ns_cmd::ns_help::notify_usage(), "Incorrect number of arguments");
+      return CmdType(CmdNotify{CmdNotifyOp(argv[2])});
+    },
     // Enables or disable ignore case for paths (useful for wine)
     ns_match::equal("fim-casefold") >>= [&]
     {
-      f_error(argc != 3, ns_cmd::ns_help::commit_usage(), "Incorrect number of arguments");
+      f_error(argc != 3, ns_cmd::ns_help::casefold_usage(), "Incorrect number of arguments");
       return CmdType(CmdCaseFold{CmdCaseFoldOp(argv[2])});
     },
     // Set the default startup command
@@ -261,7 +275,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
       return CmdType(CmdBoot(argv[2], (argc > 3)? VecArgs(argv+3, argv+argc) : VecArgs{}));
     },
     // Use the default startup command
-    ns_match::equal("fim-ns_cmd::ns_help::help") >>= [&]
+    ns_match::equal("fim-help") >>= [&]
     {
       if ( argc < 3 ) { f_error(true, ns_cmd::ns_help::help_usage(), "fim-help"); } // if
       (void) ns_match::match(std::string_view{argv[2]},
@@ -273,6 +287,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
         ns_match::equal("layer")    >>= [&]{ f_error(true, ns_cmd::ns_help::layer_usage(), ""); },
         ns_match::equal("bind")     >>= [&]{ f_error(true, ns_cmd::ns_help::bind_usage(), ""); },
         ns_match::equal("commit")   >>= [&]{ f_error(true, ns_cmd::ns_help::commit_usage(), ""); },
+        ns_match::equal("notify")   >>= [&]{ f_error(true, ns_cmd::ns_help::notify_usage(), ""); },
         ns_match::equal("casefold") >>= [&]{ f_error(true, ns_cmd::ns_help::casefold_usage(), ""); },
         ns_match::equal("boot")     >>= [&]{ f_error(true, ns_cmd::ns_help::boot_usage(), ""); }
       );
@@ -473,6 +488,19 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     fs::remove(path_file_layer);
     // Remove upper directory
     fs::remove_all(path_dir_src);
+  } // else if
+  else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNotify>(*variant_cmd) )
+  {
+    // Update log level
+    if ( not ns_env::get("FIM_DEBUG") )
+    {
+      ns_log::set_level(ns_log::Level::INFO);
+    } // if
+    ns_reserved::ns_notify::write(config.path_file_binary
+      , config.offset_notify.offset
+      ,  config.offset_notify.size
+      , (cmd->op == CmdNotifyOp::ON)? 1 : 0
+    );
   } // else if
   // Enable or disable casefold (useful for wine)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCaseFold>(*variant_cmd) )

@@ -39,6 +39,7 @@ struct FlatimageConfig
 
   uint64_t offset_reserved;
   Offset offset_permissions;
+  Offset offset_notify;
   Offset offset_desktop;
   Offset offset_desktop_image;
   uint64_t offset_filesystem;
@@ -93,8 +94,10 @@ inline FlatimageConfig config()
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
   // Reserve 8 first bytes for permission data
   config.offset_permissions       = { config.offset_reserved, 8 };
+  // Reserve next byte to check if notify is enabled
+  config.offset_notify            = { config.offset_permissions.offset + config.offset_permissions.size, 1 };
   // Desktop entry information, reserve 4096 bytes for json data
-  config.offset_desktop           = { config.offset_permissions.offset + config.offset_permissions.size, 4096 };
+  config.offset_desktop           = { config.offset_notify.offset + config.offset_notify.size, 4096 };
   // Space reserved for desktop icon
   config.offset_desktop_image     = { config.offset_reserved + SIZE_RESERVED_TOTAL - SIZE_RESERVED_IMAGE, SIZE_RESERVED_IMAGE};
   config.offset_filesystem        = config.offset_reserved + SIZE_RESERVED_TOTAL;

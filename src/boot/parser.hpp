@@ -339,6 +339,14 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     bwrap.run(*bits_permissions);
   };
 
+  // Define logger verbosity for all commands except the ones below
+  if ( not ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd)
+  and not ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd)
+  and not ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd))
+  {
+    ns_log::set_level((ns_log::get_level() == ns_log::Level::DEBUG)? ns_log::Level::DEBUG : ns_log::Level::INFO);
+  } // if
+
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
@@ -363,11 +371,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     // Mount filesystem as RW
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
@@ -385,11 +388,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Configure environment
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     // Mount filesystem as RW
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists
@@ -407,11 +405,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Configure desktop integration
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdDesktop>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     // Determine open mode
     switch( cmd->op )
     {
@@ -434,11 +427,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Manager layers
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdLayer>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     if ( cmd->op == CmdLayerOp::ADD )
     {
       ns_layers::add(config.path_file_binary, cmd->args.front());
@@ -451,12 +439,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Bind a device or file to the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_cmd::ns_bind::CmdBind>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
-
     // Mount filesystem as RW
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
 
@@ -472,11 +454,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Commit changes as a novel layer into the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCommit>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     // Set source directory and target compressed file
     fs::path path_file_layer = config.path_dir_host_config / "layer.tmp";
     fs::path path_dir_src = config.path_dir_data_overlayfs / "upperdir";
@@ -491,11 +468,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   } // else if
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNotify>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     ns_reserved::ns_notify::write(config.path_file_binary
       , config.offset_notify.offset
       ,  config.offset_notify.size
@@ -505,11 +477,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Enable or disable casefold (useful for wine)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCaseFold>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     ns_db::from_file(config.path_file_config_casefold, [&](auto& db)
     {
@@ -519,11 +486,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdBoot>(*variant_cmd) )
   {
-    // Update log level
-    if ( not ns_env::get("FIM_DEBUG") )
-    {
-      ns_log::set_level(ns_log::Level::INFO);
-    } // if
     // Mount filesystem as RW
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     // Create config dir if not exists

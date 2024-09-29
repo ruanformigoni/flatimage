@@ -96,6 +96,12 @@ inline void set_level(Level level)
   logger.set_level(level);
 } // fn: set_level }}}
 
+// fn: get_level {{{
+inline Level get_level()
+{
+  return logger.get_level();
+} // fn: get_level }}}
+
 // fn: set_sink_file {{{
 inline void set_sink_file(fs::path path_file_sink)
 {

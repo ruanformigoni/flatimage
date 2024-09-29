@@ -22,16 +22,16 @@ namespace fs = std::filesystem;
 
 inline std::vector<std::string> keys(std::vector<std::string> const& entries)
 {
-  auto view = entries
-    | std::views::transform([](auto&& e){ return e.substr(0, e.find('=')); });
-  return std::vector<std::string>(view.begin(), view.end());
+  return entries
+    | std::views::transform([](auto&& e){ return e.substr(0, e.find('=')); })
+    | std::ranges::to<std::vector<std::string>>();
 } // keys
 
 inline std::vector<std::string> validate(std::vector<std::string> const& entries)
 {
-  auto view = entries
-    | std::views::filter([](auto&& e){ return std::ranges::count_if(e, [](char c){ return c == '='; }) > 0; });
-  return std::vector<std::string>(view.begin(), view.end());
+  return entries
+    | std::views::filter([](auto&& e){ return std::ranges::count_if(e, [](char c){ return c == '='; }) > 0; })
+    | std::ranges::to<std::vector<std::string>>();
 } // validate
 
 } // namespace

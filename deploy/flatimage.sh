@@ -42,6 +42,9 @@ function _fetch_static()
   wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs/releases/download/44de517/ciopfs-x86_64"
   # cp "$HOME"/Repositories/ciopfs/ciopfs ./bin/ciopfs
 
+  # Fetch squashfuse
+  wget -O ./bin/squashfuse "https://github.com/ruanformigoni/squashfuse-static-musl/releases/download/f2b4067/squashfuse-x86_64"
+
   # # Fetch dwarfs
   # wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
   # ln -sf dwarfs_aio bin/mkdwarfs
@@ -78,6 +81,8 @@ function _create_elf()
 
   # Boot is the program on top of the image
   cp bin/boot "$out"
+  # Append squashfuse
+  cat bin/squashfuse >> "$out"
   # Create reserved space
   dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter

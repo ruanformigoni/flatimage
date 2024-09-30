@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <cstdlib>
+#include <wordexp.h>
 
 #include "../std/string.hpp"
 #include "../common.hpp"
@@ -170,20 +171,32 @@ inline bool exists(const char* var, std::string_view target)
 // expand() {{{
 inline std::expected<std::string, std::string> expand(ns_concept::StringRepresentable auto&& var)
 {
-  std::string str_var{ns_string::to_string(var)};
-  std::string expanded;
+  std::string expanded = ns_string::to_string(var);
 
-  auto opt_path_sh = ns_subprocess::search_path("sh");
-  qreturn_if(not opt_path_sh, std::unexpected("Could not find 'dash' binary"));
-
-  auto ret = ns_subprocess::Subprocess(*opt_path_sh)
-    .with_piped_outputs()
-    .with_stdout_handle([&](auto&& e){ expanded = e; })
-    .with_args("-c", "echo {}"_fmt(str_var))
-    .spawn()
-    .wait();
-  qreturn_if(not ret, std::unexpected("echo subprocess quit abnormally"));
-  qreturn_if(*ret != 0, std::unexpected("echo subprocess quit with code '{}'"_fmt(*ret)));
+  // Perform word expansion
+  wordexp_t data;
+  if (int ret = wordexp(expanded.c_str(), &data, 0); ret == 0)
+  {
+    if (data.we_wordc > 0)
+    {
+      expanded = data.we_wordv[0];
+    } // if
+    wordfree(&data);
+  } // if
+  else
+  {
+    std::string error;
+    switch(ret)
+    {
+      case WRDE_BADCHAR: error = "WRDE_BADCHAR"; break;
+      case WRDE_BADVAL: error = "WRDE_BADVAL"; break;
+      case WRDE_CMDSUB: error = "WRDE_CMDSUB"; break;
+      case WRDE_NOSPACE: error = "WRDE_NOSPACE"; break;
+      case WRDE_SYNTAX: error = "WRDE_SYNTAX"; break;
+      default: error = "unknown";
+    } // switch
+    return std::unexpected(error);
+  } // else
 
   return expanded;
 } // expand() }}}

@@ -43,13 +43,12 @@ function _fetch_static()
   # cp "$HOME"/Repositories/ciopfs/ciopfs ./bin/ciopfs
 
   # Fetch squashfuse
-  wget -O ./bin/squashfuse "https://github.com/ruanformigoni/squashfuse-static-musl/releases/download/f2b4067/squashfuse-x86_64"
+  # wget -O ./bin/squashfuse "https://github.com/ruanformigoni/squashfuse-static-musl/releases/download/f2b4067/squashfuse-x86_64"
 
-  # # Fetch dwarfs
-  # wget -O bin/dwarfs_aio "https://github.com/mhx/dwarfs/releases/download/v0.9.8/dwarfs-universal-0.9.8-Linux-x86_64-clang"
-  # ln -sf dwarfs_aio bin/mkdwarfs
-  # ln -sf dwarfs_aio bin/dwarfsextract
-  # ln -sf dwarfs_aio bin/dwarfs
+  # Fetch dwarfs
+  wget -O bin/dwarfs_aio "https://github.com/ruanformigoni/dwarfs/releases/download/187a5b65/dwarfs-universal"
+  ln -s dwarfs_aio bin/mkdwarfs
+  ln -s dwarfs_aio bin/dwarfs
 
   # Fetch bash
   wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/b604d6c/bash-x86_64"
@@ -81,8 +80,8 @@ function _create_elf()
 
   # Boot is the program on top of the image
   cp bin/boot "$out"
-  # Append squashfuse
-  cat bin/squashfuse >> "$out"
+  # Append dwarfs
+  cat bin/dwarfs_aio >> "$out"
   # Create reserved space
   dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter
@@ -150,7 +149,8 @@ function _create_subsystem_empty()
   mkdir ./root/fim/layers
 
   # Create image
-  mksquashfs ./root "$dist.img" -comp zstd -Xcompression-level 15
+  # mksquashfs ./root "$dist.img" -comp zstd -Xcompression-level 15
+  ./bin/mkdwarfs -i ./root -o "$dist.img"
 
   # Create elf
   _create_elf "$dist.img" "$dist.flatimage"
@@ -255,10 +255,11 @@ function _create_subsystem_alpine()
   # Create layer 0 compressed filesystem
   chown -R 1000:1000 /tmp/"$dist"
   chmod 777 -R /tmp/"$dist"
-  mksquashfs /tmp/"$dist" "$dist".sqfs -comp zstd -Xcompression-level 15
+  # mksquashfs /tmp/"$dist" "$dist".layer -comp zstd -Xcompression-level 15
+  ./bin/mkdwarfs -i /tmp/"$dist" -o "$dist".layer
 
   # Create elf
-  _create_elf "$dist".sqfs "$dist".flatimage
+  _create_elf "$dist".layer "$dist".flatimage
 
   # Create sha256sum
   sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
@@ -476,11 +477,12 @@ function _create_subsystem_arch()
 
   # Create layer 0 compressed filesystem
   chown -R 1000:1000 ./arch
-  chmod 777 -R ./arch
-  mksquashfs ./arch ./arch.sqfs -comp zstd -Xcompression-level 15
+  # chmod 777 -R ./arch
+  # mksquashfs ./arch ./arch.layer -comp zstd -Xcompression-level 15
+  ./bin/mkdwarfs -i ./arch -o ./arch.layer
 
   # Create elf
-  _create_elf ./arch.sqfs ./arch.flatimage
+  _create_elf ./arch.layer ./arch.flatimage
 
   # Create sha256sum
   sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"

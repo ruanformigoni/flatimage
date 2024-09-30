@@ -9,6 +9,7 @@
 
 #include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/squashfs.hpp"
+#include "../cpp/lib/dwarfs.hpp"
 #include "../cpp/lib/ciopfs.hpp"
 
 #include "config/config.hpp"
@@ -22,10 +23,10 @@ class Filesystems
   private:
     fs::path m_path_dir_mount;
     std::vector<fs::path> m_vec_path_dir_mountpoints;
-    std::vector<std::unique_ptr<ns_squashfs::SquashFs>> m_layers;
+    std::vector<std::unique_ptr<ns_dwarfs::Dwarfs>> m_layers;
     std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
-    uint64_t mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
+    uint64_t mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
     void mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper);
     void mount_overlayfs(fs::path const& path_dir_layers
       , fs::path const& path_dir_data
@@ -47,7 +48,7 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   : m_path_dir_mount(config.path_dir_mount)
 {
   // Mount compressed layers
-  uint64_t index_fs = mount_squashfs(config.path_dir_mount_layers, config.path_file_binary, config.offset_filesystem);
+  uint64_t index_fs = mount_dwarfs(config.path_dir_mount_layers, config.path_file_binary, config.offset_filesystem);
   // Check if should mount ciopfs
   if ( ns_env::exists("FIM_CASEFOLD", "1") )
   {
@@ -60,8 +61,8 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
 } // fn Filesystems::Filesystems }}}
 
-// fn: mount_squashfs {{{
-inline uint64_t Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
+// fn: mount_dwarfs {{{
+inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
 {
   // Open the main binary
   std::ifstream file_binary(path_file_binary, std::ios::binary);
@@ -88,7 +89,11 @@ inline uint64_t Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::
 
     // Mount filesystem
     ns_log::debug()("Offset to filesystem is '{}'", offset);
-    this->m_layers.emplace_back(std::make_unique<ns_squashfs::SquashFs>(path_file_binary, path_dir_mount_index, offset));
+    this->m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_binary
+      , path_dir_mount_index
+      , offset
+      , size_fs
+    ));
 
     // Go to next filesystem if exists
     index_fs += 1;
@@ -97,7 +102,7 @@ inline uint64_t Filesystems::mount_squashfs(fs::path const& path_dir_mount, fs::
   } // while
 
   return index_fs;
-} // fn: mount_squashfs }}}
+} // fn: mount_dwarfs }}}
 
 // fn: mount_overlayfs {{{
 inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers

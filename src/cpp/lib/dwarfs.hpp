@@ -34,7 +34,7 @@ class Dwarfs
     Dwarfs& operator=(Dwarfs const&) = delete;
     Dwarfs& operator=(Dwarfs&&) = delete;
 
-    Dwarfs(fs::path const& path_file_image, fs::path const& path_dir_mount)
+    Dwarfs(fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset, uint64_t size_image)
       : m_path_dir_mountpoint(path_dir_mount)
     {
       // Check if image exists and is a regular file
@@ -48,24 +48,34 @@ class Dwarfs
       );
 
       // Find command in PATH
-      auto opt_path_file_dwarfs = ns_subprocess::search_path("dwarfs");
-      ethrow_if(not opt_path_file_dwarfs.has_value(), "Could not find dwarfs");
+      auto opt_path_file_bash = ns_subprocess::search_path("bash");
+      ethrow_if(not opt_path_file_bash.has_value(), "Could not find bash");
 
       // Create command
-      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_dwarfs);
+      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_bash);
 
       // Spawn command
-      auto ret = m_subprocess->with_piped_outputs()
-        .with_args(path_file_image, path_dir_mount)
-        .spawn()
-        .wait();
-      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mountpoint));
-      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mountpoint, *ret));
+      (void) m_subprocess->with_piped_outputs()
+        .with_args("-c")
+        .with_args("dwarfs {} {} -f -o offset={},imagesize={}"_fmt(path_file_image, path_dir_mount, offset, size_image))
+        .spawn();
+      // Wait for mount
+      ns_fuse::wait_fuse(path_dir_mount);
     } // Dwarfs
     
     ~Dwarfs()
     {
+      // Un-mount
       ns_fuse::unmount(m_path_dir_mountpoint);
+      // Tell process to exit with SIGTERM
+      if ( auto opt_pid = m_subprocess->get_pid() )
+      {
+        kill(*opt_pid, SIGTERM);
+      } // if
+      // Wait for process to exit
+      auto ret = m_subprocess->wait();
+      ereturn_if(not ret, "Mount '{}' exited unexpectedly"_fmt(m_path_dir_mountpoint));
+      ereturn_if(ret and *ret != 0, "Mount '{}' exited with non-zero exit code '{}'"_fmt(m_path_dir_mountpoint, *ret));
     } // Dwarfs
 
     fs::path const& get_dir_mountpoint()

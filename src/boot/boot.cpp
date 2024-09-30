@@ -168,8 +168,12 @@ void relocate(char** argv)
 
   // Write binaries
   auto start = std::chrono::high_resolution_clock::now();
+  fs::path path_file_dwarfs_aio = path_dir_app_bin / "dwarfs_aio";
+  std::error_code ec;
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_instance / "ext.boot" , 0);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "squashfuse", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_file_dwarfs_aio, offset_end);
+  fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "dwarfs", ec);
+  fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "mkdwarfs", ec);
   auto end = std::chrono::high_resolution_clock::now();
 
   // Filesystem starts here

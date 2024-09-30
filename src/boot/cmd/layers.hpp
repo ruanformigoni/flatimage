@@ -23,28 +23,26 @@ namespace ns_layers
 // fn: create() {{{
 inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, uint64_t compression_level)
 {
-  // Find mksquashfs binary
-  auto opt_path_file_mksquashfs = ns_subprocess::search_path("mksquashfs");
-  ethrow_if(not opt_path_file_mksquashfs, "Could not find 'mksquashfs' binary");
+  // Find mkdwarfs binary
+  auto opt_path_file_mkdwarfs = ns_subprocess::search_path("mkdwarfs");
+  ethrow_if(not opt_path_file_mkdwarfs, "Could not find 'mkdwarfs' binary");
 
   // Compression level must be at least 1 and less or equal to 10
-  compression_level = (compression_level > 0)? compression_level : 1;
-  compression_level = (compression_level > 10)? 10 : compression_level;
+  compression_level = (compression_level > 9)? 9 : compression_level;
 
-  // Convert to non-percentual compression level
-  compression_level = std::ceil(22 * (static_cast<double>(compression_level) / 10));
+  // // Convert to non-percentual compression level
+  // compression_level = std::ceil(22 * (static_cast<double>(compression_level) / 10));
 
   // Compress filesystem
   ns_log::info()("Compression level: '{}'", compression_level);
   ns_log::info()("Compress filesystem to '{}'", path_file_dst);
-  auto ret = ns_subprocess::Subprocess(*opt_path_file_mksquashfs)
-    .with_args(path_dir_src, path_file_dst)
-    .with_args("-comp", "zstd")
-    .with_args("-Xcompression-level", compression_level)
+  auto ret = ns_subprocess::Subprocess(*opt_path_file_mkdwarfs)
+    .with_args("-i", path_dir_src, "-o", path_file_dst)
+    .with_args("-l", compression_level)
     .spawn()
     .wait();
-  ethrow_if(not ret, "mksquashfs process exited abnormally");
-  ethrow_if(*ret != 0, "mksquashfs process exited with error code '{}'"_fmt(*ret));
+  ethrow_if(not ret, "mkdwarfs process exited abnormally");
+  ethrow_if(*ret != 0, "mkdwarfs process exited with error code '{}'"_fmt(*ret));
 } // fn: create() }}}
 
 // fn: add() {{{

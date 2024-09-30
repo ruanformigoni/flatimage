@@ -64,13 +64,22 @@ void OnlinePreProcessing::tools(ns_config::FlatimageConfig const& config)
   // Check if path_dir_app_bin exists and is directory
   ethrow_if(not fs::is_directory(config.path_dir_app_bin), "'{}' does not exist or is not a directory"_fmt(config.path_dir_app_bin));
   // Copy programs
+  std::error_code ec;
   for (auto&& path_file_src : fs::directory_iterator(config.path_dir_static)
-    | std::views::filter([&](auto&& e){ return fs::is_regular_file(e); }))
+    | std::views::filter([&](auto&& e){ return fs::is_regular_file(e) or fs::is_symlink(e); }))
   {
     fs::path path_file_dst = config.path_dir_app_bin / path_file_src.path().filename();
-    if ( fs::copy_file(path_file_src, path_file_dst, fs::copy_options::update_existing) )
+    if ( fs::is_symlink(path_file_src) )
     {
+      ns_log::debug()("Symlink '{}' -> '{}'", path_file_src, path_file_dst);
+      fs::copy_symlink(path_file_src, path_file_dst, ec);
+      if ( ec ) { ns_log::debug()(ec.message()); ec.clear(); }
+    }
+    else if ( fs::is_regular_file(path_file_src) )
+    {
+      fs::copy_file(path_file_src, path_file_dst, fs::copy_options::skip_existing, ec);
       ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
+      if ( ec ) { ns_log::debug()(ec.message()); ec.clear(); }
     } // if
   } // for
 } // tools() }}}

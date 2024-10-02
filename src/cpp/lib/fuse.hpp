@@ -64,20 +64,29 @@ inline void unmount(fs::path const& path_dir_mountpoint)
   auto opt_path_file_fusermount = ns_subprocess::search_path("fusermount");
   ereturn_if (not opt_path_file_fusermount, "Could not find 'fusermount' in PATH");
 
-  // Filesystem could be busy for a bit after un-mount of dwarfs
-  for(auto is_fuse = ns_fuse::is_fuse(path_dir_mountpoint)
-    ; is_fuse and *is_fuse == true
-    ; is_fuse = ns_fuse::is_fuse(path_dir_mountpoint))
-  {
-    auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
-      .with_piped_outputs()
-      .with_args("-zu", path_dir_mountpoint)
-      .spawn()
-      .wait();
-    if(ret and *ret == 0) { ns_log::debug()("Un-mounted filesystem '{}'"_fmt(path_dir_mountpoint)); }
-    std::this_thread::sleep_for(100ms);
-  } // for
+  // Un-mount filesystem
+  auto ret = ns_subprocess::Subprocess(*opt_path_file_fusermount)
+    .with_piped_outputs()
+    .with_args("-zu", path_dir_mountpoint)
+    .spawn()
+    .wait();
 
+  // Check for successful un-mount
+  if(ret and *ret == 0)
+  {
+    ns_log::debug()("Un-mounted filesystem '{}'"_fmt(path_dir_mountpoint));
+  } // if
+
+  // Filesystem could be busy for a bit after un-mount
+  std::expected<bool,std::string> expected_is_fuse = ns_fuse::is_fuse(*opt_path_file_fusermount);
+  while( expected_is_fuse and *expected_is_fuse )
+  {
+    std::this_thread::sleep_for(100ms);
+    expected_is_fuse = ns_fuse::is_fuse(*opt_path_file_fusermount);
+  } // while
+
+  // Check for query errors
+  ereturn_if(not expected_is_fuse, expected_is_fuse.error());
 } // function: unmount
 
 } // namespace ns_fuse

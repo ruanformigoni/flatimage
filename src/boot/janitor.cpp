@@ -41,6 +41,7 @@ int main(int argc, char const* argv[])
   // Cleanup mountpoints
   for (auto&& path_dir_mountpoint : std::vector<fs::path>(argv+1, argv+argc))
   {
+    ns_log::info()("Un-mount '{}'", path_dir_mountpoint);
     ns_fuse::unmount(path_dir_mountpoint);
   } // for
 

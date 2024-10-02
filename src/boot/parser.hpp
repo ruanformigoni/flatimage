@@ -352,7 +352,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   {
     // Mount filesystem as RO
     auto mount = ns_filesystems::Filesystems(config);
-    mount.spawn_janitor();
     // Execute specified command
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
     f_bwrap(cmd->program, cmd->args, environment);
@@ -362,7 +361,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   {
     // Mount filesystem as RO
     auto mount = ns_filesystems::Filesystems(config);
-    mount.spawn_janitor();
     // Execute specified command as 'root'
     config.is_root = true;
     auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
@@ -502,7 +500,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   {
     // Mount filesystem as RO
     auto mount = ns_filesystems::Filesystems(config);
-    mount.spawn_janitor();
     // Build exec command
     ns_parser::CmdExec cmd_exec;
     // Fetch default command from database or fallback to bash

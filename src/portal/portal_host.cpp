@@ -73,6 +73,7 @@ void fork_execve(std::string msg)
   if ( vec_argv.empty() ) { return; }
 
   // Create child
+  pid_t ppid = getpid();
   pid_t pid = fork();
 
   // Failed to fork
@@ -99,11 +100,18 @@ void fork_execve(std::string msg)
     return;
   } // if
 
+  pid_t cpid = getpid();
+
+  // Die with daemon
+  eabort_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
+  eabort_if(::kill(ppid, 0) < 0, "Parent died, prctl will not have effect: {}"_fmt(strerror(errno)));
+  ns_log::debug()("{} dies with {}", cpid, ppid);
+
   // Write pid to fifo
   std::string str_pid_fifo = db["pid"];
-  pid_t pid_child = getpid();
+  pid_t pid_child = cpid;
   int fd_pid = open(str_pid_fifo.c_str(), O_WRONLY);
-  eexit_if(write(fd_pid, &pid_child, sizeof(pid_child)) == -1, "Could not write pid to fifo", 1);
+  eabort_if(write(fd_pid, &pid_child, sizeof(pid_child)) == -1, "Could not write pid to fifo");
   close(fd_pid);
 
   // Open stdout/stderr FIFOs
@@ -111,11 +119,11 @@ void fork_execve(std::string msg)
   std::string str_stderr_fifo = db["stderr"];
   int fd_stdout = open(str_stdout_fifo.c_str(), O_WRONLY);
   int fd_stderr = open(str_stderr_fifo.c_str(), O_WRONLY);
-  eexit_if(fd_stdout == -1 or fd_stderr == -1, strerror(errno), 1);
+  eabort_if(fd_stdout == -1 or fd_stderr == -1, strerror(errno));
 
   // Redirect stdout and stderr
-  eexit_if(dup2(fd_stdout, STDOUT_FILENO) < 0, strerror(errno), 1);
-  eexit_if(dup2(fd_stderr, STDERR_FILENO) < 0, strerror(errno), 1);
+  eabort_if(dup2(fd_stdout, STDOUT_FILENO) < 0, strerror(errno));
+  eabort_if(dup2(fd_stderr, STDERR_FILENO) < 0, strerror(errno));
 
   // Close the original file descriptors
   close(fd_stdout);
@@ -123,7 +131,7 @@ void fork_execve(std::string msg)
 
   // Search for command in PATH and replace vec_argv[0] with the full path to the binary
   auto opt_path_file_command = search_path(vec_argv[0]);
-  eexit_if(not opt_path_file_command, "'{}' not found in PATH"_fmt(vec_argv[0]), 1);
+  eabort_if(not opt_path_file_command, "'{}' not found in PATH"_fmt(vec_argv[0]));
   vec_argv[0] = opt_path_file_command->c_str();
 
   // Create arguments for execve
@@ -140,7 +148,7 @@ void fork_execve(std::string msg)
   fs::path path_file_environment = db["environment"].as_string();
   std::vector<std::string> vec_environment;
   std::ifstream file_environment(path_file_environment);
-  eexit_if(not file_environment.is_open(), "Could not open {}"_fmt(path_file_environment), 1);
+  eabort_if(not file_environment.is_open(), "Could not open {}"_fmt(path_file_environment));
   for (std::string entry; std::getline(file_environment, entry);)
   {
     vec_environment.push_back(entry);
@@ -160,7 +168,7 @@ void fork_execve(std::string msg)
   execve(argv_custom[0], (char**) argv_custom.get(), (char**) env_custom.get());
 
   // Child should stop here
-  exit(1);
+  std::abort();
 } // fork_execve() }}}
 
 // validate() {{{
@@ -199,8 +207,6 @@ int main(int argc, char** argv)
   // Create ipc instance
   auto ipc = ns_ipc::Ipc::host(argv[1]);
 
-  std::vector<std::jthread> commands;
-
   // Recover messages
   while (not G_QUIT)
   {
@@ -212,7 +218,7 @@ int main(int argc, char** argv)
 
     econtinue_if(not validate(*opt_msg), "Failed to validate message");
 
-    commands.emplace_back(std::jthread([=]{ fork_execve(*opt_msg); }));
+    fork_execve(*opt_msg);
   } // while
 
   return EXIT_SUCCESS;

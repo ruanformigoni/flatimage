@@ -482,8 +482,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   {
     // Mount filesystem as RW
     [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_desktop.parent_path());
     // Update database
     ns_db::from_file(config.path_file_config_boot, [&](auto& db)
     {

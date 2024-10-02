@@ -132,6 +132,12 @@ inline FlatimageConfig config()
   // Overlayfs write data to remain on the host
   config.path_dir_data_overlayfs = config.path_dir_host_config / "overlays";
 
+  // Bwrap native
+  if ( auto opt = ns_subprocess::search_path("bwrap") )
+  {
+    ns_env::set("BWRAP_NATIVE", *opt, ns_env::Replace::Y);
+  } // if
+
   // Environment
   config.env_path = config.path_dir_app_bin.string() + ":" + ns_env::get_or_throw("PATH");
   config.env_path += ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";

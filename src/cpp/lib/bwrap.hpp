@@ -421,11 +421,22 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
   ns_functional::call_if(permissions.network     , [&]{ bind_network()     ; });
 
   // Find bwrap in PATH
-  auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
-  ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
+  fs::path path_file_bwrap;
+  if ( const char* entry = ns_env::get("BWRAP_NATIVE") )
+  {
+    path_file_bwrap = entry;
+    ns_log::debug()("Using bwrap native");
+  } // if
+  else
+  {
+    auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
+    ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
+    path_file_bwrap = *opt_path_file_bwrap;
+    ns_log::debug()("Using bwrap builtin");
+  } // else
 
   // Run Bwrap
-  auto ret = ns_subprocess::Subprocess(*opt_path_file_bwrap)
+  auto ret = ns_subprocess::Subprocess(path_file_bwrap)
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)

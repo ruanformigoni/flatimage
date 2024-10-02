@@ -34,7 +34,7 @@ class Dwarfs
     Dwarfs& operator=(Dwarfs const&) = delete;
     Dwarfs& operator=(Dwarfs&&) = delete;
 
-    Dwarfs(fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset, uint64_t size_image)
+    Dwarfs(fs::path const& path_file_image, fs::path const& path_dir_mount, uint64_t offset, uint64_t size_image, pid_t pid_to_die_for)
       : m_path_dir_mountpoint(path_dir_mount)
     {
       // Check if image exists and is a regular file
@@ -58,6 +58,7 @@ class Dwarfs
       (void) m_subprocess->with_piped_outputs()
         .with_args("-c")
         .with_args("dwarfs {} {} -f -o offset={},imagesize={}"_fmt(path_file_image, path_dir_mount, offset, size_image))
+        .with_die_on_pid(pid_to_die_for)
         .spawn();
       // Wait for mount
       ns_fuse::wait_fuse(path_dir_mount);

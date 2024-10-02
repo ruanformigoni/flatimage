@@ -13,10 +13,10 @@
 #include <string>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 #include <ranges>
 #include <thread>
 
-#include "../lib/env.hpp"
 #include "log.hpp"
 #include "../macro.hpp"
 #include "../std/vector.hpp"
@@ -69,9 +69,11 @@ class Subprocess
     std::jthread m_thread_stdout;
     std::jthread m_thread_stderr;
     bool m_with_piped_outputs;
+    std::optional<pid_t> m_die_on_pid;
 
     [[nodiscard]] Subprocess& with_pipes_parent(int pipestdout[2], int pipestderr[2]);
     void with_pipes_child(int pipestdout[2], int pipestderr[2]);
+    void die_on_pid(pid_t pid);
   public:
     template<ns_concept::StringRepresentable T>
     [[nodiscard]] Subprocess(T&& t);
@@ -109,6 +111,8 @@ class Subprocess
 
     template<typename T>
     [[nodiscard]] Subprocess& with_env(T&& t);
+
+    [[nodiscard]] Subprocess& with_die_on_pid(pid_t pid);
 
     [[nodiscard]] Subprocess& with_piped_outputs();
 
@@ -276,6 +280,13 @@ Subprocess& Subprocess::with_env(T&& t)
   return *this;
 } // with_env }}}
 
+// with_die_on_pid() {{{
+inline Subprocess& Subprocess::with_die_on_pid(pid_t pid)
+{
+  m_die_on_pid = pid;
+  return *this;
+} // with_die_on_pid }}}
+
 // with_piped_outputs() {{{
 inline Subprocess& Subprocess::with_piped_outputs()
 {
@@ -332,6 +343,21 @@ inline void Subprocess::with_pipes_child(int pipestdout[2], int pipestderr[2])
   ereturn_if(close(pipestdout[1]) == -1, "pipestdout[1]: {}"_fmt(strerror(errno)));
   ereturn_if(close(pipestderr[1]) == -1, "pipestderr[1]: {}"_fmt(strerror(errno)));
 } // with_pipes_child() }}}
+
+// die_on_pid() {{{
+inline void Subprocess::die_on_pid(pid_t pid)
+{
+  // Set death signal when pid dies
+  ereturn_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
+  // Abort if pid is not running
+  if (::kill(pid, 0) < 0)
+  {
+    ns_log::error()("Parent died, prctl will not have effect: {}", strerror(errno));
+    std::abort();
+  } // if
+  // Log pid and current pid
+  ns_log::debug()("{} dies with {}", getpid(), pid);
+} // die_on_pid() }}}
 
 // with_stdout_handle() {{{
 template<typename F>
@@ -409,6 +435,12 @@ inline Subprocess& Subprocess::spawn()
     with_pipes_child(pipestdout, pipestderr);
   } // else
 
+  // Check if should die with pid
+  if ( m_die_on_pid )
+  {
+    die_on_pid(*m_die_on_pid);
+  } // if
+
   // Create arguments for execve
   auto argv_custom = std::make_unique<const char*[]>(m_args.size() + 1);
 
@@ -445,7 +477,7 @@ inline Subprocess& Subprocess::spawn()
   ns_log::error()("execve() failed: ", strerror(errno));
 
   // Child should stop here
-  exit(1);
+  std::abort();
 } // spawn() }}}
 
 // wait_busy_file() {{{

@@ -32,6 +32,8 @@ class Filesystems
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
     );
+    // In case the parent process fails to clean the mountpoints, this child does it
+    void spawn_janitor();
 
   public:
     Filesystems(ns_config::FlatimageConfig const& config);
@@ -39,8 +41,6 @@ class Filesystems
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
     Filesystems& operator=(Filesystems&&) = delete;
-    // In case the parent process fails to clean the mountpoints, this child does it
-    void spawn_janitor();
 }; // class Filesystems }}}
 
 // fn: Filesystems::Filesystems {{{
@@ -59,68 +59,9 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   } // if
   // Mount overlayfs
   mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
+  // Spawn janitor
+  spawn_janitor();
 } // fn Filesystems::Filesystems }}}
-
-// fn: mount_dwarfs {{{
-inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
-{
-  // Open the main binary
-  std::ifstream file_binary(path_file_binary, std::ios::binary);
-
-  // Filesystem index
-  uint64_t index_fs{};
-
-  // Advance offset
-  file_binary.seekg(offset);
-
-  while (true)
-  {
-    // Read filesystem size
-    int64_t size_fs;
-    dbreak_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
-    ns_log::debug()("Filesystem size is '{}'", size_fs);
-    offset += 8;
-
-    // Create mountpoint
-    fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
-    std::error_code ec;
-    fs::create_directories(path_dir_mount_index, ec);
-    ebreak_if(ec, "Could not create directories: {}"_fmt(ec.message()));
-
-    // Mount filesystem
-    ns_log::debug()("Offset to filesystem is '{}'", offset);
-    this->m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_binary
-      , path_dir_mount_index
-      , offset
-      , size_fs
-    ));
-
-    // Go to next filesystem if exists
-    index_fs += 1;
-    offset += size_fs;
-    file_binary.seekg(offset);
-  } // while
-
-  return index_fs;
-} // fn: mount_dwarfs }}}
-
-// fn: mount_overlayfs {{{
-inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers
-  , fs::path const& path_dir_data
-  , fs::path const& path_dir_mount)
-{
-  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_layers
-    , path_dir_data
-    , path_dir_mount
-  );
-  m_vec_path_dir_mountpoints.push_back(path_dir_mount);
-} // fn: mount_overlayfs }}}
-
-// fn: mount_ciopfs {{{
-inline void Filesystems::mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper)
-{
-  this->m_ciopfs = std::make_unique<ns_ciopfs::Ciopfs>(path_dir_lower, path_dir_upper);
-} // fn: mount_ciopfs }}}
 
 // fn: spawn_janitor {{{
 inline void Filesystems::spawn_janitor()
@@ -166,6 +107,73 @@ inline void Filesystems::spawn_janitor()
   // Exit process in case of an error
   exit(1);
 } // fn: spawn_janitor }}}
+
+// fn: mount_dwarfs {{{
+inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset)
+{
+  // Open the main binary
+  std::ifstream file_binary(path_file_binary, std::ios::binary);
+
+  // Filesystem index
+  uint64_t index_fs{};
+
+  // Advance offset
+  file_binary.seekg(offset);
+
+  while (true)
+  {
+    // Read filesystem size
+    int64_t size_fs;
+    dbreak_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
+    ns_log::debug()("Filesystem size is '{}'", size_fs);
+    offset += 8;
+
+    // Create mountpoint
+    fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
+    std::error_code ec;
+    fs::create_directories(path_dir_mount_index, ec);
+    ebreak_if(ec, "Could not create directories: {}"_fmt(ec.message()));
+
+    // Mount filesystem
+    ns_log::debug()("Offset to filesystem is '{}'", offset);
+    this->m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_binary
+      , path_dir_mount_index
+      , offset
+      , size_fs
+      , getpid()
+    ));
+
+    // Include in mountpoints vector
+    m_vec_path_dir_mountpoints.push_back(path_dir_mount_index);
+
+    // Go to next filesystem if exists
+    index_fs += 1;
+    offset += size_fs;
+    file_binary.seekg(offset);
+  } // while
+
+  return index_fs;
+} // fn: mount_dwarfs }}}
+
+// fn: mount_overlayfs {{{
+inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers
+  , fs::path const& path_dir_data
+  , fs::path const& path_dir_mount)
+{
+  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_layers
+    , path_dir_data
+    , path_dir_mount
+    , getpid()
+  );
+  m_vec_path_dir_mountpoints.push_back(path_dir_mount);
+} // fn: mount_overlayfs }}}
+
+// fn: mount_ciopfs {{{
+inline void Filesystems::mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper)
+{
+  this->m_ciopfs = std::make_unique<ns_ciopfs::Ciopfs>(path_dir_lower, path_dir_upper);
+  m_vec_path_dir_mountpoints.push_back(path_dir_upper);
+} // fn: mount_ciopfs }}}
 
 } // namespace ns_filesystems
 

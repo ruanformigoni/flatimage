@@ -31,6 +31,7 @@ class Overlayfs
     Overlayfs(fs::path const& path_dir_layers
         , fs::path const& path_dir_modifications
         , fs::path const& path_dir_mountpoint
+        , pid_t pid_to_die_for
       )
       : m_path_dir_mountpoint(path_dir_mountpoint)
     {
@@ -88,6 +89,7 @@ class Overlayfs
         .with_args("-o", "upperdir={}"_fmt(path_dir_upperdir))
         .with_args("-o", "workdir={}"_fmt(path_dir_workdir))
         .with_args(m_path_dir_mountpoint)
+        .with_die_on_pid(pid_to_die_for)
         .spawn();
       // Wait for mount
       ns_fuse::wait_fuse(path_dir_mountpoint);

@@ -112,14 +112,24 @@ inline Bwrap::Bwrap(
     m_program_env.push_back("HOST_USERNAME=pw->pw_name");
   } // if
 
-  // Create custom bashrc file
+  // Setup PS1
   std::ofstream of{path_file_bashrc};
-  if ( of.good() )
+  if ( of.is_open() )
   {
-    of << R"(export PS1="[flatimage-${FIM_DIST,,}] \W → ")";
+    if ( auto it = std::ranges::find_if(program_env, [](auto&& e){ return e.starts_with("PS1="); });
+    it != std::ranges::end(program_env))
+    {
+      std::string ps1{*it};
+      ps1.erase(0, ps1.find('=')+1);
+      of << "export PS1=" << '"' << ps1 << '"';
+    } // if
+    else
+    {
+      of << R"(export PS1="[flatimage-${FIM_DIST,,}] \W → ")";
+    } // else
+    ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
   } // if
   of.close();
-  ns_env::set("BASHRC_FILE", path_file_bashrc.c_str(), ns_env::Replace::Y);
 
   // Check if root exists and is a directory
   ethrow_if(not fs::is_directory(path_dir_root)

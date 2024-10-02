@@ -64,8 +64,6 @@ struct FlatimageConfig
   fs::path path_dir_static;
   fs::path path_file_config_boot;
   fs::path path_file_config_environment;
-  fs::path path_file_config_permissions;
-  fs::path path_file_config_desktop;
   fs::path path_file_config_bindings;
   fs::path path_file_config_casefold;
 
@@ -153,8 +151,6 @@ inline FlatimageConfig config()
   config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";
   config.path_file_config_boot        = config.path_dir_mount_overlayfs / "fim/config/boot.json";
   config.path_file_config_environment = config.path_dir_mount_overlayfs / "fim/config/environment.json";
-  config.path_file_config_permissions = config.path_dir_mount_overlayfs / "fim/config/permissions.json";
-  config.path_file_config_desktop     = config.path_dir_mount_overlayfs / "fim/config/desktop.json";
   config.path_file_config_bindings    = config.path_dir_mount_overlayfs / "fim/config/bindings.json";
   config.path_file_config_casefold    = config.path_dir_mount_overlayfs / "fim/config/casefold.json";
 

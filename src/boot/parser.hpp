@@ -369,10 +369,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_permissions.parent_path());
     // Determine open mode
     switch( cmd->op )
     {

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <sys/types.h>
 #include <pwd.h>
+#include <regex>
 
 #include "../std/vector.hpp"
 #include "../std/functional.hpp"
@@ -150,12 +151,16 @@ inline void Bwrap::set_xdg_runtime_dir()
 // symlink_nvidia() {{{
 inline Bwrap& Bwrap::symlink_nvidia(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host)
 {
+  std::regex regex_exclude("gst|icudata|egl-wayland", std::regex_constants::extended);
+
   auto f_find_and_bind = [&]<typename... Args>(fs::path const& path_dir_search, Args&&... args)
   {
     std::vector<std::string_view> keywords{std::forward<Args>(args)...};
     ireturn_if(not fs::exists(path_dir_search), "Search path does not exist: '{}'"_fmt(path_dir_search));
     for(auto&& path_file_entry : fs::directory_iterator(path_dir_search) | std::views::transform([](auto&& e){ return e.path(); }))
     {
+      // Skip ignored matches
+      dcontinue_if(std::regex_search(path_file_entry.c_str(), regex_exclude), "Ignoring match '{}'"_fmt(path_file_entry));
       // Skip directories
       qcontinue_if(fs::is_directory(path_file_entry));
       // Skip files that do not match keywords

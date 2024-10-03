@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <filesystem>
+#include <csignal>
 
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/env.hpp"
@@ -15,8 +16,18 @@
 
 namespace fs = std::filesystem;
 
+std::atomic_bool G_CONTINUE(true);
+
+void cleanup(int)
+{
+  G_CONTINUE = false;
+} // cleanup
+
 int main(int argc, char const* argv[])
 {
+  // Register signal handler
+  signal(SIGTERM, cleanup);
+
   // Initialize logger
   fs::path path_file_log = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.log";
   ns_log::set_sink_file(path_file_log);
@@ -31,7 +42,7 @@ int main(int argc, char const* argv[])
   ns_log::info()("Session id is '{}'", pid_session);
 
   // Wait for parent process to exit
-  while ( kill(pid_parent, 0) == 0 )
+  while ( kill(pid_parent, 0) == 0 and G_CONTINUE )
   {
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(100ms);

@@ -26,6 +26,7 @@ class Filesystems
     std::vector<std::unique_ptr<ns_dwarfs::Dwarfs>> m_layers;
     std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
+    std::optional<pid_t> m_opt_pid_janitor;
     uint64_t mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
     void mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper);
     void mount_overlayfs(fs::path const& path_dir_layers
@@ -37,6 +38,7 @@ class Filesystems
 
   public:
     Filesystems(ns_config::FlatimageConfig const& config);
+    ~Filesystems();
     Filesystems(Filesystems const&) = delete;
     Filesystems(Filesystems&&) = delete;
     Filesystems& operator=(Filesystems const&) = delete;
@@ -63,6 +65,26 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   spawn_janitor();
 } // fn Filesystems::Filesystems }}}
 
+// fn: Filesystems::Filesystems {{{
+inline Filesystems::~Filesystems()
+{
+  if ( m_opt_pid_janitor and *m_opt_pid_janitor > 0)
+  {
+    // Stop janitor loop & wait for cleanup
+    kill(*m_opt_pid_janitor, SIGTERM);
+    // Wait for janitor to finish execution
+    int status;
+    waitpid(*m_opt_pid_janitor, &status, 0);
+    ereturn_if(not WIFEXITED(status), "Janitor exited abnormally");
+    int code = WEXITSTATUS(status);
+    ereturn_if(code != 0, "Janitor exited with code '{}'"_fmt(code));
+  } // if
+  else
+  {
+    ns_log::error()("Janitor is not running");
+  } // else
+} // fn Filesystems::Filesystems }}}
+
 // fn: spawn_janitor {{{
 inline void Filesystems::spawn_janitor()
 {
@@ -71,19 +93,19 @@ inline void Filesystems::spawn_janitor()
 
   // Fork and execve into the janitor process
   pid_t pid_parent = getpid();
-  pid_t pid_fork = fork();
-  ethrow_if(pid_fork < 0, "Failed to fork janitor");
+  m_opt_pid_janitor = fork();
+  ethrow_if(m_opt_pid_janitor < 0, "Failed to fork janitor");
 
   // Is parent
-  dreturn_if(pid_fork > 0, "Spawned janitor with PID '{}'"_fmt(pid_fork));
+  dreturn_if(m_opt_pid_janitor > 0, "Spawned janitor with PID '{}'"_fmt(*m_opt_pid_janitor));
 
   // Redirect stdout/stderr to a log file
   fs::path path_stdout = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.stdout.log";
   fs::path path_stderr = std::string{ns_env::get_or_throw("FIM_DIR_MOUNT")} + ".janitor.stderr.log";
   int fd_stdout = open(path_stdout.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
   int fd_stderr = open(path_stderr.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
-  ereturn_if(fd_stdout < 0, "Failed to open stdout janitor file");
-  ereturn_if(fd_stderr < 0, "Failed to open stderr janitor file");
+  eabort_if(fd_stdout < 0, "Failed to open stdout janitor file");
+  eabort_if(fd_stderr < 0, "Failed to open stderr janitor file");
   dup2(fd_stdout, STDOUT_FILENO);
   dup2(fd_stderr, STDERR_FILENO);
   close(fd_stdout);
@@ -105,7 +127,7 @@ inline void Filesystems::spawn_janitor()
   execve(path_file_janitor.c_str(), (char**) argv_custom.get(), environ);
 
   // Exit process in case of an error
-  exit(1);
+  std::abort();
 } // fn: spawn_janitor }}}
 
 // fn: mount_dwarfs {{{

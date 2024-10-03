@@ -6,6 +6,7 @@
 #pragma once
 
 #include <memory>
+#include <fcntl.h>
 
 #include "../cpp/lib/overlayfs.hpp"
 #include "../cpp/lib/squashfs.hpp"

@@ -10,6 +10,7 @@
 #include <expected>
 #include <sys/vfs.h>
 #include <sys/mount.h>
+#include <thread>
 
 #include "subprocess.hpp"
 

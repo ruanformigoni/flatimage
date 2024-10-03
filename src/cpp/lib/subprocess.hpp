@@ -142,10 +142,7 @@ Subprocess::Subprocess(T&& t)
 // Subprocess::~Subprocess {{{
 inline Subprocess::~Subprocess()
 {
-  std::cerr << "Wait for pid: " << *this->get_pid() << std::endl;
-  std::cerr << "Command: {} -- {}"_fmt(m_program, m_args) << std::endl;
   (void) this->wait();
-  std::cerr << "Finished pid: " << *this->get_pid() << std::endl;
 } // Subprocess::~Subprocess }}}
 
 // env_clear() {{{

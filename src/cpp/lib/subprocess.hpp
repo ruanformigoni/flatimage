@@ -15,7 +15,6 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <ranges>
-#include <thread>
 
 #include "log.hpp"
 #include "../macro.hpp"
@@ -66,8 +65,6 @@ class Subprocess
     std::optional<pid_t> m_opt_pid;
     std::optional<std::function<void(std::string)>> m_fstdout;
     std::optional<std::function<void(std::string)>> m_fstderr;
-    std::jthread m_thread_stdout;
-    std::jthread m_thread_stderr;
     bool m_with_piped_outputs;
     std::optional<pid_t> m_die_on_pid;
 
@@ -145,7 +142,10 @@ Subprocess::Subprocess(T&& t)
 // Subprocess::~Subprocess {{{
 inline Subprocess::~Subprocess()
 {
+  std::cerr << "Wait for pid: " << *this->get_pid() << std::endl;
+  std::cerr << "Command: {} -- {}"_fmt(m_program, m_args) << std::endl;
   (void) this->wait();
+  std::cerr << "Finished pid: " << *this->get_pid() << std::endl;
 } // Subprocess::~Subprocess }}}
 
 // env_clear() {{{
@@ -303,6 +303,15 @@ inline Subprocess& Subprocess::with_pipes_parent(int pipestdout[2], int pipestde
 
   auto f_read_pipe = [this](int id_pipe, std::string_view prefix, auto&& f)
   {
+    // Fork
+    pid_t ppid = getpid();
+    pid_t pid = fork();
+    ereturn_if(pid < 0, "Could not fork '{}'"_fmt(strerror(errno)));
+    // Parent ends here
+    qreturn_if( pid > 0 );
+    // Die with parent
+    eabort_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
+    eabort_if(::kill(ppid, 0) < 0, "Parent died, prctl will not have effect: {}"_fmt(strerror(errno)));
     // Check if 'f' is defined
     if ( not f ) { f = [&](auto&& e) { ns_log::debug()("{}({}): {}", prefix, m_program, e); }; }
     // Apply f to incoming data from pipe
@@ -320,10 +329,12 @@ inline Subprocess& Subprocess::with_pipes_parent(int pipestdout[2], int pipestde
       });
     } // while
     close(id_pipe);
+    // Exit normally
+    exit(0);
   };
-
-  m_thread_stdout = std::jthread([=,this] { f_read_pipe(pipestdout[0], "stdout", this->m_fstdout); });
-  m_thread_stderr = std::jthread([=,this] { f_read_pipe(pipestderr[0], "stderr", this->m_fstderr); });
+  // Create pipes from fifo to ostream
+  f_read_pipe(pipestdout[0], "stdout", this->m_fstdout);
+  f_read_pipe(pipestderr[0], "stderr", this->m_fstderr);
 
   return *this;
 } // with_pipes_parent() }}}

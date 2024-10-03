@@ -72,3 +72,17 @@
 
 #define dcontinue_if(cond, msg) \
   if ( (cond) ) { ns_log::debug()(msg); continue; }
+
+// Abort
+#define eabort_if(cond, msg) \
+  if ( (cond) ) { ns_log::error()(msg); std::abort(); }
+
+// Conditional log
+#define elog_if(cond, msg) \
+  if ( (cond) ) { ns_log::error()(msg); }
+
+#define ilog_if(cond, msg) \
+  if ( (cond) ) { ns_log::info()(msg); }
+
+#define dlog_if(cond, msg) \
+  if ( (cond) ) { ns_log::debug()(msg); }

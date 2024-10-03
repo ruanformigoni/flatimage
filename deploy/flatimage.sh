@@ -24,22 +24,22 @@ function _fetch_static()
   mkdir -p bin
 
   # Fetch busybox
-  wget -O ./bin/busybox "https://github.com/ruanformigoni/busybox-static-musl/releases/download/46bec3b/busybox-x86_64"
+  wget -O ./bin/busybox "https://github.com/ruanformigoni/busybox-static-musl/releases/download/7e2c5b6/busybox-x86_64"
 
   # Fetch lsof
-  wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/12c2552/lsof-x86_64"
+  wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/720c914/lsof-x86_64"
 
   # Fetch bwrap
-  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/719925f/bwrap-x86_64"
+  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/e2e9ee7/bwrap-x86_64"
 
   # Fetch proot
-  wget -O ./bin/proot "https://github.com/ruanformigoni/proot/releases/download/d9211c8/proot-x86_64"
+  wget -O ./bin/proot "https://github.com/ruanformigoni/proot-static-musl/releases/download/bf747c8/proot-x86_64"
 
   # Fetch overlayfs
-  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs/releases/download/1861741/fuse-overlayfs-x86_64"
+  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs-static-musl/releases/download/1861741/fuse-overlayfs-x86_64"
 
   # Fetch ciopfs
-  wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs/releases/download/44de517/ciopfs-x86_64"
+  wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs-static-musl/releases/download/39d5d5a/ciopfs-x86_64"
   # cp "$HOME"/Repositories/ciopfs/ciopfs ./bin/ciopfs
 
   # Fetch squashfuse
@@ -51,7 +51,7 @@ function _fetch_static()
   ln -s dwarfs_aio bin/dwarfs
 
   # Fetch bash
-  wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static/releases/download/b604d6c/bash-x86_64"
+  wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static-musl/releases/download/b604d6c/bash-x86_64"
 
   # Setup xdg scripts
   cp "$FIM_DIR"/src/xdg/xdg-* ./bin
@@ -80,8 +80,8 @@ function _create_elf()
 
   # Boot is the program on top of the image
   cp bin/boot "$out"
-  # Append dwarfs
-  cat bin/dwarfs_aio >> "$out"
+  # Append binaries
+  cat bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,janitor,lsof,overlayfs,proot} >> "$out"
   # Create reserved space
   dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter

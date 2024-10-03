@@ -26,7 +26,6 @@
 #include <sys/types.h>
 #include <filesystem>
 
-#include "../cpp/units.hpp"
 #include "../cpp/lib/linux.hpp"
 #include "../cpp/lib/env.hpp"
 #include "../cpp/lib/log.hpp"
@@ -41,62 +40,40 @@ extern char** environ;
 
 namespace fs = std::filesystem;
 
-// class OnlinePreProcessing {{{
-struct OnlinePreProcessing
+constexpr std::array<const char*,403> const arr_busybox_applet
 {
-  private:
-    void casefold(ns_config::FlatimageConfig const& config);
-    void tools(ns_config::FlatimageConfig const& config);
-  public:
-    OnlinePreProcessing(ns_config::FlatimageConfig const& config)
-    {
-      [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-      ns_log::exception([&]{ casefold(config); });
-      ns_log::exception([&]{ tools(config); });
-    }
-}; // class: OnlinePreProcessing }}}
-
-// tools() {{{
-void OnlinePreProcessing::tools(ns_config::FlatimageConfig const& config)
-{
-  // Check if path_dir_static exists and is directory
-  ethrow_if(not fs::is_directory(config.path_dir_static), "'{}' does not exist or is not a directory"_fmt(config.path_dir_static));
-  // Check if path_dir_app_bin exists and is directory
-  ethrow_if(not fs::is_directory(config.path_dir_app_bin), "'{}' does not exist or is not a directory"_fmt(config.path_dir_app_bin));
-  // Copy programs
-  std::error_code ec;
-  for (auto&& path_file_src : fs::directory_iterator(config.path_dir_static)
-    | std::views::filter([&](auto&& e){ return fs::is_regular_file(e) or fs::is_symlink(e); }))
-  {
-    fs::path path_file_dst = config.path_dir_app_bin / path_file_src.path().filename();
-    if ( fs::is_symlink(path_file_src) )
-    {
-      ns_log::debug()("Symlink '{}' -> '{}'", path_file_src, path_file_dst);
-      fs::copy_symlink(path_file_src, path_file_dst, ec);
-      if ( ec ) { ns_log::debug()(ec.message()); ec.clear(); }
-    }
-    else if ( fs::is_regular_file(path_file_src) )
-    {
-      fs::copy_file(path_file_src, path_file_dst, fs::copy_options::skip_existing, ec);
-      ns_log::debug()("Copy '{}' -> '{}'", path_file_src, path_file_dst);
-      if ( ec ) { ns_log::debug()(ec.message()); ec.clear(); }
-    } // if
-  } // for
-} // tools() }}}
-
-// casefold() {{{
-void OnlinePreProcessing::casefold(ns_config::FlatimageConfig const& config)
-{
-  // Check if should enable casefold
-  if ( auto expected = ns_db::query_nothrow(config.path_file_config_casefold, "enable"); expected and *expected == "ON" )
-  {
-    ns_env::set("FIM_CASEFOLD", "1", ns_env::Replace::Y);
-  } // if
-  else
-  {
-    ns_log::debug()("ciopfs is disabled");
-  } // else
-} // casefold() }}}
+  "[","[[","acpid","add-shell","addgroup","adduser","adjtimex","arch","arp","arping","ascii","ash","awk","base32","base64",
+  "basename","bc","beep","blkdiscard","blkid","blockdev","bootchartd","brctl","bunzip2","bzcat","bzip2","cal","cat","chat",
+  "chattr","chgrp","chmod","chown","chpasswd","chpst","chroot","chrt","chvt","cksum","clear","cmp","comm","conspy","cp","cpio",
+  "crc32","crond","crontab","cryptpw","cttyhack","cut","date","dc","dd","deallocvt","delgroup","deluser","depmod","devmem",
+  "df","dhcprelay","diff","dirname","dmesg","dnsd","dnsdomainname","dos2unix","dpkg","dpkg-deb","du","dumpkmap",
+  "dumpleases","echo","ed","egrep","eject","env","envdir","envuidgid","ether-wake","expand","expr","factor","fakeidentd",
+  "fallocate","false","fatattr","fbset","fbsplash","fdflush","fdformat","fdisk","fgconsole","fgrep","find","findfs",
+  "flock","fold","free","freeramdisk","fsck","fsck.minix","fsfreeze","fstrim","fsync","ftpd","ftpget","ftpput","fuser",
+  "getfattr","getopt","getty","grep","groups","gunzip","gzip","halt","hd","hdparm","head","hexdump","hexedit","hostid",
+  "hostname","httpd","hush","hwclock","i2cdetect","i2cdump","i2cget","i2cset","i2ctransfer","id","ifconfig","ifdown",
+  "ifenslave","ifplugd","ifup","inetd","init","insmod","install","ionice","iostat","ip","ipaddr","ipcalc","ipcrm","ipcs",
+  "iplink","ipneigh","iproute","iprule","iptunnel","kbd_mode","kill","killall","killall5","klogd","last","less","link",
+  "linux32","linux64","linuxrc","ln","loadfont","loadkmap","logger","login","logname","logread","losetup","lpd","lpq",
+  "lpr","ls","lsattr","lsmod","lsof","lspci","lsscsi","lsusb","lzcat","lzma","lzop","makedevs","makemime","man","md5sum",
+  "mdev","mesg","microcom","mim","mkdir","mkdosfs","mke2fs","mkfifo","mkfs.ext2","mkfs.minix","mkfs.vfat","mknod",
+  "mkpasswd","mkswap","mktemp","modinfo","modprobe","more","mount","mountpoint","mpstat","mt","mv","nameif","nanddump",
+  "nandwrite","nbd-client","nc","netstat","nice","nl","nmeter","nohup","nologin","nproc","nsenter","nslookup","ntpd","od",
+  "openvt","partprobe","passwd","paste","patch","pgrep","pidof","ping","ping6","pipe_progress","pivot_root","pkill",
+  "pmap","popmaildir","poweroff","powertop","printenv","printf","ps","pscan","pstree","pwd","pwdx","raidautorun","rdate",
+  "rdev","readahead","readlink","readprofile","realpath","reboot","reformime","remove-shell","renice","reset",
+  "resize","resume","rev","rm","rmdir","rmmod","route","rpm","rpm2cpio","rtcwake","run-init","run-parts","runlevel",
+  "runsv","runsvdir","rx","script","scriptreplay","sed","seedrng","sendmail","seq","setarch","setconsole","setfattr",
+  "setfont","setkeycodes","setlogcons","setpriv","setserial","setsid","setuidgid","sh","sha1sum","sha256sum",
+  "sha3sum","sha512sum","showkey","shred","shuf","slattach","sleep","smemcap","softlimit","sort","split","ssl_client",
+  "start-stop-daemon","stat","strings","stty","su","sulogin","sum","sv","svc","svlogd","svok","swapoff","swapon",
+  "switch_root","sync","sysctl","syslogd","tac","tail","tar","taskset","tc","tcpsvd","tee","telnet","telnetd","test","tftp",
+  "tftpd","time","timeout","top","touch","tr","traceroute","traceroute6","tree","true","truncate","ts","tsort","tty",
+  "ttysize","tunctl","ubiattach","ubidetach","ubimkvol","ubirename","ubirmvol","ubirsvol","ubiupdatevol","udhcpc",
+  "udhcpc6","udhcpd","udpsvd","uevent","umount","uname","unexpand","uniq","unix2dos","unlink","unlzma","unshare","unxz",
+  "unzip","uptime","users","usleep","uudecode","uuencode","vconfig","vi","vlock","volname","w","wall","watch","watchdog",
+  "wc","wget","which","who","whoami","whois","xargs","xxd","xz","xzcat","yes","zcat","zcip",
+};
 
 // relocate() {{{
 void relocate(char** argv)
@@ -180,10 +157,26 @@ void relocate(char** argv)
   fs::path path_file_dwarfs_aio = path_dir_app_bin / "dwarfs_aio";
   std::error_code ec;
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_instance / "ext.boot" , 0);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "bash", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "busybox", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "bwrap", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "ciopfs", offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_file_dwarfs_aio, offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal_daemon", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "janitor", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "lsof", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "overlayfs", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "proot", offset_end);
   fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "dwarfs", ec);
   fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "mkdwarfs", ec);
   auto end = std::chrono::high_resolution_clock::now();
+
+  // Create busybox symlinks, allow (symlinks exists) errors
+  for(auto const& busybox_applet : arr_busybox_applet)
+  {
+    fs::create_symlink(path_dir_app_bin / "busybox", path_dir_app_bin / busybox_applet, ec);
+  } // for
 
   // Filesystem starts here
   ns_env::set("FIM_OFFSET", std::to_string(offset_end).c_str(), ns_env::Replace::Y);
@@ -211,9 +204,6 @@ void boot(int argc, char** argv)
 
   // Set log file
   ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");
-
-  // Perform pre-processing step
-  OnlinePreProcessing{config};
 
   // Start portal
   ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");

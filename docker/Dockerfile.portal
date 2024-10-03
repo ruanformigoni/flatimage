@@ -24,8 +24,8 @@ WORKDIR /fim
 WORKDIR /fim/src/portal
 RUN g++ -o fim_portal portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
 RUN g++ -o fim_portal_daemon portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
-RUN upx --brute --no-lzma fim_portal
-RUN upx --brute --no-lzma fim_portal_daemon
+# RUN upx --brute --no-lzma fim_portal
+# RUN upx --brute --no-lzma fim_portal_daemon
 
 # Move to dist dir
 RUN mkdir -p /fim/dist

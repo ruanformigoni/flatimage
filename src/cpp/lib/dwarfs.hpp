@@ -57,7 +57,7 @@ class Dwarfs
       // Spawn command
       (void) m_subprocess->with_piped_outputs()
         .with_args("-c")
-        .with_args("dwarfs {} {} -f -o offset={},imagesize={}"_fmt(path_file_image, path_dir_mount, offset, size_image))
+        .with_args("dwarfs {} {} -f -o auto_unmount,offset={},imagesize={}"_fmt(path_file_image, path_dir_mount, offset, size_image))
         .with_die_on_pid(pid_to_die_for)
         .spawn();
       // Wait for mount

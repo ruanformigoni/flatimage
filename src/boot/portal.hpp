@@ -45,7 +45,10 @@ struct Portal
     m_process = std::make_unique<ns_subprocess::Subprocess>(m_path_file_daemon);
 
     // Spawn process to background
-    (void) m_process->with_piped_outputs().with_args(path_file_reference).spawn();
+    (void) m_process->with_piped_outputs()
+      .with_die_on_pid(getpid())
+      .with_args(path_file_reference)
+      .spawn();
   } // Portal
 
   ~Portal()

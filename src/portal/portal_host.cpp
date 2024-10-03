@@ -14,6 +14,7 @@
 
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/ipc.hpp"
+#include "../cpp/lib/fifo.hpp"
 #include "../cpp/lib/db.hpp"
 #include "../cpp/lib/env.hpp"
 #include "../cpp/macro.hpp"
@@ -22,12 +23,12 @@ namespace fs = std::filesystem;
 
 extern char** environ;
 
-bool G_QUIT = false;
+std::atomic_bool G_CONTINUE = true;
 
 // signal_handler() {{{
 void signal_handler(int)
 {
-  G_QUIT = true;
+  G_CONTINUE = false;
 } // signal_handler() }}}
 
 // search_path() {{{
@@ -77,49 +78,37 @@ void fork_execve(std::string msg)
   pid_t pid = fork();
 
   // Failed to fork
-  ereturn_if(pid == -1, "Failed to fork");
+  ereturn_if(pid < 0, "Failed to fork");
 
   // Is parent
   if (pid > 0)
   {
+    // Write pid to fifo
+    auto expected_bytes_pid = ns_fifo::open_and_write(db["pid"].as_string().c_str(), std::span(&pid, sizeof(pid)));
+    elog_if(not expected_bytes_pid, expected_bytes_pid.error());
+    elog_if(*expected_bytes_pid != sizeof(pid), "Could not write pid");
     // Wait for child to finish
     int status;
-    int ret_waitpid = waitpid(pid, &status, 0);
-    // Check for failures
-    ereturn_if(ret_waitpid == -1, "waitpid failed");
+    ereturn_if(waitpid(pid, &status, 0) < 0, "waitpid failed");
     // Get exit code
     int code = (not WIFEXITED(status))? 1 : WEXITSTATUS(status);
-    // Send exit code of child through a fifo
-    std::string str_exit = db["exit"];
-    int fd_exit = open(str_exit.c_str(), O_WRONLY);
-    ereturn_if(fd_exit == -1, "Failed to open exit fifo");
-    int ret_write = write(fd_exit, &code, sizeof(code));
     ns_log::debug()("Exit code: {}", code);
-    close(fd_exit);
-    ereturn_if(ret_write == -1, "Failed to write to exit FIFO");
+    // Send exit code of child through a fifo
+    auto expected_bytes_code = ns_fifo::open_and_write(std::string(db["exit"]), std::span(&code, sizeof(code)));
+    ereturn_if(not expected_bytes_code, expected_bytes_code.error());
+    ereturn_if(*expected_bytes_code != sizeof(code), "Could not write exit code");
     return;
   } // if
-
-  pid_t cpid = getpid();
 
   // Die with daemon
   eabort_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
   eabort_if(::kill(ppid, 0) < 0, "Parent died, prctl will not have effect: {}"_fmt(strerror(errno)));
-  ns_log::debug()("{} dies with {}", cpid, ppid);
-
-  // Write pid to fifo
-  std::string str_pid_fifo = db["pid"];
-  pid_t pid_child = cpid;
-  int fd_pid = open(str_pid_fifo.c_str(), O_WRONLY);
-  eabort_if(write(fd_pid, &pid_child, sizeof(pid_child)) == -1, "Could not write pid to fifo");
-  close(fd_pid);
+  ns_log::debug()("{} dies with {}", getpid(), ppid);
 
   // Open stdout/stderr FIFOs
-  std::string str_stdout_fifo = db["stdout"];
-  std::string str_stderr_fifo = db["stderr"];
-  int fd_stdout = open(str_stdout_fifo.c_str(), O_WRONLY);
-  int fd_stderr = open(str_stderr_fifo.c_str(), O_WRONLY);
-  eabort_if(fd_stdout == -1 or fd_stderr == -1, strerror(errno));
+  int fd_stdout = open(db["stdout"].as_string().c_str(), O_WRONLY);
+  int fd_stderr = open(db["stderr"].as_string().c_str(), O_WRONLY);
+  eabort_if(fd_stdout < 0 or fd_stderr < 0, strerror(errno));
 
   // Redirect stdout and stderr
   eabort_if(dup2(fd_stdout, STDOUT_FILENO) < 0, strerror(errno));
@@ -208,7 +197,7 @@ int main(int argc, char** argv)
   auto ipc = ns_ipc::Ipc::host(argv[1]);
 
   // Recover messages
-  while (not G_QUIT)
+  while (G_CONTINUE)
   {
     auto opt_msg = ipc.recv();
 

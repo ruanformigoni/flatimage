@@ -15,6 +15,7 @@
 #include "../cpp/lib/log.hpp"
 #include "../cpp/lib/db.hpp"
 #include "../cpp/lib/ipc.hpp"
+#include "../cpp/lib/fifo.hpp"
 
 #define BUFFER_SIZE 16384
 
@@ -40,7 +41,7 @@ std::expected<fs::path, std::string> create_fifo(fs::path const& path_dir_fifo, 
   unlink(path_file_fifo.c_str());
 
   // Create fifo
-  ereturn_if(mkfifo(path_file_fifo.c_str(), 0666), strerror(errno), std::unexpected(strerror(errno)));
+  ereturn_if(mkfifo(path_file_fifo.c_str(), 0666) < 0, strerror(errno), std::unexpected(strerror(errno)));
 
   return path_file_fifo;
 } // create_fifo() }}}
@@ -73,17 +74,32 @@ bool fifo_read_nonblock(std::ostream& os, int fd)
 } // fifo_read_nonblock() }}}
 
 // fifo_to_ostream() {{{
-auto fifo_to_ostream(pid_t pid_child, std::ostream& os, fs::path const& path_file_fifo)
+void fifo_to_ostream(pid_t pid_child, std::ostream& os, fs::path const& path_file_fifo)
 {
   using namespace std::chrono_literals;
+  // Fork
+  pid_t ppid = getpid();
+  pid_t pid = fork();
+  ereturn_if(pid < 0, "Could not fork '{}'"_fmt(strerror(errno)));
+  // Parent ends here
+  qreturn_if( pid > 0 );
+  // Die with parent
+  eabort_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
+  eabort_if(::kill(ppid, 0) < 0, "Parent died, prctl will not have effect: {}"_fmt(strerror(errno)));
+  ns_log::debug()("{} dies with {}", getpid(), ppid);
+  // Open fifo to read
   int fd = open(path_file_fifo.string().c_str(), O_RDONLY | O_NONBLOCK);
   ereturn_if(fd == -1, strerror(errno));
+  // Send fifo to ostream
   while( fifo_read_nonblock(os, fd) )
   {
     dbreak_if(kill(pid_child, 0) < 0, "Pid has exited");
     std::this_thread::sleep_for(100ms);
   } // for
+  // Close fifo
   close(fd);
+  // Exit normally
+  exit(0);
 } // fifo_to_ostream() }}}
 
 // main() {{{
@@ -148,32 +164,23 @@ int main(int argc, char** argv)
   db("environment") = path_file_env;
   ipc.send(db.dump());
 
-  // Retrieve child pid
-  pid_t pid_child;
-  int fd_pid = open(path_file_fifo_pid->c_str(), O_RDONLY);
-  ssize_t count_bytes = read(fd_pid, &pid_child, sizeof(pid_child));
-  ereturn_if(count_bytes == 0, "Could not read pid for child process", EXIT_FAILURE);
-  ereturn_if(count_bytes < 0, "Could not read pid for child process: '{}'"_fmt(strerror(errno)), EXIT_FAILURE);
-  ns_log::debug()("Child pid: {}", pid_child);
-
-  // Open exit code fifo
-  int fd_exit = open(path_file_fifo_exit->c_str(), O_RDONLY | O_NONBLOCK);
-
-  // Connect to stdout and stderr with fifos
-  auto thread_stdout = std::jthread([=]{ fifo_to_ostream(pid_child, std::cout, *path_file_fifo_stdout); });
-  auto thread_stderr = std::jthread([=]{ fifo_to_ostream(pid_child, std::cout, *path_file_fifo_stderr); });
-
   // Wait for daemon to write pid
   std::this_thread::sleep_for(500ms);
 
-  // Retrieve exit code, process finished here
-  ereturn_if(fd_exit < 0, strerror(errno), EXIT_FAILURE);
-  int exit_code;
-  ssize_t bytes_read = read(fd_exit, &exit_code, sizeof(exit_code));
-  ereturn_if(bytes_read == 0, "Could not read exit code: '{}'"_fmt(strerror(errno)), EXIT_FAILURE);
-  ereturn_if(bytes_read < 0, "failed to read fifo: '{}'"_fmt(strerror(errno)), EXIT_FAILURE);
+  // Retrieve child pid
+  pid_t pid_child;
+  auto expected_pid_child = ns_fifo::open_and_read(path_file_fifo_pid->c_str(), std::span(&pid_child, sizeof(pid_child)));
+  ereturn_if(not expected_pid_child, expected_pid_child.error(), EXIT_FAILURE);
+  ns_log::debug()("Child pid: {}", pid_child);
 
-  // Close exit code fifo
+  // Connect to stdout and stderr with fifos
+  fifo_to_ostream(pid_child, std::cout, *path_file_fifo_stdout);
+  fifo_to_ostream(pid_child, std::cout, *path_file_fifo_stderr);
+
+  // Open exit code fifo
+  int exit_code{};
+  auto expected_exit_code = ns_fifo::open_and_read(path_file_fifo_exit->c_str(), std::span(&exit_code, sizeof(exit_code)));
+  ereturn_if(not expected_exit_code, expected_exit_code.error(), EXIT_FAILURE);
   return exit_code;
 } // main() }}}
 

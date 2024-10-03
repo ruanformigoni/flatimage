@@ -135,8 +135,7 @@ function _create_subsystem_empty()
   cp ./bin/janitor    /tmp/"$dist"/fim/static/janitor
 
   # Set permissions
-  chown -R "$(id -u)":users "/tmp/$dist"
-  chmod 777 -R "/tmp/$dist"
+  chown -R 1000:1000 "/tmp/$dist"
 
   # MIME
   mkdir -p "/tmp/$dist/fim/desktop"
@@ -244,8 +243,7 @@ function _create_subsystem_alpine()
   cp ./bin/janitor    /tmp/"$dist"/fim/static/janitor
 
   # Set permissions
-  chown -R "$(id -u)":users "/tmp/$dist"
-  chmod 777 -R "/tmp/$dist"
+  chown -R 1000:1000 "/tmp/$dist"
 
   # MIME
   mkdir -p "/tmp/$dist/fim/desktop"
@@ -254,7 +252,6 @@ function _create_subsystem_alpine()
 
   # Create layer 0 compressed filesystem
   chown -R 1000:1000 /tmp/"$dist"
-  chmod 777 -R /tmp/"$dist"
   # mksquashfs /tmp/"$dist" "$dist".layer -comp zstd -Xcompression-level 15
   ./bin/mkdwarfs -i /tmp/"$dist" -o "$dist".layer
 

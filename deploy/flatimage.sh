@@ -30,7 +30,7 @@ function _fetch_static()
   wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/720c914/lsof-x86_64"
 
   # Fetch bwrap
-  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/e2e9ee7/bwrap-x86_64"
+  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/0526b78/bwrap-x86_64"
 
   # Fetch proot
   wget -O ./bin/proot "https://github.com/ruanformigoni/proot-static-musl/releases/download/bf747c8/proot-x86_64"
@@ -56,8 +56,11 @@ function _fetch_static()
   # Setup xdg scripts
   cp "$FIM_DIR"/src/xdg/xdg-* ./bin
 
+  # Copy bwrap scripts
+  cp "$FIM_DIR"/src/scripts/bwrap* ./bin
+
   # Make binaries executable
-  chmod +x ./bin/*
+  chmod 755 ./bin/*
 
   # Create symlinks
   (

@@ -56,6 +56,7 @@ class Bwrap
     bool m_is_root;
 
     void set_xdg_runtime_dir();
+    void test_bwrap();
 
   public:
     template<ns_concept::StringRepresentable... Args>
@@ -435,30 +436,31 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
   ns_functional::call_if(permissions.usb         , [&]{ bind_usb()         ; });
   ns_functional::call_if(permissions.network     , [&]{ bind_network()     ; });
 
-  // Find bwrap in PATH
-  fs::path path_file_bwrap;
-  if ( const char* entry = ns_env::get("BWRAP_NATIVE") )
-  {
-    path_file_bwrap = entry;
-    ns_log::debug()("Using bwrap native");
-  } // if
-  else
-  {
-    auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
-    ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
-    path_file_bwrap = *opt_path_file_bwrap;
-    ns_log::debug()("Using bwrap builtin");
-  } // else
+  auto opt_path_file_bash = ns_subprocess::search_path("bash");
+  ethrow_if(not opt_path_file_bash.has_value(), "Could not find bash");
+
+  // Copy bwrap scripts
+  fs::path path_dir_mount = ns_env::get_or_throw("FIM_DIR_MOUNT");
+  fs::path path_dir_app_bin = ns_env::get_or_throw("FIM_DIR_APP_BIN");
+  fs::copy_file(path_dir_mount / "overlayfs/fim/static/bwrap.sh"
+    , path_dir_app_bin / "bwrap.sh"
+    , fs::copy_options::skip_existing
+  );
+  fs::copy_file(path_dir_mount / "overlayfs/fim/static/bwrap-profile.sh"
+    , path_dir_app_bin / "bwrap-profile.sh"
+    , fs::copy_options::skip_existing
+  );
 
   // Run Bwrap
-  auto ret = ns_subprocess::Subprocess(path_file_bwrap)
+  auto ret = ns_subprocess::Subprocess(*opt_path_file_bash)
+    .with_args(path_dir_app_bin / "bwrap.sh")
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)
     .with_env(m_program_env)
     .spawn()
     .wait();
-  if ( not ret ) { ns_log::error()("bwrap was signalled"); }
+  if ( not ret ) { ns_log::error()("bwrap exited abnormally"); }
   if ( *ret != 0 ) { ns_log::error()("bwrap exited with non-zero exit code '{}'", *ret); }
 } // run() }}}
 

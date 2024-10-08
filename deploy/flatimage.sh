@@ -56,9 +56,6 @@ function _fetch_static()
   # Setup xdg scripts
   cp "$FIM_DIR"/src/xdg/xdg-* ./bin
 
-  # Copy bwrap scripts
-  cp "$FIM_DIR"/src/scripts/bwrap* ./bin
-
   # Make binaries executable
   chmod 755 ./bin/*
 
@@ -84,7 +81,7 @@ function _create_elf()
   # Boot is the program on top of the image
   cp bin/boot "$out"
   # Append binaries
-  cat bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,janitor,lsof,overlayfs,proot} >> "$out"
+  cat bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,fim_bwrap_apparmor,janitor,lsof,overlayfs,proot} >> "$out"
   # Create reserved space
   dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter
@@ -131,6 +128,13 @@ function _create_subsystem_empty()
     cd "$FIM_DIR"
     docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
     docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+  )
+
+  # Compile and include bwrap-apparmor
+  (
+    cd "$FIM_DIR"
+    docker build . -t flatimage-bwrap-apparmor -f docker/Dockerfile.bwrap_apparmor
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-bwrap-apparmor" cp /fim/dist/fim_bwrap_apparmor /host/bin
   )
 
   cp ./bin/fim_portal ./bin/fim_portal_daemon           /tmp/"$dist"/fim/static
@@ -239,6 +243,13 @@ function _create_subsystem_alpine()
     cd "$FIM_DIR"
     docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
     docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+  )
+
+  # Compile and include bwrap-apparmor
+  (
+    cd "$FIM_DIR"
+    docker build . -t flatimage-bwrap-apparmor -f docker/Dockerfile.bwrap_apparmor
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-bwrap-apparmor" cp /fim/dist/fim_bwrap_apparmor /host/bin
   )
 
   cp ./bin/fim_portal ./bin/fim_portal_daemon           /tmp/"$dist"/fim/static
@@ -454,6 +465,13 @@ function _create_subsystem_arch()
     cd "$FIM_DIR"
     docker build . -t "flatimage-portal" -f docker/Dockerfile.portal
     docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-portal" cp /fim/dist/fim_portal /fim/dist/fim_portal_daemon /host/bin
+  )
+
+  # Compile and include bwrap-apparmor
+  (
+    cd "$FIM_DIR"
+    docker build . -t flatimage-bwrap-apparmor -f docker/Dockerfile.bwrap_apparmor
+    docker run --rm -v "$FIM_DIR_BUILD":/host "flatimage-bwrap-apparmor" cp /fim/dist/fim_bwrap_apparmor /host/bin
   )
 
   # Embed static binaries

@@ -164,6 +164,7 @@ void relocate(char** argv)
   std::tie(offset_beg, offset_end) = f_write_bin(path_file_dwarfs_aio, offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal", offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal_daemon", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_bwrap_apparmor", offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "janitor", offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "lsof", offset_end);
   std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "overlayfs", offset_end);

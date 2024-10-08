@@ -5,6 +5,10 @@
 
 #pragma once
 
+// Ec wrapper
+#define lec(fun, ...) \
+  ns_log::ec([]<typename... Args>(Args&&... args){ return fun(std::forward<Args>(args)...); }, __VA_ARGS__)
+
 // Throw
 #define qthrow_if(cond, msg) \
   if (cond) { throw std::runtime_error(msg); }

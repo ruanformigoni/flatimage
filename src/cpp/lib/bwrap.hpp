@@ -56,7 +56,7 @@ class Bwrap
     bool m_is_root;
 
     void set_xdg_runtime_dir();
-    void test_bwrap();
+    std::expected<fs::path, std::string> test_and_setup(fs::path const& path_file_bwrap);
 
   public:
     template<ns_concept::StringRepresentable... Args>
@@ -158,6 +158,40 @@ inline void Bwrap::set_xdg_runtime_dir()
   m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(m_path_dir_xdg_runtime));
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_path_dir_xdg_runtime);
 } // set_xdg_runtime_dir() }}}
+
+// test_and_setup() {{{
+inline std::expected<fs::path, std::string> Bwrap::test_and_setup(fs::path const& path_file_bwrap_src)
+{
+  // Test current bwrap binary
+  auto ret = ns_subprocess::Subprocess(path_file_bwrap_src)
+    .with_piped_outputs()
+    .with_args("--bind", "/", "/", "bash", "-c", "echo")
+    .spawn()
+    .wait();
+  qreturn_if (ret and *ret == 0, path_file_bwrap_src);
+  // Try to use bwrap installed by flatimage
+  fs::path path_file_bwrap_opt = "/opt/bwrap/bwrap";
+  ret = ns_subprocess::Subprocess(path_file_bwrap_opt)
+    .with_piped_outputs()
+    .with_args("--bind", "/", "/", "bash", "-c", "echo")
+    .spawn()
+    .wait();
+  qreturn_if (ret and *ret == 0, path_file_bwrap_opt);
+  // Error might be EACCES, try to integrate with apparmor
+  auto opt_path_file_pkexec = ns_subprocess::search_path("pkexec");
+  qreturn_if(not opt_path_file_pkexec.has_value(), std::unexpected("Could not find pkexec binary"));
+  auto opt_path_file_bwrap_apparmor = ns_subprocess::search_path("fim_bwrap_apparmor");
+  qreturn_if(not opt_path_file_bwrap_apparmor.has_value(), std::unexpected("Could not find bwrap_apparmor binary"));
+  auto expected_path_dir_mount = ns_exception::to_expected([]{ return ns_env::get_or_throw("FIM_DIR_MOUNT"); });
+  qreturn_if(not expected_path_dir_mount, expected_path_dir_mount.error());
+  ret = ns_subprocess::Subprocess(*opt_path_file_pkexec)
+    .with_args(*opt_path_file_bwrap_apparmor, *expected_path_dir_mount, path_file_bwrap_src)
+    .spawn()
+    .wait();
+  qreturn_if(not ret, std::unexpected("Could not find create profile (abnormal exit)"));
+  qreturn_if(ret and *ret != 0, std::unexpected("Could not find create profile with exit code '{}'"_fmt(*ret)));
+  return path_file_bwrap_opt;
+} // test_and_setup() }}}
 
 // symlink_nvidia() {{{
 inline Bwrap& Bwrap::symlink_nvidia(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host)
@@ -439,21 +473,28 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
   auto opt_path_file_bash = ns_subprocess::search_path("bash");
   ethrow_if(not opt_path_file_bash.has_value(), "Could not find bash");
 
-  // Copy bwrap scripts
-  fs::path path_dir_mount = ns_env::get_or_throw("FIM_DIR_MOUNT");
-  fs::path path_dir_app_bin = ns_env::get_or_throw("FIM_DIR_APP_BIN");
-  fs::copy_file(path_dir_mount / "overlayfs/fim/static/bwrap.sh"
-    , path_dir_app_bin / "bwrap.sh"
-    , fs::copy_options::skip_existing
-  );
-  fs::copy_file(path_dir_mount / "overlayfs/fim/static/bwrap-profile.sh"
-    , path_dir_app_bin / "bwrap-profile.sh"
-    , fs::copy_options::skip_existing
-  );
+  // Use builtin bwrap or native if exists
+  fs::path path_file_bwrap;
+  if ( const char* entry = ns_env::get("BWRAP_NATIVE") )
+  {
+    path_file_bwrap = entry;
+    ns_log::debug()("Using bwrap native");
+  } // if
+  else
+  {
+    auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
+    ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
+    path_file_bwrap = *opt_path_file_bwrap;
+    ns_log::debug()("Using bwrap builtin");
+  } // else
+
+  // Test bwrap and setup apparmor if it is required
+  auto expected_path_file_bwrap = test_and_setup(path_file_bwrap);
+  ethrow_if(not expected_path_file_bwrap, expected_path_file_bwrap.error());
 
   // Run Bwrap
   auto ret = ns_subprocess::Subprocess(*opt_path_file_bash)
-    .with_args(path_dir_app_bin / "bwrap.sh")
+    .with_args("-c", "\"{}\" \"$@\""_fmt(*expected_path_file_bwrap), "--")
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)

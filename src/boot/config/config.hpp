@@ -145,8 +145,7 @@ inline FlatimageConfig config()
   // Compression level configuration (goes from 0 to 10, default is 7)
   config.layer_compression_level  = ns_exception::to_expected([]{ return std::stoi(ns_env::get_or_else("FIM_COMPRESSION_LEVEL", "7")); })
     .value_or(7);
-  config.layer_compression_level = (config.layer_compression_level > 0)? config.layer_compression_level : 0;
-  config.layer_compression_level = (config.layer_compression_level > 10)? 10 : config.layer_compression_level;
+  config.layer_compression_level = std::clamp(config.layer_compression_level, uint32_t{0}, uint32_t{10});
 
   // Paths to the configuration files
   config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";

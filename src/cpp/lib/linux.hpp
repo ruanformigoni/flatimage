@@ -51,6 +51,21 @@ namespace fs = std::filesystem;
 }
 // mkstemp() }}}
 
+// module_check() {{{
+inline std::expected<bool, std::string> module_check(std::string_view str_name)
+{
+  std::ifstream file_modules("/proc/modules");
+  qreturn_if(not file_modules.is_open(), std::unexpected("Could not open modules file"));
+
+  std::string line;
+  while ( std::getline(file_modules, line) )
+  {
+    qreturn_if(line.contains(str_name), true);
+  } // while
+
+  return false;
+} // function: module_check() }}}
+
 } // namespace ns_linux
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

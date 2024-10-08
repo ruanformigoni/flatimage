@@ -239,13 +239,14 @@ int main(int argc, char** argv)
   } // if
   ns_env::set("FIM_VERSION", VERSION, ns_env::Replace::Y);
 
+  // Check if linux has the fuse module loaded
+  auto expected_module_check = ns_linux::module_check("fuse");
+  elog_if(not expected_module_check, expected_module_check.error());
+  elog_if(expected_module_check and not *expected_module_check, "'fuse' module is not loaded");
+
   // Get path to self
   auto expected_path_file_self = ns_filesystem::ns_path::file_self();
-  if(not expected_path_file_self)
-  {
-    println(expected_path_file_self.error());
-    return EXIT_FAILURE;
-  } // if
+  ereturn_if(not expected_path_file_self, expected_path_file_self.error(), EXIT_FAILURE);
 
   // If it is outside /tmp, move the binary
   fs::path path_file_self = *expected_path_file_self;

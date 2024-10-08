@@ -170,7 +170,7 @@ inline std::expected<fs::path, std::string> Bwrap::test_and_setup(fs::path const
     .wait();
   qreturn_if (ret and *ret == 0, path_file_bwrap_src);
   // Try to use bwrap installed by flatimage
-  fs::path path_file_bwrap_opt = "/opt/bwrap/bwrap";
+  fs::path path_file_bwrap_opt = "/opt/flatimage/bwrap";
   ret = ns_subprocess::Subprocess(path_file_bwrap_opt)
     .with_piped_outputs()
     .with_args("--bind", "/", "/", "bash", "-c", "echo")

@@ -14,9 +14,10 @@
 constexpr std::string_view const profile_bwrap =
 R"(abi <abi/4.0>,
 include <tunables/global>
-profile bwrap /opt/bwrap/bwrap flags=(unconfined) {
+profile bwrap /opt/flatimage/bwrap flags=(unconfined) {
   userns,
-})";
+}
+)";
 
 namespace fs = std::filesystem;
 
@@ -32,9 +33,9 @@ int main(int argc, char const* argv[])
   ereturn_if(not opt_path_file_apparmor_parser, "Could not find apparmor_parser", EXIT_FAILURE);
   // Define paths
   fs::path path_file_bwrap_src{argv[2]};
-  fs::path path_dir_bwrap{"/opt/bwrap"};
+  fs::path path_dir_bwrap{"/opt/flatimage"};
   fs::path path_file_bwrap_dst{path_dir_bwrap / "bwrap"};
-  fs::path path_file_profile{"/etc/apparmor.d/bwrap"};
+  fs::path path_file_profile{"/etc/apparmor.d/flatimage"};
   // Try to create /opt/bwrap directory
   qreturn_if(not lec(fs::exists, path_dir_bwrap) and not lec(fs::create_directories, path_dir_bwrap), EXIT_FAILURE);
   // Try copy bwrap to /opt/bwrap

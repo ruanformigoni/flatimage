@@ -63,6 +63,7 @@ class Subprocess
     std::vector<std::string> m_args;
     std::vector<std::string> m_env;
     std::optional<pid_t> m_opt_pid;
+    std::vector<pid_t> m_vec_pids_pipe;
     std::optional<std::function<void(std::string)>> m_fstdout;
     std::optional<std::function<void(std::string)>> m_fstderr;
     bool m_with_piped_outputs;
@@ -305,7 +306,11 @@ inline Subprocess& Subprocess::with_pipes_parent(int pipestdout[2], int pipestde
     pid_t pid = fork();
     ereturn_if(pid < 0, "Could not fork '{}'"_fmt(strerror(errno)));
     // Parent ends here
-    qreturn_if( pid > 0 );
+    if (pid > 0 )
+    {
+      m_vec_pids_pipe.push_back(pid);
+      return;
+    } // if
     // Die with parent
     eabort_if(prctl(PR_SET_PDEATHSIG, SIGKILL) < 0, strerror(errno));
     eabort_if(::kill(ppid, 0) < 0, "Parent died, prctl will not have effect: {}"_fmt(strerror(errno)));
@@ -386,14 +391,20 @@ Subprocess& Subprocess::with_stderr_handle(F&& f)
 // wait() {{{
 inline std::optional<int> Subprocess::wait()
 {
-  if ( m_opt_pid and *m_opt_pid > 0)
-  {
-    int status;
-    waitpid(*m_opt_pid, &status, 0);
-    return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
-  } // if
+  // Check if pid is valid
+  ereturn_if( not m_opt_pid or *m_opt_pid <= 0, "Invalid pid to wait for", std::nullopt);
 
-  return std::nullopt;
+  // Wait for current process
+  int status;
+  waitpid(*m_opt_pid, &status, 0);
+
+  // Send SIGTERM for reader forks
+  std::ranges::for_each(m_vec_pids_pipe, [](pid_t pid){ ::kill(pid, SIGTERM); });
+
+  // Wait for forks
+  std::ranges::for_each(m_vec_pids_pipe, [](pid_t pid){ waitpid(pid, nullptr, 0); });
+
+  return (WIFEXITED(status))? std::make_optional(WEXITSTATUS(status)) : std::nullopt;
 } // wait() }}}
 
 // spawn() {{{

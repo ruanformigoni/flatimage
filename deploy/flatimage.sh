@@ -95,10 +95,10 @@ function _create_elf()
 
 }
 
-# Creates an empty subsystem
-function _create_subsystem_empty()
+# Creates an blueprint subsystem
+function _create_subsystem_blueprint()
 {
-  local dist="empty"
+  local dist="blueprint"
 
   mkdir -p dist
 
@@ -162,13 +162,8 @@ function _create_subsystem_empty()
   _create_elf "$dist.img" "$dist.flatimage"
 
   # Create sha256sum
-  sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
-
-  tar -cf "$dist.tar" "$dist.flatimage"
-  xz -3zv "$dist.tar"
-  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
-
-  mv "$dist.tar.xz" dist/
+  sha256sum "$dist.flatimage" > ./dist/"$dist.flatimage.sha256sum"
+  mv "$dist.flatimage" ./dist
 }
 
 # Creates an alpine subsystem
@@ -274,12 +269,7 @@ function _create_subsystem_alpine()
 
   # Create sha256sum
   sha256sum "$dist.flatimage" > dist/"$dist.flatimage.sha256sum"
-
-  tar -cf "$dist.tar" "$dist.flatimage"
-  xz -3zv "$dist.tar"
-  sha256sum "$dist.tar.xz" > dist/"$dist.tar.xz.sha256sum"
-
-  mv "$dist.tar.xz" dist/
+  mv "$dist.flatimage" dist/
 }
 
 # Creates an arch subsystem
@@ -504,12 +494,7 @@ function _create_subsystem_arch()
 
   # Create sha256sum
   sha256sum arch.flatimage > dist/"arch.flatimage.sha256sum"
-
-  tar -cf arch.tar arch.flatimage
-  xz -3zv arch.tar
-  sha256sum arch.tar.xz > dist/"arch.tar.xz.sha256sum"
-
-  mv "arch.tar.xz" dist/
+  mv ./"arch.flatimage" dist/
 }
 
 function main()
@@ -519,10 +504,9 @@ function main()
   cd "$FIM_DIR_BUILD"
 
   case "$1" in
-    "debian")   _create_subsystem_debootstrap "${@:2}" ;;
     "arch") _create_subsystem_arch ;;
     "alpine") _create_subsystem_alpine ;;
-    "empty") _create_subsystem_empty ;;
+    "blueprint") _create_subsystem_blueprint ;;
     *) _die "Invalid option $2" ;;
   esac
 }

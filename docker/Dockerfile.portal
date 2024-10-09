@@ -26,8 +26,8 @@ RUN g++ -o fim_portal portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=
 RUN g++ -o fim_portal_daemon portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
 RUN strip -s fim_portal 
 RUN strip -s fim_portal_daemon 
-# RUN upx --brute --no-lzma fim_portal
-# RUN upx --brute --no-lzma fim_portal_daemon
+RUN upx -6 --no-lzma fim_portal
+RUN upx -6 --no-lzma fim_portal_daemon
 
 # Move to dist dir
 RUN mkdir -p /fim/dist

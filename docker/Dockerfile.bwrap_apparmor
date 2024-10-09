@@ -24,6 +24,7 @@ WORKDIR /fim
 WORKDIR /fim/src/bwrap
 RUN g++ -o fim_bwrap_apparmor bwrap_apparmor.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
 RUN strip -s fim_bwrap_apparmor
+RUN upx -6 --no-lzma fim_bwrap_apparmor
 
 # Move to dist dir
 RUN mkdir -p /fim/dist

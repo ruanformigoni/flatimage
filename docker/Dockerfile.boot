@@ -10,7 +10,7 @@ RUN apk update && apk upgrade
 RUN apk add --no-cache build-base git libbsd-dev py3-pip cmake clang clang-dev \
   make e2fsprogs-dev e2fsprogs-libs e2fsprogs-static libcom_err musl musl-dev \
   bash pcre-tools boost-dev libjpeg-turbo-dev libjpeg-turbo-static libpng-dev \
-  libpng-static zlib-static
+  libpng-static zlib-static upx
 
 # Install conan
 RUN python3 -m venv /conan
@@ -27,6 +27,9 @@ RUN "$CONAN" profile detect
 RUN "$CONAN" install . --build=missing -g CMakeDeps -g CMakeToolchain
 RUN cmake --preset conan-release -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build --preset conan-release
+RUN strip -s ./build/Release/boot
 
 # Compile janitor
 RUN g++ --std=c++23 -O3 -static -o janitor janitor.cpp
+RUN strip -s janitor
+RUN upx -6 --no-lzma janitor

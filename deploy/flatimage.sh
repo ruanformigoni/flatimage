@@ -53,11 +53,14 @@ function _fetch_static()
   # Fetch bash
   wget -O ./bin/bash "https://github.com/ruanformigoni/bash-static-musl/releases/download/b604d6c/bash-x86_64"
 
-  # Setup xdg scripts
-  cp "$FIM_DIR"/src/xdg/xdg-* ./bin
+  # # Setup xdg scripts
+  # cp "$FIM_DIR"/src/xdg/xdg-* ./bin
 
   # Make binaries executable
   chmod 755 ./bin/*
+
+  # Compress binaries
+  upx -6 --no-lzma bin/* || true
 
   # Create symlinks
   (
@@ -81,13 +84,22 @@ function _create_elf()
   # Boot is the program on top of the image
   cp bin/boot "$out"
   # Append binaries
-  cat bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,fim_bwrap_apparmor,janitor,lsof,overlayfs,proot} >> "$out"
+  for binary in bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,fim_bwrap_apparmor,janitor,lsof,overlayfs,proot}; do
+    hex_size_binary="$( du -b "$binary" | awk '{print $1}' | xargs -I{} printf "%016x\n" {} )"
+    # Write binary size
+    for byte_index in $(seq 0 7 | sort -r); do
+      local byte="${hex_size_binary:$(( byte_index * 2)):2}"
+      echo -ne "\\x$byte" >> "$out"
+    done
+    # Append binary
+    cat "$binary" >> "$out"
+  done
   # Create reserved space
   dd if=/dev/zero of="$out" bs=1 count=2097152 oflag=append conv=notrunc
   # Write size of image rightafter
   size_img="$( du -b "$img" | awk '{print $1}' | xargs -I{} printf "%016x\n" {} )"
-  for i in $(seq 0 $(( "${#size_img}" / 2 - 1 )) | sort -r); do
-    local byte="${size_img:$(( i * 2)):2}"
+  for byte_index in $(seq 0 7 | sort -r); do
+    local byte="${size_img:$(( byte_index * 2)):2}"
     echo -ne "\\x$byte" >> "$out"
   done
   # Write image

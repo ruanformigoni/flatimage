@@ -135,8 +135,8 @@ void relocate(char** argv)
   uint64_t offset_beg = 0;
   uint64_t offset_end = ns_elf::skip_elf_header(path_absolute.c_str());
 
-  // Write by binary offset
-  auto f_write_bin = [&](fs::path path_file, uint64_t offset_end)
+  // Write by binary header offset
+  auto f_write_from_header = [&](fs::path path_file, uint64_t offset_end)
   {
     // Update offsets
     offset_beg = offset_end;
@@ -152,23 +152,51 @@ void relocate(char** argv)
     return std::make_pair(offset_beg, offset_end);
   };
 
+  // Write by binary byte offset
+  auto f_write_from_offset = [&](std::ifstream& file_binary, fs::path path_file, uint64_t offset_end)
+  {
+    uint64_t offset_beg = offset_end;
+    // Set file position
+    file_binary.seekg(offset_beg);
+    // Read size bytes
+    uint64_t size;
+    ethrow_if(not file_binary.read(reinterpret_cast<char*>(&size), sizeof(size)), "Could not read binary size");
+    // Read binary
+    std::vector<char> buffer(size);
+    ethrow_if(not file_binary.read(buffer.data(), size), "Could not read binary");
+    // Open output file and write 
+    std::ofstream of{path_file, std::ios::out | std::ios::binary};
+    ethrow_if(not of.is_open(), "Could not open output file '{}'"_fmt(path_file));
+    // Write binary
+    of.write(buffer.data(), size);
+    ethrow_if(not of, "Could not write binary file '{}'"_fmt(path_file));
+    of.close();
+    // Set permissions
+    fs::permissions(path_file.c_str(), fs::perms::owner_all | fs::perms::group_all);
+    // Return new values for offsets
+    return std::make_pair(offset_beg, file_binary.tellg());
+  };
+
   // Write binaries
   auto start = std::chrono::high_resolution_clock::now();
   fs::path path_file_dwarfs_aio = path_dir_app_bin / "dwarfs_aio";
+  std::ifstream file_binary{path_absolute, std::ios::in | std::ios::binary};
+  ethrow_if(not file_binary.is_open(), "Could not open flatimage binary file");
+  std::tie(offset_beg, offset_end) = f_write_from_header(path_dir_instance / "ext.boot" , 0);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bash", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "busybox", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bwrap", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "ciopfs", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_file_dwarfs_aio, offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "fim_portal", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "fim_portal_daemon", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "fim_bwrap_apparmor", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "janitor", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "lsof", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "overlayfs", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "proot", offset_end);
+  file_binary.close();
   std::error_code ec;
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_instance / "ext.boot" , 0);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "bash", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "busybox", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "bwrap", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "ciopfs", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_file_dwarfs_aio, offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_portal_daemon", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "fim_bwrap_apparmor", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "janitor", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "lsof", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "overlayfs", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_bin(path_dir_app_bin / "proot", offset_end);
   fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "dwarfs", ec);
   fs::create_symlink(path_file_dwarfs_aio, path_dir_app_bin / "mkdwarfs", ec);
   auto end = std::chrono::high_resolution_clock::now();
@@ -198,28 +226,26 @@ void relocate(char** argv)
 } // relocate() }}}
 
 // boot() {{{
-void boot(int argc, char** argv)
+std::unique_ptr<ns_config::FlatimageConfig> boot(int argc, char** argv)
 {
+
   // Setup environment variables
-  ns_config::FlatimageConfig config = ns_config::config();
+  auto config = std::make_unique<ns_config::FlatimageConfig>(ns_config::config());
+
 
   // Set log file
-  ns_log::set_sink_file(config.path_dir_mount.string() + ".boot.log");
+  ns_log::set_sink_file(config->path_dir_mount.string() + ".boot.log");
 
   // Start portal
-  ns_portal::Portal portal = ns_portal::Portal(config.path_dir_instance / "ext.boot");
+  ns_portal::Portal portal = ns_portal::Portal(config->path_dir_instance / "ext.boot");
 
   // Refresh desktop integration
-  ns_log::exception([&]{ ns_desktop::integrate(config); });
+  ns_log::exception([&]{ ns_desktop::integrate(*config); });
 
   // Parse flatimage command if exists
-  ns_parser::parse_cmds(config, argc, argv);
+  ns_parser::parse_cmds(*config, argc, argv);
 
-  // Wait until flatimage is not busy
-  if (auto error = ns_subprocess::wait_busy_file(config.path_file_binary); error)
-  {
-    ns_log::error()(*error);
-  } // if
+  return config;
 } // boot() }}}
 
 // main() {{{
@@ -252,17 +278,26 @@ int main(int argc, char** argv)
   fs::path path_file_self = *expected_path_file_self;
   if (std::distance(path_file_self.begin(), path_file_self.end()) < 2 or *std::next(path_file_self.begin()) != "tmp")
   {
+    ns_log::debug()("Relocating binary");
     relocate(argv);
     // This function should not reach the return statement due to evecve
     return EXIT_FAILURE;
   } // if
 
   // Boot the main program
-  if ( auto expected = ns_exception::to_expected([&]{ boot(argc, argv); }); not expected )
+  if ( auto expected_config = ns_exception::to_expected([&]{ return boot(argc, argv); }); expected_config )
   {
-    println("Program exited with error: {}", expected.error());
-    return EXIT_FAILURE;
+    // Wait until flatimage is not busy
+    if (auto error = ns_subprocess::wait_busy_file((*expected_config)->path_file_binary); error)
+    {
+      ns_log::error()(*error);
+    } // if
   } // if
+  else
+  {
+    println("Program exited with error: {}", expected_config.error());
+    return EXIT_FAILURE;
+  } // else
 
   return EXIT_SUCCESS;
 } // main() }}}

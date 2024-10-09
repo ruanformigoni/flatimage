@@ -6,7 +6,7 @@
 
 # Documentation
 
-<a href="https://flatimage.github.io/docs/desktop/" target="_blank">
+<a href="https://flatimage.github.io/docs" target="_blank">
 <img src="./doc/doc.svg"/>
 </a>
 

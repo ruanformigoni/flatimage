@@ -85,6 +85,25 @@ class Dwarfs
     }
 }; // class Dwarfs }}}
 
+// is_dwarfs() {{{
+inline bool is_dwarfs(fs::path const& path_file_dwarfs, uint64_t offset = 0)
+{
+  // Open file
+  std::ifstream file_dwarfs(path_file_dwarfs, std::ios::binary | std::ios::in);
+  ereturn_if(not file_dwarfs.is_open(), "Could not open file '{}'"_fmt(path_file_dwarfs), false);
+  // Adjust offset
+  file_dwarfs.seekg(offset);
+  ereturn_if(not file_dwarfs, "Failed to seek offset '{}' in file '{}'"_fmt(offset, path_file_dwarfs), false);
+  // Read initial 'DWARFS' identifier
+  std::array<char,6> header;
+  ereturn_if(not file_dwarfs.read(header.data(), header.size()), "Could not read bytes from file '{}'"_fmt(path_file_dwarfs), false);
+  // Check for a successful read
+  ereturn_if(file_dwarfs.gcount() != header.size(), "Short read for file '{}'"_fmt(path_file_dwarfs), false);
+  // Check for match
+  return std::ranges::equal(header, std::string_view("DWARFS"));
+} // is_dwarfs() }}}
+
+
 } // namespace ns_dwarfs
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

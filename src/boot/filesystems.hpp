@@ -151,6 +151,9 @@ inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::pa
     ns_log::debug()("Filesystem size is '{}'", size_fs);
     offset += 8;
 
+    // Check if filesystem is of type 'DWARFS'
+    ebreak_if(not ns_dwarfs::is_dwarfs(path_file_binary, offset), "Invalid dwarfs filesystem appended on the image");
+
     // Create mountpoint
     fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
     std::error_code ec;

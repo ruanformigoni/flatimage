@@ -1,0 +1,44 @@
+# http://www.graphviz.org/content/cluster
+
+digraph G {
+  bgcolor="#7F9BCD"
+  node [fontname = "Handlee", shape=box, fontcolor=white, color="#4A192F", bgcolor=white, style=filled]
+  graph [fontname = "Handlee", fontcolor=white]
+  edge [fontname = "Handlee", fontcolor=white]
+  
+  
+  subgraph cluster_0
+  {
+    compressed_file_1 [label= <compressed_file_1 <br/> mountpoint: /usr>]
+    compressed_file_2 [label= <compressed_file_2 <br/> mountpoint: /usr>]
+    compressed_file_3 [label= <compressed_file_3 <br/> mountpoint: /usr>]
+    compressed_file_4 [label= <compressed_file_3 <br/> mountpoint: /opt/some_app>]
+    bgcolor=black
+    label = "image"
+  }
+  
+  
+  subgraph cluster_1
+  {
+    compressed_file_1 -> "/tmp/.../compressed/usr.xx1" [color=white, label="mount"]
+    compressed_file_2 -> "/tmp/.../compressed/usr.xx2" [color=white, label="mount"]
+    compressed_file_3 -> "/tmp/.../compressed/usr.xx3" [color=white, label="mount"]
+    compressed_file_4 -> "/tmp/.../compressed/opt/some_app.xx1" [color=white, label="mount"]
+    "/tmp/.../compressed/usr.xx1" -> "/tmp/.../overlay/usr" [color=white, label="overlay_0"]
+    "/tmp/.../compressed/usr.xx2" -> "/tmp/.../overlay/usr" [color=white, label="overlay_1"]
+    "/tmp/.../compressed/usr.xx3" -> "/tmp/.../overlay/usr" [color=white, label="overlay_2"]
+    "/tmp/.../compressed/opt/some_app.xx1" -> "/tmp/.../overlay/opt/some_app" [color=white, label="overlay_0"]
+    bgcolor=black
+    label = "host"
+  }
+  
+  subgraph cluster_2
+  {
+    "/tmp/.../overlay/usr" -> "/tmp/fim/run/mount/usr" [color=white, label="bind"]
+    "/tmp/.../overlay/opt/some_app" -> "/tmp/fim/run/mount/opt/some_app" [color=white, label="bind"]
+    "/tmp/fim/run/mount/usr" -> "/usr" [color=white, label="symlink"]
+    "/tmp/fim/run/mount/opt/some_app" -> "/opt/some_app" [color=white, label="symlink"]
+    bgcolor=black
+    label = "image"
+  }
+}

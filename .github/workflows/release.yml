@@ -12,39 +12,19 @@ jobs:
   build:
     strategy:
       matrix:
-        dist: [arch,alpine,jammy]
+        dist: [arch,alpine]
     runs-on: ubuntu-latest
     steps:
       # Install required tools
       - name: Install tools
         run: |
-          sudo env DEBIAN_FRONTEND=noninteractive apt install -y tar xz-utils debootstrap coreutils
+          sudo env DEBIAN_FRONTEND=noninteractive apt install -y tar xz-utils coreutils
       # Download source from repository
       - uses: actions/checkout@v4
-      # Fetch tools
-      - name: Fetch tools
-        run: |
-          ./deploy/flatimage.sh fetch
       # Build
       - name: Build
         run: |
-          ./deploy/flatimage.sh build ${{ matrix.dist }}
-      # Build the flatimage
-      - name: Build ArchLinux
-        if: matrix.dist == 'arch'
-        run: |
-          cp elf-${{ matrix.dist }} bin/elf
-          sudo ./src/scripts/_build.sh archbootstrap
-      - name: Build Alpine
-        if: matrix.dist == 'alpine'
-        run: |
-          cp elf-${{ matrix.dist }} bin/elf
-          sudo ./src/scripts/_build.sh alpinebootstrap
-      - name: Build Jammy
-        if: matrix.dist == 'jammy'
-        run: |
-          cp elf-${{ matrix.dist }} bin/elf
-          sudo ./src/scripts/_build.sh debootstrap jammy
+          sudo ./deploy/flatimage.sh ${{ matrix.dist }}
       # Upload
       - name: Upload flatimage
         uses: actions/upload-artifact@v3

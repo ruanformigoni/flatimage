@@ -21,14 +21,11 @@ COPY . /fim/
 WORKDIR /fim
 
 # Compile
-WORKDIR /fim/src/portal
-RUN g++ -o fim_portal portal_guest.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
-RUN g++ -o fim_portal_daemon portal_host.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
-RUN strip -s fim_portal 
-RUN strip -s fim_portal_daemon 
-RUN upx -6 --no-lzma fim_portal
-RUN upx -6 --no-lzma fim_portal_daemon
+WORKDIR /fim/src/bwrap
+RUN g++ -o fim_bwrap_apparmor bwrap_apparmor.cpp -static -Wall -Wextra -Weffc++ -Os --std=c++23
+RUN strip -s fim_bwrap_apparmor
+RUN upx -6 --no-lzma fim_bwrap_apparmor
 
 # Move to dist dir
 RUN mkdir -p /fim/dist
-RUN cp /fim/src/portal/fim_portal /fim/src/portal/fim_portal_daemon /fim/dist
+RUN cp /fim/src/bwrap/fim_bwrap_apparmor /fim/dist

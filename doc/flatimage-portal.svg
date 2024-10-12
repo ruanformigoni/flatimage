@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="297mm"
+   height="210mm"
+   viewBox="0 0 297 210"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
+   sodipodi:docname="flatimage-portal.svg"
+   inkscape:export-filename="flatimage-portal.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.0091449"
+     inkscape:cx="358.22406"
+     inkscape:cy="343.35999"
+     inkscape:window-width="2560"
+     inkscape:window-height="1008"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <marker
+       style="overflow:visible"
+       id="ArrowWide"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Wide arrow"
+       markerWidth="1"
+       markerHeight="1"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         style="fill:none;stroke:context-stroke;stroke-width:1;stroke-linecap:butt"
+         d="M 3,-3 0,0 3,3"
+         transform="rotate(180,0.125,0)"
+         sodipodi:nodetypes="ccc"
+         id="path1" />
+    </marker>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g7-2"
+       inkscape:export-filename="flatimage-portal.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300"
+       transform="translate(-154.42598,13.957408)"
+       style="stroke:none;fill:#ffffff;fill-opacity:1">
+      <rect
+         style="fill:#ffffff;stroke:none;stroke-width:1.13782;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1"
+         id="rect1-3-0-2"
+         width="230.78029"
+         height="165.32678"
+         x="166.66246"
+         y="-2.0945733" />
+    </g>
+    <g
+       id="g7"
+       inkscape:export-filename="flatimage-portal.png"
+       inkscape:export-xdpi="300"
+       inkscape:export-ydpi="300">
+      <rect
+         style="fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-0"
+         width="198.67439"
+         height="148.33867"
+         x="18.47401"
+         y="20.356892" />
+      <text
+         xml:space="preserve"
+         style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="23.835232"
+         y="30.199436"
+         id="text1-5-9"><tspan
+           sodipodi:role="line"
+           style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="23.835232"
+           y="30.199436"
+           id="tspan3-6">Host</tspan></text>
+    </g>
+    <g
+       id="g3-7-6"
+       transform="matrix(0.73080836,0,0,0.73080836,187.16433,-35.014152)"
+       style="stroke-width:0.68417389;stroke-dasharray:none">
+      <g
+         id="g4-1"
+         transform="translate(-6.0046661,103.2653)"
+         style="stroke-width:0.68417389;stroke-dasharray:none">
+        <rect
+           style="fill:#f9f9f9;stroke:#000000;stroke-width:0.684174;stroke-dasharray:none;stroke-opacity:1"
+           id="rect1-3-0-8"
+           width="183.90376"
+           height="148.33867"
+           x="-146.74733"
+           y="19.397182"
+           ry="0" />
+        <text
+           xml:space="preserve"
+           style="font-size:8.68901px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:0.68417389;stroke-dasharray:none;stroke-opacity:1"
+           x="-141.38611"
+           y="29.239727"
+           id="text1-5-9-7"><tspan
+             sodipodi:role="line"
+             style="font-size:8.68901px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.68417389;stroke-dasharray:none"
+             x="-141.38611"
+             y="29.239727"
+             id="tspan3-6-9">Guest</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g2"
+       transform="translate(-49.110967,46.201188)">
+      <rect
+         style="fill:#f9f9f9;stroke:#000000;stroke-width:0.753475;stroke-opacity:1"
+         id="rect1"
+         width="35.441002"
+         height="73.217651"
+         x="72.432228"
+         y="30.681149" />
+      <text
+         xml:space="preserve"
+         style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="77.360657"
+         y="20.526142"
+         id="text1"><tspan
+           sodipodi:role="line"
+           id="tspan1"
+           style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="77.360657"
+           y="20.526142">Portal</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="77.360657"
+           y="28.463642"
+           id="tspan2">Daemon</tspan></text>
+    </g>
+    <g
+       id="g3"
+       transform="translate(132.16651,-11.595691)">
+      <rect
+         style="fill:#f9f9f9;stroke:#000000;stroke-width:0.753475;stroke-opacity:1"
+         id="rect1-3"
+         width="35.441002"
+         height="72.840912"
+         x="5.8206301"
+         y="88.666397" />
+      <text
+         xml:space="preserve"
+         style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="15.94614"
+         y="78.323021"
+         id="text1-5"><tspan
+           sodipodi:role="line"
+           style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="15.94614"
+           y="78.323021"
+           id="tspan2-2">Portal</tspan><tspan
+           sodipodi:role="line"
+           style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="15.94614"
+           y="86.260521"
+           id="tspan3">Guest</tspan></text>
+    </g>
+    <g
+       id="g3-7"
+       transform="matrix(0.9946876,0,0,1.0000562,-60.18098,-25.352846)"
+       style="stroke-width:1.00263866;stroke-dasharray:none" />
+    <path
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)"
+       d="M 137.79877,110.16041 H 59.429184"
+       id="path6"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.5;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#ArrowWide)"
+       d="M 137.98714,147.4869 H 59.240814"
+       id="path6-5"
+       sodipodi:nodetypes="cc" />
+    <text
+       xml:space="preserve"
+       style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       x="-25.536474"
+       y="74.071541"
+       id="text7"><tspan
+         sodipodi:role="line"
+         id="tspan7"
+         style="stroke-width:1"
+         x="-25.536474"
+         y="74.071541" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+       x="62.36496"
+       y="107.31971"
+       id="text1-5-9-2"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+         x="62.36496"
+         y="107.31971"
+         id="tspan3-6-93">Request Launch Process</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+       x="220.34685"
+       y="25.602036"
+       id="text1-5-9-2-87"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+         x="220.34685"
+         y="25.602036"
+         id="tspan3-6-93-1">Time</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:6.35px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+       x="60.065174"
+       y="144.72089"
+       id="text1-5-9-2-8"><tspan
+         sodipodi:role="line"
+         style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+         x="60.065174"
+         y="144.72089"
+         id="tspan13">Send Exit Code of Process</tspan></text>
+    <g
+       id="g9"
+       transform="translate(0.37185992,0.92968437)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.701303;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8"
+         width="35.441006"
+         height="8.5419016"
+         x="137.61528"
+         y="76.141022" />
+      <text
+         xml:space="preserve"
+         style="font-size:4.23333px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="141.6198"
+         y="81.925385"
+         id="text1-5-9-2-0"><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="141.6198"
+           y="81.925385"
+           id="tspan9">Create FIFOs</tspan></text>
+    </g>
+    <g
+       id="g9-6"
+       transform="translate(0.35094012,8.7049758)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.683699;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8-1"
+         width="35.461334"
+         height="13.232394"
+         x="137.6362"
+         y="76.907631" />
+      <text
+         xml:space="preserve"
+         style="font-size:4.23333px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="138.39757"
+         y="82.477921"
+         id="text1-5-9-2-0-5"><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="138.39757"
+           y="82.477921"
+           id="tspan9-7">Connect to FIFOs</tspan><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="138.39757"
+           y="87.769585"
+           id="tspan17">As Reader</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:3.88056px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+         x="151.81413"
+         y="87.811913"
+         id="text18"><tspan
+           sodipodi:role="line"
+           id="tspan18"
+           style="stroke-width:1"
+           x="151.81413"
+           y="87.811913" /></text>
+    </g>
+    <g
+       id="g9-6-8"
+       transform="translate(-114.32511,45.868165)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.683699;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8-1-9"
+         width="35.461334"
+         height="13.232394"
+         x="137.6362"
+         y="76.907631" />
+      <text
+         xml:space="preserve"
+         style="font-size:4.23333px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="138.39757"
+         y="82.477921"
+         id="text1-5-9-2-0-5-2"><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="138.39757"
+           y="82.477921"
+           id="tspan9-7-6">Connect to FIFOs</tspan><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="138.39757"
+           y="87.769585"
+           id="tspan17-6">As Writer</tspan></text>
+      <text
+         xml:space="preserve"
+         style="font-size:3.88056px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+         x="151.81413"
+         y="87.811913"
+         id="text18-4"><tspan
+           sodipodi:role="line"
+           id="tspan18-9"
+           style="stroke-width:1"
+           x="151.81413"
+           y="87.811913" /></text>
+    </g>
+    <g
+       id="g9-6-9"
+       transform="translate(0.35094012,21.937367)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.683699;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8-1-3"
+         width="35.461334"
+         height="8.1137514"
+         x="137.6362"
+         y="76.907631" />
+      <text
+         xml:space="preserve"
+         style="font-size:4.23333px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="141.95145"
+         y="82.552002"
+         id="text1-5-9-2-0-5-7"><tspan
+           sodipodi:role="line"
+           style="font-size:4.23333px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="141.95145"
+           y="82.552002"
+           id="tspan12">Serialize Data</tspan></text>
+    </g>
+    <g
+       id="g9-6-9-4"
+       transform="translate(0.34077395,36.347416)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.683699;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8-1-3-7"
+         width="35.461334"
+         height="8.1137514"
+         x="137.6362"
+         y="76.907631" />
+      <text
+         xml:space="preserve"
+         style="font-size:3.88056px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="138.83374"
+         y="82.419716"
+         id="text1-5-9-2-0-5-7-4"><tspan
+           sodipodi:role="line"
+           style="font-size:3.88056px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="138.83374"
+           y="82.419716"
+           id="tspan12-4">Wait FIFO Threads</tspan></text>
+    </g>
+    <g
+       id="g9-6-9-4-3"
+       transform="translate(-114.32511,38.557569)">
+      <rect
+         style="fill:#f9f9f9;stroke:#5f8dd3;stroke-width:0.683699;stroke-dasharray:none;stroke-opacity:1"
+         id="rect1-3-8-1-3-7-1"
+         width="35.461334"
+         height="7.0449066"
+         x="137.6362"
+         y="76.907631" />
+      <text
+         xml:space="preserve"
+         style="font-size:3.88056px;font-family:'Noto Sans';-inkscape-font-specification:'Noto Sans';fill:#f9f9f9;stroke:#000000;stroke-width:1;stroke-opacity:1"
+         x="140.62074"
+         y="81.885292"
+         id="text1-5-9-2-0-5-7-4-4"><tspan
+           style="font-size:3.88056px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1"
+           x="140.62074"
+           y="81.885292"
+           id="tspan16"
+           sodipodi:role="line">Fork and execve</tspan></text>
+    </g>
+    <path
+       style="fill:#5f8dd3;fill-opacity:1;stroke:#1c1f24;stroke-width:1;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#ArrowWide)"
+       d="M 227.56046,30.549506 226.93904,169.19556"
+       id="path19"
+       sodipodi:nodetypes="cc" />
+  </g>
+</svg>

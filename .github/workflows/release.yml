@@ -12,7 +12,7 @@ jobs:
   build:
     strategy:
       matrix:
-        dist: [arch,alpine]
+        dist: [arch,alpine,blueprint]
     runs-on: ubuntu-latest
     steps:
       # Install required tools

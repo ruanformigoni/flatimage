@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir -p dist
           sudo ./deploy/flatimage.sh ${{ matrix.dist }}
-          mv ./build/dist/* ./dist
+          cp ./build/dist/* ./dist
       # Upload
       - name: Upload flatimage
         uses: actions/upload-artifact@v3

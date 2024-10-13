@@ -73,7 +73,7 @@ function _main()
   "$image" fim-commit
 
   # Copy
-  cp "$image" ../steam
+  cp "$image" ../steam.flatimage
 }
 
 _main "$@"

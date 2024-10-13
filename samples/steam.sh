@@ -2,8 +2,6 @@
 
 set -e
 
-export PID="$$"
-
 function _die()
 {
   echo "$*" >&2
@@ -26,63 +24,56 @@ function _main()
   # Use jq to fetch latest flatimage version from github
   mkdir -p bin
   export PATH="$(pwd)/bin:$PATH"
-  wget -q --show-progress --progress=dot:binary -O bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64
+  wget -q --show-progress --progress=dot:binary -O bin/jq "https://github.com/jqlang/jq/releases/download/jq-1.7/jq-linux-amd64"
   chmod +x ./bin/*
 
-  # Fetch latest flatimage version from github
-  local tarball_arch="arch.tar.xz"
-  if [[ ! -f "$tarball_arch" ]]; then
-    wget "$(wget -qO - "https://api.github.com/repos/ruanformigoni/flatimage/releases/latest" \
-      | jq -r '.assets.[].browser_download_url | match(".*arch.tar.xz$").string')"
-  fi
+  # Download flatimage
+  local image="./bin/arch.flatimage"
+  wget -q --show-progress --progress=dot:mega -O "$image" "https://github.com/ruanformigoni/flatimage/releases/download/v1.0.0/arch.flatimage"
+  chmod +x "$image"
 
-  # Extract
-  if command -v pv &>/dev/null; then
-    pv -per "$tarball_arch" | tar -Jxf -
-  else
-    echo "Command 'pv' not found, install it to monitor the progress of extracting the archive"
-    tar -xf "$tarball_arch"
-  fi
+  # Enable network
+  "$image" fim-perms set network
 
-  local image=$(pwd)/arch.flatimage
-
-  # Resize
-  "$image" fim-resize 4G
-
-  # Set default home directory
-  "$image" fim-config-set home '"$FIM_DIR_BINARY"/steam.home'
+  # Configure PATH variable
+  "$image" fim-env add 'PATH="/usr/bin:$PATH"'
 
   # Update image
-  "$image" fim-root fakechroot pacman -Syu --noconfirm
+  "$image" fim-root pacman -Syu --noconfirm
 
   # Install dependencies
   ## General
-  "$image" fim-root fakechroot pacman -S --noconfirm xorg-server mesa lib32-mesa glxinfo lib32-gcc-libs \
+  "$image" fim-root pacman -S --noconfirm xorg-server mesa lib32-mesa glxinfo lib32-gcc-libs \
     gcc-libs pcre freetype2 lib32-freetype2
   ## Video AMD/Intel
-  "$image" fim-root fakechroot pacman -S --noconfirm xf86-video-amdgpu vulkan-radeon lib32-vulkan-radeon vulkan-tools
-  "$image" fim-root fakechroot pacman -S --noconfirm xf86-video-intel vulkan-intel lib32-vulkan-intel vulkan-tools
+  "$image" fim-root pacman -S --noconfirm xf86-video-amdgpu vulkan-radeon lib32-vulkan-radeon vulkan-tools
+  "$image" fim-root pacman -S --noconfirm xf86-video-intel vulkan-intel lib32-vulkan-intel vulkan-tools
 
   # Install steam
   ## Select the appropriated drivers for your GPU when asked
-  "$image" fim-root fakechroot pacman -S --noconfirm steam
-
-  # Set permissions
-  "$image" fim-perms-set wayland,x11,gpu,session_bus,pulseaudio,input
-
-  # Set command to run by default
-  "$image" fim-cmd /usr/bin/steam
+  "$image" fim-root pacman -S --noconfirm steam
 
   # Clear cache
-  "$image" fim-root fakechroot pacman -Scc --noconfirm
+  "$image" fim-root pacman -Scc --noconfirm
+
+  # Set permissions
+  "$image" fim-perms set media,audio,wayland,xorg,udev,dbus_user,usb,input,gpu,network
+
+  # Configure user name and home directory
+  "$image" fim-exec mkdir -p /home/steam
+  "$image" fim-env add 'USER=steam' \
+    'HOME=/home/steam' \
+    'XDG_CONFIG_HOME=/home/steam/.config' \
+    'XDG_DATA_HOME=/home/steam/.local/share'
+
+  # Set command to run by default
+  "$image" fim-boot /usr/bin/steam
 
   # Compress
-  "$image" fim-compress
+  "$image" fim-commit
 
-  # Rename
-  mv "$image" ../steam
+  # Copy
+  cp "$image" ../steam
 }
 
 _main "$@"
-
-#  vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :

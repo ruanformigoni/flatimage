@@ -47,7 +47,7 @@ struct Image
   {
     // xxx + '\0'
     std::copy(ext, ext+3, m_ext);
-    ext[3] = '\0';
+    m_ext[3] = '\0';
     std::copy(data, data+size, m_data);
   } // Image
 };
@@ -135,6 +135,7 @@ decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
 
   // Create desktop entry
   std::ofstream file_desktop{path_file_desktop};
+  ereturn_if(not file_desktop.is_open(), "Could not open desktop file {}"_fmt(path_file_desktop));
   println(file_desktop, "[Desktop Entry]");
   println(file_desktop, "Name={}"_fmt(desktop.get_name()));
   println(file_desktop, "Type=Application");
@@ -303,7 +304,10 @@ void integrate_bash(fs::path const& path_dir_home)
   if (const char * str_xdg_data_dirs = ns_env::get("XDG_DATA_DIRS"); str_xdg_data_dirs != nullptr)
   {
     auto vec_path_dirs = ns_vector::from_string<std::vector<fs::path>>(str_xdg_data_dirs, ':');
-    auto search = std::ranges::find(vec_path_dirs, path_dir_data, [](fs::path const& e){ return fs::canonical(e); });
+    auto search = std::ranges::find(vec_path_dirs, path_dir_data, [](fs::path const& e)
+    {
+      return ns_exception::or_else([&]{ return fs::canonical(e); }, fs::path{});
+    });
     dreturn_if(search != std::ranges::end(vec_path_dirs), "Found '{}' in XDG_DATA_DIRS"_fmt(path_dir_data));
   } // if
 
@@ -374,7 +378,7 @@ inline void integrate(ns_config::FlatimageConfig const& config)
     ns_log::info()("Integrating desktop icons...");
     integrate_icons(config, *desktop, cstr_home);
   } // if
-  
+
   // Check if should notify
   if ( auto expected = ns_reserved::ns_notify::read(config.path_file_binary, config.offset_notify.offset) )
   {
@@ -413,19 +417,21 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
   ereturn_if(not expected_desktop, "Failed to deserialize json: {}"_fmt(expected_desktop.error()));
   // Application icon
   fs::path path_file_icon = expected_desktop->get_path_file_icon();
-  std::optional<std::string> opt_str_ext = (path_file_icon.extension() == ".svg")? std::make_optional("svg")
-    : (path_file_icon.extension() == ".png")? std::make_optional("png")
-    : (path_file_icon.extension() == ".jpg" or path_file_icon.extension() == ".jpeg")? std::make_optional("jpg")
-    : std::nullopt;
-  ereturn_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
+  std::string str_ext = (path_file_icon.extension() == ".svg")? "svg"
+    : (path_file_icon.extension() == ".png")? "png"
+    : (path_file_icon.extension() == ".jpg" or path_file_icon.extension() == ".jpeg")? "jpg"
+    : "";
+  ereturn_if(str_ext.empty(), "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
   // Read original image
-  auto expected_image_data = read_image_from_binary(path_file_icon, 0, fs::file_size(path_file_icon));
+  uintmax_t size_file_icon = fs::file_size(path_file_icon);
+  ereturn_if(size_file_icon >= config.offset_desktop_image.size, "File is too large, '{}' bytes"_fmt(size_file_icon));
+  auto expected_image_data = read_image_from_binary(path_file_icon, 0, size_file_icon);
   ereturn_if(not expected_image_data, "Could not read source image: {}"_fmt(expected_image_data.error()));
-  ereturn_if(expected_image_data->second >= config.offset_desktop_image.size
-    , "File is too large, '{}' bytes"_fmt(config.offset_desktop_image.size)
-  );
   // Create image struct to deserialize into binary format
-  Image image{opt_str_ext->data(), expected_image_data->first.get(), expected_image_data->second};
+  Image image;
+  std::memcpy(image.m_ext, str_ext.data(), 3);
+  std::memcpy(image.m_data, expected_image_data->first.get(), expected_image_data->second);
+  image.m_size = expected_image_data->second;
   // Serialize image struct in binary format
   auto err = write_image_to_binary(config, reinterpret_cast<char*>(&image), sizeof(image));
   ereturn_if(err, "Could not write image data: {}"_fmt(*err));

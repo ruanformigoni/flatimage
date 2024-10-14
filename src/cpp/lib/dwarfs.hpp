@@ -48,16 +48,15 @@ class Dwarfs
       );
 
       // Find command in PATH
-      auto opt_path_file_bash = ns_subprocess::search_path("bash");
-      ethrow_if(not opt_path_file_bash.has_value(), "Could not find bash");
+      auto opt_file_dwarfs = ns_subprocess::search_path("dwarfs");
+      ethrow_if(not opt_file_dwarfs.has_value(), "Could not find bash");
 
       // Create command
-      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_bash);
+      m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_file_dwarfs);
 
       // Spawn command
       (void) m_subprocess->with_piped_outputs()
-        .with_args("-c")
-        .with_args("dwarfs {} {} -f -o auto_unmount,offset={},imagesize={}"_fmt(path_file_image, path_dir_mount, offset, size_image))
+        .with_args(path_file_image, path_dir_mount, "-f", "-o", "auto_unmount,offset={},imagesize={}"_fmt(offset, size_image))
         .with_die_on_pid(pid_to_die_for)
         .spawn();
       // Wait for mount

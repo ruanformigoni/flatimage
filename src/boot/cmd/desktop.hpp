@@ -419,11 +419,11 @@ inline void setup(ns_config::FlatimageConfig const& config, fs::path const& path
     : std::nullopt;
   ereturn_if(not opt_str_ext, "Icon extension '{}' is not supported"_fmt(path_file_icon.extension()));
   // Read original image
-  auto expected_image_data = read_image_from_binary(path_file_icon, 0, config.offset_desktop_image.size);
-  ereturn_if(expected_image_data->second == config.offset_desktop_image.size
+  auto expected_image_data = read_image_from_binary(path_file_icon, 0, fs::file_size(path_file_icon));
+  ereturn_if(not expected_image_data, "Could not read source image: {}"_fmt(expected_image_data.error()));
+  ereturn_if(expected_image_data->second >= config.offset_desktop_image.size
     , "File is too large, '{}' bytes"_fmt(config.offset_desktop_image.size)
   );
-  ereturn_if(not expected_image_data, "Could not read source image: {}"_fmt(expected_image_data.error()));
   // Create image struct to deserialize into binary format
   Image image{opt_str_ext->data(), expected_image_data->first.get(), expected_image_data->second};
   // Serialize image struct in binary format

@@ -49,7 +49,7 @@ class Dwarfs
 
       // Find command in PATH
       auto opt_file_dwarfs = ns_subprocess::search_path("dwarfs");
-      ethrow_if(not opt_file_dwarfs.has_value(), "Could not find bash");
+      ethrow_if(not opt_file_dwarfs.has_value(), "Could not find dwarfs");
 
       // Create command
       m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_file_dwarfs);

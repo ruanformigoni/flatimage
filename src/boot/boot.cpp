@@ -158,21 +158,23 @@ void relocate(char** argv)
     uint64_t offset_beg = offset_end;
     // Set file position
     file_binary.seekg(offset_beg);
-    // Read size bytes
+    // Read size bytes (FATAL if fails)
     uint64_t size;
     ethrow_if(not file_binary.read(reinterpret_cast<char*>(&size), sizeof(size)), "Could not read binary size");
     // Read binary
     std::vector<char> buffer(size);
     ethrow_if(not file_binary.read(buffer.data(), size), "Could not read binary");
     // Open output file and write 
-    std::ofstream of{path_file, std::ios::out | std::ios::binary};
-    ethrow_if(not of.is_open(), "Could not open output file '{}'"_fmt(path_file));
-    // Write binary
-    of.write(buffer.data(), size);
-    ethrow_if(not of, "Could not write binary file '{}'"_fmt(path_file));
-    of.close();
-    // Set permissions
-    fs::permissions(path_file.c_str(), fs::perms::owner_all | fs::perms::group_all);
+    if ( not lec(fs::exists, path_file) )
+    {
+      // Open output binary file
+      std::ofstream of{path_file, std::ios::out | std::ios::binary};
+      ethrow_if(not of.is_open(), "Could not open output file '{}'"_fmt(path_file));
+      // Write binary
+      ethrow_if(not of.write(buffer.data(), size), "Could not write binary file '{}'"_fmt(path_file));
+      // Set permissions
+      lec(fs::permissions, path_file.c_str(), fs::perms::owner_all | fs::perms::group_all);
+    } // if
     // Return new values for offsets
     return std::make_pair(offset_beg, file_binary.tellg());
   };

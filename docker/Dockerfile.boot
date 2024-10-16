@@ -29,6 +29,9 @@ RUN cmake --preset conan-release -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build --preset conan-release
 RUN strip -s ./build/Release/boot
 
+# Include magic bytes
+RUN ./build/Release/magic ./build/Release/boot
+
 # Compile janitor
 RUN g++ --std=c++23 -O3 -static -o janitor janitor.cpp
 RUN strip -s janitor

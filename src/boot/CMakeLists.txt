@@ -34,6 +34,9 @@ if(NOT GIT_COMMAND)
 endif()
 
 # Definitions
+## Distribution
+add_definitions("-DFIM_DIST=\"$ENV{FIM_DIST}\"")
+message(STATUS "FIM_DIST: ${FIM_DIST}")
 ## Version
 execute_process(
   COMMAND ${GIT_COMMAND} describe --tags --abbrev=0

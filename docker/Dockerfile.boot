@@ -22,6 +22,9 @@ ARG FIM_DIR
 COPY . $FIM_DIR
 WORKDIR $FIM_DIR/src/boot
 
+ARG FIM_DIST
+ENV FIM_DIST=$FIM_DIST
+
 # Compile
 RUN "$CONAN" profile detect
 RUN "$CONAN" install . --build=missing -g CMakeDeps -g CMakeToolchain

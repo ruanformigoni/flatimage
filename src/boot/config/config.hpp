@@ -10,6 +10,10 @@
 
 #include "../../cpp/lib/env.hpp"
 
+#ifndef FIM_DIST
+#define FIM_DIST "TRUNK"
+#endif
+
 namespace ns_config
 {
 
@@ -78,7 +82,7 @@ inline FlatimageConfig config()
   FlatimageConfig config;
 
   ns_env::set("PID", std::to_string(getpid()), ns_env::Replace::Y);
-  ns_env::set("FIM_DIST", "TRUNK", ns_env::Replace::Y);
+  ns_env::set("FIM_DIST", FIM_DIST, ns_env::Replace::Y);
 
   // Distribution
   config.str_dist = "TRUNK";

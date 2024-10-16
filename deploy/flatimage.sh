@@ -130,7 +130,7 @@ function _create_subsystem_blueprint()
   # Compile and include runner
   (
     cd "$FIM_DIR"
-    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker build . --build-arg FIM_DIST=BLUEPRINT --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/janitor /host/bin
   )
@@ -240,7 +240,7 @@ function _create_subsystem_alpine()
   # Compile and include runner
   (
     cd "$FIM_DIR"
-    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker build . --build-arg FIM_DIST=ALPINE --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/janitor /host/bin
   )
@@ -457,7 +457,7 @@ function _create_subsystem_arch()
   # Compile and include runner
   (
     cd "$FIM_DIR"
-    docker build . --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
+    docker build . --build-arg FIM_DIST=ARCH --build-arg FIM_DIR="$(pwd)" -t flatimage-boot -f docker/Dockerfile.boot
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/build/Release/boot /host/bin
     docker run --rm -v "$FIM_DIR_BUILD":"/host" flatimage-boot cp "$FIM_DIR"/src/boot/janitor /host/bin
   )

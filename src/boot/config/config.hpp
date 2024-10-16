@@ -51,6 +51,7 @@ struct FlatimageConfig
   fs::path path_dir_mount;
   fs::path path_dir_app;
   fs::path path_dir_app_bin;
+  fs::path path_dir_busybox;
   fs::path path_dir_instance;
   fs::path path_file_binary;
   fs::path path_dir_binary;
@@ -108,6 +109,7 @@ inline FlatimageConfig config()
   config.path_dir_binary          = config.path_file_binary.parent_path();
   config.path_dir_app             = ns_env::get_or_throw("FIM_DIR_APP");
   config.path_dir_app_bin         = ns_env::get_or_throw("FIM_DIR_APP_BIN");
+  config.path_dir_busybox         = ns_env::get_or_throw("FIM_DIR_BUSYBOX");
   config.path_dir_instance        = ns_env::get_or_throw("FIM_DIR_INSTANCE");
   config.path_dir_mount           = ns_env::get_or_throw("FIM_DIR_MOUNT");
   config.path_file_bashrc         = config.path_dir_app / ".bashrc";
@@ -142,8 +144,9 @@ inline FlatimageConfig config()
   ns_env::set("BWRAP_LOG", config.path_dir_mount.string() + ".bwrap.log", ns_env::Replace::Y);
 
   // Environment
-  config.env_path = config.path_dir_app_bin.string() + ":" + ns_env::get_or_throw("PATH");
+  config.env_path = config.path_dir_app_bin.string() + ":" + ns_env::get_or_else("PATH", "");
   config.env_path += ":/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin";
+  config.env_path += ":{}"_fmt(config.path_dir_busybox.string());
   ns_env::set("PATH", config.env_path, ns_env::Replace::Y);
 
   // Compression level configuration (goes from 0 to 10, default is 7)

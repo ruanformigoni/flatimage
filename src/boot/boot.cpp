@@ -104,10 +104,17 @@ void relocate(char** argv)
     "Failed to create directory {}"_fmt(path_dir_app_bin)
   );
 
+  // Create busybox dir
+  fs::path path_dir_busybox = path_dir_app_bin / "busybox";
+  ethrow_if(not fs::exists(path_dir_busybox) and not fs::create_directories(path_dir_busybox),
+    "Failed to create directory {}"_fmt(path_dir_busybox)
+  );
+
   // Set variables
   ns_env::set("FIM_DIR_GLOBAL", path_dir_base.c_str(), ns_env::Replace::Y);
   ns_env::set("FIM_DIR_APP", path_dir_app.c_str(), ns_env::Replace::Y);
   ns_env::set("FIM_DIR_APP_BIN", path_dir_app_bin.c_str(), ns_env::Replace::Y);
+  ns_env::set("FIM_DIR_BUSYBOX", path_dir_busybox.c_str(), ns_env::Replace::Y);
   ns_env::set("FIM_FILE_BINARY", path_absolute.c_str(), ns_env::Replace::Y);
 
   // Create instance directory
@@ -190,7 +197,7 @@ void relocate(char** argv)
   ethrow_if(not file_binary.is_open(), "Could not open flatimage binary file");
   std::tie(offset_beg, offset_end) = f_write_from_header(path_dir_instance / "fim_boot" , 0);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bash", offset_end);
-  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "busybox", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_busybox / "busybox", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bwrap", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "ciopfs", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_file_dwarfs_aio, offset_end);
@@ -210,7 +217,7 @@ void relocate(char** argv)
   // Create busybox symlinks, allow (symlinks exists) errors
   for(auto const& busybox_applet : arr_busybox_applet)
   {
-    fs::create_symlink(path_dir_app_bin / "busybox", path_dir_app_bin / busybox_applet, ec);
+    fs::create_symlink(path_dir_busybox / "busybox", path_dir_busybox / busybox_applet, ec);
   } // for
 
   // Filesystem starts here

@@ -161,12 +161,16 @@ void relocate(char** argv)
     // Read size bytes (FATAL if fails)
     uint64_t size;
     ethrow_if(not file_binary.read(reinterpret_cast<char*>(&size), sizeof(size)), "Could not read binary size");
-    // Read binary
-    std::vector<char> buffer(size);
-    ethrow_if(not file_binary.read(buffer.data(), size), "Could not read binary");
     // Open output file and write 
-    if ( not lec(fs::exists, path_file) )
+    if ( lec(fs::exists, path_file) )
     {
+      file_binary.seekg(offset_beg + size + sizeof(size));
+    } // if
+    else
+    {
+      // Read binary
+      std::vector<char> buffer(size);
+      ethrow_if(not file_binary.read(buffer.data(), size), "Could not read binary");
       // Open output binary file
       std::ofstream of{path_file, std::ios::out | std::ios::binary};
       ethrow_if(not of.is_open(), "Could not open output file '{}'"_fmt(path_file));

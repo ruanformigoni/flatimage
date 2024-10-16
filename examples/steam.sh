@@ -29,14 +29,11 @@ function _main()
 
   # Download flatimage
   local image="./bin/arch.flatimage"
-  wget -q --show-progress --progress=dot:mega -O "$image" "https://github.com/ruanformigoni/flatimage/releases/download/v1.0.1/arch.flatimage"
+  wget -q --show-progress --progress=dot:mega -O "$image" "https://github.com/ruanformigoni/flatimage/releases/download/v1.0.2/arch.flatimage"
   chmod +x "$image"
 
   # Enable network
   "$image" fim-perms set network
-
-  # Configure PATH variable
-  "$image" fim-env add 'PATH="/usr/bin:$PATH"'
 
   # Update image
   "$image" fim-root pacman -Syu --noconfirm

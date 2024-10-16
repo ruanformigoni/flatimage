@@ -85,7 +85,7 @@ inline FlatimageConfig config()
   ns_env::set("FIM_DIST", FIM_DIST, ns_env::Replace::Y);
 
   // Distribution
-  config.str_dist = "TRUNK";
+  config.str_dist = FIM_DIST;
 
   // Flags
   config.is_root = ns_env::exists("FIM_ROOT", "1");

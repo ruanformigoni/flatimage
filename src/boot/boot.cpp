@@ -188,7 +188,7 @@ void relocate(char** argv)
   fs::path path_file_dwarfs_aio = path_dir_app_bin / "dwarfs_aio";
   std::ifstream file_binary{path_absolute, std::ios::in | std::ios::binary};
   ethrow_if(not file_binary.is_open(), "Could not open flatimage binary file");
-  std::tie(offset_beg, offset_end) = f_write_from_header(path_dir_instance / "ext.boot" , 0);
+  std::tie(offset_beg, offset_end) = f_write_from_header(path_dir_instance / "fim_boot" , 0);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bash", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "busybox", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "bwrap", offset_end);
@@ -228,7 +228,7 @@ void relocate(char** argv)
   } // if
 
   // Launch Runner
-  execve("{}/ext.boot"_fmt(path_dir_instance).c_str(), argv, environ);
+  execve("{}/fim_boot"_fmt(path_dir_instance).c_str(), argv, environ);
 } // relocate() }}}
 
 // boot() {{{
@@ -282,7 +282,7 @@ int main(int argc, char** argv)
 
   // If it is outside /tmp, move the binary
   fs::path path_file_self = *expected_path_file_self;
-  if (std::distance(path_file_self.begin(), path_file_self.end()) < 2 or *std::next(path_file_self.begin()) != "tmp")
+  if ( fs::file_size(path_file_self) != ns_elf::skip_elf_header(path_file_self) )
   {
     ns_log::debug()("Relocating binary");
     relocate(argv);

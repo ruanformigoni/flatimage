@@ -250,7 +250,7 @@ std::unique_ptr<ns_config::FlatimageConfig> boot(int argc, char** argv)
   ns_log::set_sink_file(config->path_dir_mount.string() + ".boot.log");
 
   // Start portal
-  ns_portal::Portal portal = ns_portal::Portal(config->path_dir_instance / "ext.boot");
+  ns_portal::Portal portal = ns_portal::Portal(config->path_dir_instance / "fim_boot");
 
   // Refresh desktop integration
   ns_log::exception([&]{ ns_desktop::integrate(*config); });

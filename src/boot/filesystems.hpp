@@ -76,9 +76,9 @@ inline Filesystems::~Filesystems()
     // Wait for janitor to finish execution
     int status;
     waitpid(*m_opt_pid_janitor, &status, 0);
-    ereturn_if(not WIFEXITED(status), "Janitor exited abnormally");
+    dreturn_if(not WIFEXITED(status), "Janitor exited abnormally");
     int code = WEXITSTATUS(status);
-    ereturn_if(code != 0, "Janitor exited with code '{}'"_fmt(code));
+    dreturn_if(code != 0, "Janitor exited with code '{}'"_fmt(code));
   } // if
   else
   {

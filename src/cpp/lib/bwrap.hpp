@@ -153,7 +153,7 @@ inline Bwrap::Bwrap(
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
 {
-  m_path_dir_xdg_runtime = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}" + ns_string::to_string(getuid()));
+  m_path_dir_xdg_runtime = ns_env::get_or_else("XDG_RUNTIME_DIR", "/run/user/{}"_fmt(getuid()));
   ns_log::info()("XDG_RUNTIME_DIR: {}", m_path_dir_xdg_runtime);
   m_program_env.push_back("XDG_RUNTIME_DIR={}"_fmt(m_path_dir_xdg_runtime));
   ns_vector::push_back(m_args, "--setenv", "XDG_RUNTIME_DIR", m_path_dir_xdg_runtime);

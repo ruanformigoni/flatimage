@@ -37,6 +37,7 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
   ns_log::info()("Compression level: '{}'", compression_level);
   ns_log::info()("Compress filesystem to '{}'", path_file_dst);
   auto ret = ns_subprocess::Subprocess(*opt_path_file_mkdwarfs)
+    .with_args("-f")
     .with_args("-i", path_dir_src, "-o", path_file_dst)
     .with_args("-l", compression_level)
     .spawn()

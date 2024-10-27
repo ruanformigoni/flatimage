@@ -10,8 +10,11 @@
 #include <numeric>
 #include <expected>
 #include <climits>
+#include <ranges>
 
 #include "../common.hpp"
+#include "../macro.hpp"
+#include "../lib/log.hpp"
 
 namespace ns_filesystem
 {
@@ -83,6 +86,18 @@ inline std::expected<fs::path, std::string> realpath(fs::path const& path_file_s
   } // if
   return str_path_file_resolved;
 } // realpath() }}}
+
+// list_files() {{{
+inline std::expected<std::vector<fs::path>, std::string> list_files(fs::path const& path_dir_src)
+{
+  std::error_code ec;
+  std::vector<fs::path> files = fs::directory_iterator(path_dir_src, ec)
+    | std::views::transform([](auto&& e){ return e.path(); })
+    | std::views::filter([](auto&& e){ return fs::is_regular_file(e); })
+    | std::ranges::to<std::vector<fs::path>>();
+  qreturn_if(ec, std::unexpected(ec.message()));
+  return files;
+} // list_files() }}}
 
 } // namespace ns_path }}}
 

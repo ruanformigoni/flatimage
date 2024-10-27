@@ -13,6 +13,13 @@
 namespace ns_vector
 {
 
+// This is available in C++23, not implemented yet on gcc however
+template<ns_concept::IterableConst R1, ns_concept::IterableConst R2>
+inline void append_range(R1& to, R2 const& from)
+{
+  std::ranges::for_each(from, [&](auto&& e){ to.push_back(e); });
+} // append_range
+
 template<ns_concept::IterableConst R, typename... Args>
 inline void push_back(R& r, Args&&... args)
 {

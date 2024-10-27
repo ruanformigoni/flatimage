@@ -152,6 +152,14 @@ inline const char* get(const char* name)
   return std::getenv(name);
 } // get() }}}
 
+// get_optional() {{{
+// get_optional an env variable
+inline std::optional<std::string_view> get_optional(std::string_view name)
+{
+  const char* var = std::getenv(name.data());
+  return (var)? std::make_optional(var) : std::nullopt;
+} // get_optional() }}}
+
 // exists() {{{
 // Checks if variable exists
 inline bool exists(const char* var)

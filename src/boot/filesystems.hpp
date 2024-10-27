@@ -140,26 +140,11 @@ inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::pa
   // Filesystem index
   uint64_t index_fs{};
 
-  // Advance offset
-  file_binary.seekg(offset);
-
-  while (true)
+  auto f_mount = [this](fs::path path_file_binary, fs::path const& path_dir_mount, uint64_t index_fs, uint64_t offset, uint64_t size_fs)
   {
-    // Read filesystem size
-    int64_t size_fs;
-    dbreak_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
-    ns_log::debug()("Filesystem size is '{}'", size_fs);
-    offset += 8;
-
-    // Check if filesystem is of type 'DWARFS'
-    ebreak_if(not ns_dwarfs::is_dwarfs(path_file_binary, offset), "Invalid dwarfs filesystem appended on the image");
-
     // Create mountpoint
     fs::path path_dir_mount_index = path_dir_mount / std::to_string(index_fs);
-    std::error_code ec;
-    fs::create_directories(path_dir_mount_index, ec);
-    ebreak_if(ec, "Could not create directories: {}"_fmt(ec.message()));
-
+    lec(fs::create_directories,path_dir_mount_index);
     // Mount filesystem
     ns_log::debug()("Offset to filesystem is '{}'", offset);
     this->m_layers.emplace_back(std::make_unique<ns_dwarfs::Dwarfs>(path_file_binary
@@ -168,15 +153,71 @@ inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::pa
       , size_fs
       , getpid()
     ));
-
     // Include in mountpoints vector
     m_vec_path_dir_mountpoints.push_back(path_dir_mount_index);
+  };
 
+  // Advance offset
+  file_binary.seekg(offset);
+
+  // Mount filesystem concatenated in the image itself
+  while (true)
+  {
+    // Read filesystem size
+    int64_t size_fs;
+    dbreak_if(not file_binary.read(reinterpret_cast<char*>(&size_fs), sizeof(size_fs)), "Stopped reading at index {}"_fmt(index_fs));
+    ns_log::debug()("Filesystem size is '{}'", size_fs);
+    // Skip size bytes
+    offset += 8;
+    // Check if filesystem is of type 'DWARFS'
+    ebreak_if(not ns_dwarfs::is_dwarfs(path_file_binary, offset), "Invalid dwarfs filesystem appended on the image");
+    // Mount filesystem
+    f_mount(path_file_binary, path_dir_mount, index_fs, offset, size_fs);
     // Go to next filesystem if exists
     index_fs += 1;
     offset += size_fs;
     file_binary.seekg(offset);
   } // while
+  file_binary.close();
+
+  // Get layers from layer directories
+  std::vector<fs::path> vec_path_file_layer = ns_env::get_optional("FIM_DIRS_LAYER")
+    // Expand variable, allow expansion to fail to be non-fatal
+    .transform([](auto&& e){ return ns_env::expand(e).value_or(std::string{e}); })
+    // Split directories by the char ':'
+    .transform([](auto&& e){ return ns_vector::from_string(e, ':'); })
+    // Get all files from each directory into a single vector
+    .transform([](auto&& e)
+    {
+      return e
+        // Each directory expands to a file list
+        | std::views::transform([](auto&& f){ return ns_filesystem::ns_path::list_files(f); })
+        // Filter and transform into a vector of vectors
+        | std::views::filter([](auto&& f){ return f.has_value(); })
+        | std::views::transform([](auto&& f){ return f.value(); })
+        // Joins into a single vector
+        | std::views::join
+        // Collect
+        | std::ranges::to<std::vector<fs::path>>();
+    }).value_or(std::vector<fs::path>{});
+  // Get layers from file paths
+  ns_vector::append_range(vec_path_file_layer, ns_env::get_optional("FIM_FILES_LAYER")
+    // Expand variable, allow expansion to fail to be non-fatal
+    .transform([](auto&& e){ return ns_env::expand(e).value_or(std::string{e}); })
+    // Split files by the char ':'
+    .transform([](auto&& e){ return ns_vector::from_string(e, ':') | std::ranges::to<std::vector<fs::path>>(); })
+    .value_or(std::vector<fs::path>{})
+  );
+  // Mount external filesystems
+  for (fs::path const& path_file_layer : vec_path_file_layer)
+  {
+    // Check if filesystem is of type 'DWARFS'
+    econtinue_if(not ns_dwarfs::is_dwarfs(path_file_layer, 0), "Invalid dwarfs filesystem appended on the image");
+    // Mount file as a filesystem
+    f_mount(path_file_layer, path_dir_mount, index_fs, 0, fs::file_size(path_file_layer));
+    // Go to next filesystem if exists
+    index_fs += 1;
+  } // for
 
   return index_fs;
 } // fn: mount_dwarfs }}}

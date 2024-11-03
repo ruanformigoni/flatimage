@@ -126,12 +126,12 @@ decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
   , fs::path const& path_file_binary)
 {
   // Create path to entry
-  fs::path path_file_desktop = path_dir_home / ".local/share/applications/flatimage-{}.desktop"_fmt(desktop.get_name());
+  fs::path path_file_desktop = ns_env::get_optional<fs::path>("XDG_DATA_HOME")
+    .value_or(path_dir_home / ".local/share")
+    / "applications/flatimage-{}.desktop"_fmt(desktop.get_name());
 
   // Create parent directories for entry
-  std::error_code ec_entry;
-  fs::create_directories(path_file_desktop.parent_path(), ec_entry);
-  ereturn_if(ec_entry, "Failed to create parent directories with code {}"_fmt(ec_entry.value()));
+  lec(fs::create_directories, path_file_desktop.parent_path());
 
   // Create desktop entry
   std::ofstream file_desktop(path_file_desktop, std::ios::out | std::ios::trunc);
@@ -141,7 +141,7 @@ decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
   println(file_desktop, "Type=Application");
   println(file_desktop, "Comment=FlatImage distribution of \"{}\""_fmt(desktop.get_name()));
   println(file_desktop, "TryExec={}"_fmt(path_file_binary));
-  println(file_desktop, "Exec=\"{}\" %F"_fmt(path_file_binary));
+  println(file_desktop, R"(Exec="{}" %F)"_fmt(path_file_binary));
   println(file_desktop, "Icon=application-flatimage_{}"_fmt(desktop.get_name()));
   println(file_desktop, "MimeType=application/flatimage_{}"_fmt(desktop.get_name()));
   println(file_desktop, "Categories={};"_fmt(ns_string::from_container(desktop.get_categories(), ';')));
@@ -172,7 +172,9 @@ inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
   , fs::path const& path_file_binary)
 {
   // Create path to mimetype
-  fs::path path_entry_mimetype = path_dir_home / ".local/share/mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
+  fs::path path_entry_mimetype = ns_env::get_optional<fs::path>("XDG_DATA_HOME")
+    .value_or(path_dir_home / ".local/share")
+    / "mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
 
   // Create parent directories for mime
   lec(fs::create_directories, path_entry_mimetype.parent_path());

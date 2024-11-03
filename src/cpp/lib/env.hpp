@@ -154,7 +154,8 @@ inline const char* get(const char* name)
 
 // get_optional() {{{
 // get_optional an env variable
-inline std::optional<std::string_view> get_optional(std::string_view name)
+template<typename T = std::string_view>
+inline std::optional<T> get_optional(std::string_view name)
 {
   const char* var = std::getenv(name.data());
   return (var)? std::make_optional(var) : std::nullopt;

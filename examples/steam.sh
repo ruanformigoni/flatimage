@@ -32,7 +32,9 @@ _main()
 
   # Download flatimage
   IMAGE="./bin/arch.flatimage"
-  [ -f "$IMAGE" ] || wget -O "$IMAGE" "https://github.com/ruanformigoni/flatimage/releases/download/v1.0.2/arch.flatimage"
+  [ -f "$IMAGE" ] || wget -O "$IMAGE" "$(curl -H "Accept: application/vnd.github+json" \
+    https://api.github.com/repos/ruanformigoni/flatimage/releases/latest 2>/dev/null \
+    | jq -e -r '.assets.[].browser_download_url | match(".*arch.flatimage$").string')"
   chmod +x "$IMAGE"
 
   # Enable network

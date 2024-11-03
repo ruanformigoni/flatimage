@@ -210,6 +210,17 @@ inline std::expected<std::string, std::string> expand(ns_concept::StringRepresen
   return expanded;
 } // expand() }}}
 
+// xdg_data_home() {{{
+template<typename T = std::string_view>
+std::optional<T> xdg_data_home()
+{
+  const char* var = std::getenv("XDG_DATA_HOME");
+  qreturn_if(var, std::make_optional(var));
+  const char* home = std::getenv("HOME");
+  qreturn_if(not home, std::nullopt);
+  return std::make_optional(std::string{home} + "/.local/share");
+} // xdg_data_home() }}}
+
 } // namespace ns_env }}}
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

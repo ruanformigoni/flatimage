@@ -519,6 +519,24 @@ inline std::optional<std::string> wait_busy_file(fs::path const& path_file_targe
   return std::nullopt;
 } // wait_busy_file()}}}
 
+// wait() {{{
+template<typename T, typename... Args>
+[[nodiscard]] inline std::optional<int> wait(T&& t, Args&&... args)
+{
+  return Subprocess(std::forward<T>(t))
+    .with_piped_outputs()
+    .with_args(std::forward<Args>(args)...)
+    .spawn()
+    .wait();
+} // wait() }}}
+
+// log() {{{
+inline void log(std::optional<int> const& ret, std::string_view msg)
+{
+  if ( not ret ) { ns_log::error()("{} was signalled"_fmt(msg)); }
+  if ( *ret != 0 ) { ns_log::error()("{} exited with non-zero exit code '{}'"_fmt(msg), *ret); }
+} // log() }}}
+
 } // namespace ns_subprocess
 
 /* vim: set expandtab fdm=marker ts=2 sw=2 tw=100 et :*/

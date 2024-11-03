@@ -16,6 +16,7 @@
 #include "../../cpp/lib/linux.hpp"
 #include "../../cpp/macro.hpp"
 #include "../config/config.hpp"
+#include "icon.hpp"
 
 namespace ns_desktop
 {
@@ -54,23 +55,23 @@ struct Image
 #pragma pack(pop)
 
 // get_path_file_icon_png() {{{
-[[nodiscard]] std::optional<fs::path> get_path_file_icon_png(std::string_view name_app, std::string_view template_dir, uint32_t size)
+[[nodiscard]] std::optional<fs::path> get_path_file_icon_png(std::optional<std::string_view> name_app, std::string_view template_dir, uint32_t size)
 {
   auto xdg_data_home = ns_env::xdg_data_home<fs::path>();
   ereturn_if(not xdg_data_home, "XDG_DATA_HOME is undefined", std::nullopt);
   return *xdg_data_home
     / std::vformat(template_dir, std::make_format_args(size, size))
-    / std::vformat(template_file_icon, std::make_format_args(name_app));
+    / ((name_app)? std::vformat(template_file_icon, std::make_format_args(*name_app)) : "application-flatimage.png");
 } // get_path_file_icon_png() }}}
 
 // get_path_file_icon_svg() {{{
-[[nodiscard]] std::optional<fs::path> get_path_file_icon_svg(std::string_view name_app , std::string_view template_dir)
+[[nodiscard]] std::optional<fs::path> get_path_file_icon_svg(std::optional<std::string_view> name_app , std::string_view template_dir)
 {
   auto xdg_data_home = ns_env::xdg_data_home<fs::path>();
   ereturn_if(not xdg_data_home, "XDG_DATA_HOME is undefined", std::nullopt);
   return *xdg_data_home
     / template_dir
-    / std::vformat(template_file_icon_scalable, std::make_format_args(name_app));
+    / ((name_app)? std::vformat(template_file_icon_scalable, std::make_format_args(*name_app)) : "application-flatimage.svg");
 } // get_path_file_icon_svg() }}}
 
 // read_json_from_binary() {{{
@@ -171,14 +172,8 @@ inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop, f
   auto xdg_data_home = ns_env::xdg_data_home<fs::path>();
   ereturn_if(not xdg_data_home, "Could not retrieve XDG_DATA_HOME");
 
-  fs::path path_entry_flatimage_mimetype = *xdg_data_home
-    / "mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
-
-  // Create path to mimetype
-  fs::path path_entry_application_mimetype = *xdg_data_home
-    / "mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
-
-  // Create parent directories for mime
+  // Get application mimetype location
+  fs::path path_entry_application_mimetype = *xdg_data_home / "mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
   lec(fs::create_directories, path_entry_application_mimetype.parent_path());
 
   // Check if should update mime database
@@ -190,7 +185,7 @@ inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop, f
   println(file_application_mimetype, R"(<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">)");
   println(file_application_mimetype, R"(  <mime-type type="application/flatimage_{}">)"_fmt(desktop.get_name()));
   println(file_application_mimetype, R"(    <comment>FlatImage Application</comment>)");
-  println(file_application_mimetype, R"(    <glob pattern="{}"/>)"_fmt(path_file_binary.filename()));
+  println(file_application_mimetype, R"(    <glob weight="100" pattern="{}"/>)"_fmt(path_file_binary.filename()));
   println(file_application_mimetype, R"(    <sub-class-of type="application/x-executable"/>)");
   println(file_application_mimetype, R"(    <generic-icon name="application-x-executable"/>)");
   println(file_application_mimetype, R"(  </mime-type>)");
@@ -198,6 +193,8 @@ inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop, f
   file_application_mimetype.close();
 
   // Create flatimage mimetype file
+  fs::path path_entry_flatimage_mimetype = *xdg_data_home / "mime/packages/flatimage.xml"_fmt(desktop.get_name());
+  lec(fs::create_directories, path_entry_flatimage_mimetype.parent_path());
   std::ofstream file_flatimage_mimetype(path_entry_flatimage_mimetype);
   println(file_flatimage_mimetype, R"(<?xml version="1.0" encoding="UTF-8"?>)");
   println(file_flatimage_mimetype, R"(<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">)");
@@ -212,6 +209,9 @@ inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop, f
   println(file_flatimage_mimetype, R"(        </match>)");
   println(file_flatimage_mimetype, R"(      </match>)");
   println(file_flatimage_mimetype, R"(    </magic>)");
+  println(file_flatimage_mimetype, R"(    <glob weight="50" pattern="*.flatimage"/>)"_fmt(path_file_binary.filename()));
+  println(file_flatimage_mimetype, R"(    <sub-class-of type="application/x-executable"/>)");
+  println(file_flatimage_mimetype, R"(    <generic-icon name="application-x-executable"/>)");
   println(file_flatimage_mimetype, R"(  </mime-type>)");
   println(file_flatimage_mimetype, R"(</mime-info>)");
   file_flatimage_mimetype.close();
@@ -273,6 +273,23 @@ void integrate_icons_png(ns_db::ns_desktop::Desktop const& desktop, fs::path con
   } // for
 } // integrate_icons_png() }}}
 
+// integrate_icon_flatimage() {{{
+void integrate_icon_flatimage()
+{
+    // Path to mimetype icon
+    auto path_icon_mimetype = get_path_file_icon_svg(std::nullopt, template_dir_mimetype_scalable);
+    // Path to app icon
+    auto path_icon_app = get_path_file_icon_svg(std::nullopt, template_dir_apps_scalable);
+    // Create mimetype icon
+    std::ofstream file_icon_mimetype{*path_icon_mimetype};
+    file_icon_mimetype << ns_icon::FLATIMAGE;
+    file_icon_mimetype.close();
+    // Create app icon
+    std::ofstream file_icon_app{*path_icon_app};
+    file_icon_app << ns_icon::FLATIMAGE;
+    file_icon_app.close();
+} // integrate_icon_flatimage() }}}
+
 // integrate_icons() {{{
 inline void integrate_icons(ns_config::FlatimageConfig const& config, ns_db::ns_desktop::Desktop const& desktop)
 {
@@ -280,7 +297,7 @@ inline void integrate_icons(ns_config::FlatimageConfig const& config, ns_db::ns_
   auto opt_test_icon = get_path_file_icon_png(desktop.get_name(), template_dir_apps, 64)
     .or_else([&]{ return get_path_file_icon_svg(desktop.get_name(), template_dir_apps_scalable); });
   // If neither exist re-integrate icons
-  dreturn_if(opt_test_icon, "Icons are integratated, found {}"_fmt(*opt_test_icon));
+  dreturn_if(opt_test_icon and fs::exists(*opt_test_icon), "Icons are integrated, found {}"_fmt(*opt_test_icon));
   // Read picture from flatimage binary
   Image image;
   auto expected_data_image = read_image_from_binary(config.path_file_binary
@@ -306,6 +323,9 @@ inline void integrate_icons(ns_config::FlatimageConfig const& config, ns_db::ns_
   {
     integrate_icons_png(desktop, *expected_path_file_icon);
   } // else
+  integrate_icon_flatimage();
+  // Remove temporary file
+  lec(fs::remove, *expected_path_file_icon);
 } // integrate_icons() }}}
 
 // integrate_bash() {{{

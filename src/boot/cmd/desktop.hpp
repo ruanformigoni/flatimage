@@ -134,7 +134,7 @@ decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
   ereturn_if(ec_entry, "Failed to create parent directories with code {}"_fmt(ec_entry.value()));
 
   // Create desktop entry
-  std::ofstream file_desktop{path_file_desktop};
+  std::ofstream file_desktop(path_file_desktop, std::ios::out | std::ios::trunc);
   ereturn_if(not file_desktop.is_open(), "Could not open desktop file {}"_fmt(path_file_desktop));
   println(file_desktop, "[Desktop Entry]");
   println(file_desktop, "Name={}"_fmt(desktop.get_name()));
@@ -149,8 +149,25 @@ decltype(auto) integrate_desktop_entry(ns_db::ns_desktop::Desktop const& desktop
 
 } // integrate_desktop_entry() }}}
 
+// is_update_mime_database() {{{
+[[nodiscard]] inline bool is_update_mime_database(fs::path const& path_entry_mimetype)
+{
+  // Update if file does not exist
+  dreturn_if(fs::exists(path_entry_mimetype), "Update mime due to missing source file", true);
+  std::ifstream file_mimetype(path_entry_mimetype);
+  // Update if can not open file
+  dreturn_if(not file_mimetype.is_open(), "Update mime due to unaccessible source file for read", true);
+  // Update if file name has changed
+  std::string pattern = R"(<glob pattern="{}"/>")"_fmt(path_entry_mimetype.filename());
+  for (std::string line; std::getline(file_mimetype, line);)
+  {
+    dreturn_if(line.contains(pattern), "Update mime due to changed file name", true);
+  } // for
+  return false;
+} // is_update_mime_database() }}}
+
 // integrate_mime_database() {{{
-decltype(auto) integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
+inline void integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
   , fs::path const& path_dir_home
   , fs::path const& path_file_binary)
 {
@@ -158,12 +175,12 @@ decltype(auto) integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
   fs::path path_entry_mimetype = path_dir_home / ".local/share/mime/packages/flatimage-{}.xml"_fmt(desktop.get_name());
 
   // Create parent directories for mime
-  std::error_code ec_mime;
-  fs::create_directories(path_entry_mimetype.parent_path(), ec_mime);
-  ereturn_if(ec_mime, "Failed to create parent directories with code {}"_fmt(ec_mime.value()));
+  lec(fs::create_directories, path_entry_mimetype.parent_path());
+
+  // Check if should update mime database
+  qreturn_if( not is_update_mime_database(path_entry_mimetype) );
 
   // Create mimetype file
-  bool is_update_mime_database = not fs::exists(path_entry_mimetype);
   std::ofstream file_mimetype{path_entry_mimetype};
   println(file_mimetype, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
   println(file_mimetype, "<mime-info xmlns=\"http://www.freedesktop.org/standards/shared-mime-info\">");
@@ -185,18 +202,14 @@ decltype(auto) integrate_mime_database(ns_db::ns_desktop::Desktop const& desktop
   println(file_mimetype, "</mime-info>");
   file_mimetype.close();
 
-  // Update mime database
-  if ( is_update_mime_database )
-  {
-    auto opt_mime_database = ns_subprocess::search_path("update-mime-database");
-    ereturn_if(not opt_mime_database.has_value(), "Could not find 'update-mime-database'");
-    auto ret = ns_subprocess::Subprocess(*opt_mime_database)
-      .with_args(path_dir_home / ".local/share/mime")
-      .spawn()
-      .wait();
-    if ( not ret ) { ns_log::error()("update-mime-database was signalled"); }
-    if ( *ret != 0 ) { ns_log::error()("update-mime-database exited with non-zero exit code '{}'", *ret); }
-  } // if
+  auto opt_mime_database = ns_subprocess::search_path("update-mime-database");
+  ereturn_if(not opt_mime_database.has_value(), "Could not find 'update-mime-database'");
+  auto ret = ns_subprocess::Subprocess(*opt_mime_database)
+    .with_args(path_dir_home / ".local/share/mime")
+    .spawn()
+    .wait();
+  if ( not ret ) { ns_log::error()("update-mime-database was signalled"); }
+  if ( *ret != 0 ) { ns_log::error()("update-mime-database exited with non-zero exit code '{}'", *ret); }
 } // integrate_mime_database() }}}
 
 // integrate_icons_svg() {{{

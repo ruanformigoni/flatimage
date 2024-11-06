@@ -32,7 +32,7 @@ namespace fs = std::filesystem;
 
 struct Overlay
 {
-  fs::path path_dir_layers;
+  std::vector<fs::path> vec_path_dir_layer;
   fs::path path_dir_upper;
   fs::path path_dir_work;
 };
@@ -59,7 +59,7 @@ class Bwrap
     // Run bwrap with uid and gid equal to 0
     bool m_is_root;
     // Bwrap native --overlay options
-    void overlay(fs::path const& path_dir_layers
+    void overlay(std::vector<fs::path> const& vec_path_dir_layer
       , fs::path const& path_dir_upper
       , fs::path const& path_dir_work);
     // Set XDG_RUNTIME_DIR
@@ -149,9 +149,9 @@ inline Bwrap::Bwrap(
   // Use native bwrap --overlay options or overlayfs
   if ( opt_overlay )
   {
-    overlay(fs::path{ns_env::get_or_throw("FIM_DIR_MOUNT")} / "layers"
-      , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/upperdir"
-      , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/workdir"
+    overlay(opt_overlay->vec_path_dir_layer
+      , opt_overlay->path_dir_upper
+      , opt_overlay->path_dir_work
     );
   } // if
   else
@@ -174,17 +174,15 @@ inline Bwrap::Bwrap(
 } // Bwrap() }}}
 
 // overlayfs() {{{
-inline void Bwrap::overlay(fs::path const& path_dir_layers
+inline void Bwrap::overlay(std::vector<fs::path> const& vec_path_dir_layer
   , fs::path const& path_dir_upper
   , fs::path const& path_dir_work)
 {
-  fs::create_directories(path_dir_upper);
-  fs::create_directories(path_dir_work);
-  for(auto const& directory : fs::directory_iterator(path_dir_layers)
-    | std::views::filter([](auto&& e){ return fs::is_directory(e.path()); })
-    | std::views::transform([](auto&& e){ return e.path(); }))
+  // Build --overlay related commands
+  for(fs::path const& path_dir_layer : vec_path_dir_layer)
   {
-    ns_vector::push_back(m_args, "--overlay-src", directory);
+    ns_log::info()("Overlay layer '{}'", path_dir_layer);
+    ns_vector::push_back(m_args, "--overlay-src", path_dir_layer);
   } // for
   ns_vector::push_back(m_args, "--overlay", path_dir_upper, path_dir_work, "/");
 } // overlayfs() }}}
@@ -524,7 +522,7 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
 
   // Run Bwrap
   auto ret = ns_subprocess::Subprocess(*opt_path_file_bash)
-    .with_args("-c", "\"{}\" \"$@\""_fmt(*expected_path_file_bwrap), "--")
+    .with_args("-c", R"("{}" "$@")"_fmt(*expected_path_file_bwrap), "--")
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)

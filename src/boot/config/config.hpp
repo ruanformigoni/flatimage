@@ -28,6 +28,20 @@ struct Offset
   uint64_t size;
 };
 
+// impl_update_get_config_files() {{{
+inline decltype(auto) impl_update_get_config_files(std::vector<fs::path> const& vec_path_dir_layer
+  , fs::path const& path_dir_upper
+  , fs::path const& path_file_config)
+{
+  // Check if configuration exists in upperdir
+  dreturn_if(fs::exists(path_dir_upper / path_file_config), "Configuration file '{}' exists"_fmt(path_file_config));
+  // Try to find configuration file in layer stack with descending order
+  auto it = std::ranges::find_if(vec_path_dir_layer, [&](auto&& e){ return fs::exists(e / path_file_config); });
+  dreturn_if(it == std::ranges::end(vec_path_dir_layer),  "Could not find '{}' in layer stack"_fmt(path_file_config));
+  // Copy to upperdir
+  fs::copy_file(*it / path_file_config, path_dir_upper / path_file_config, fs::copy_options::skip_existing);
+} // impl_update_get_config_files() }}}
+
 } // namespace
 
 constexpr int64_t const SIZE_RESERVED_TOTAL = 2097152;
@@ -140,6 +154,8 @@ inline FlatimageConfig config()
   config.path_dir_data_overlayfs = config.path_dir_host_config / "overlays";
   config.path_dir_upper_overlayfs = config.path_dir_data_overlayfs / "upperdir";
   config.path_dir_work_overlayfs = config.path_dir_data_overlayfs / "workdir";
+  fs::create_directories(config.path_dir_upper_overlayfs);
+  fs::create_directories(config.path_dir_work_overlayfs);
 
   // Configuration files directory
   config.path_dir_config = config.path_dir_upper_overlayfs / "fim/config";
@@ -180,6 +196,29 @@ inline FlatimageConfig config()
 
   return config;
 } // config() }}}
+
+// get_mounted_layers() {{{
+inline decltype(auto) get_mounted_layers(fs::path const& path_dir_layers)
+{
+  std::vector<fs::path> vec_path_dir_layer = fs::directory_iterator(path_dir_layers)
+    | std::views::filter([](auto&& e){ return fs::is_directory(e.path()); })
+    | std::views::transform([](auto&& e){ return e.path(); })
+    | std::ranges::to<std::vector<fs::path>>();
+  // Reverse sort
+  std::ranges::sort(vec_path_dir_layer, std::greater<>{});
+  return vec_path_dir_layer;
+} // get_mounted_layers() }}}
+
+// push_config_files() {{{
+inline decltype(auto) push_config_files(fs::path const& path_dir_layers, fs::path const& path_dir_upper)
+{
+  auto vec_path_dir_layer = get_mounted_layers(path_dir_layers);
+  // Write configuration files to upper directory
+  impl_update_get_config_files(vec_path_dir_layer, path_dir_upper, "fim/config/boot.json");
+  impl_update_get_config_files(vec_path_dir_layer, path_dir_upper, "fim/config/environment.json");
+  impl_update_get_config_files(vec_path_dir_layer, path_dir_upper, "fim/config/bindings.json");
+  impl_update_get_config_files(vec_path_dir_layer, path_dir_upper, "fim/config/casefold.json");
+} // push_config_files() }}}
 
 } // namespace ns_config
 

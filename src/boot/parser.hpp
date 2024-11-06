@@ -320,7 +320,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     std::optional<ns_bwrap::Overlay> bwrap_overlay = ( not config.is_fuse_overlayfs )?
         std::make_optional(ns_bwrap::Overlay
         {
-            .path_dir_layers = config.path_dir_mount_layers
+            .vec_path_dir_layer = ns_config::get_mounted_layers(config.path_dir_mount_layers)
           , .path_dir_upper = config.path_dir_upper_overlayfs
           , .path_dir_work = config.path_dir_work_overlayfs
         })

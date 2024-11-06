@@ -341,7 +341,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     // Check if should enable GPU
     if ( bits_permissions->gpu )
     {
-      (void) bwrap.with_bind_gpu(config.path_dir_mount_overlayfs, config.path_dir_runtime_host);
+      (void) bwrap.with_bind_gpu(config.path_dir_upper_overlayfs, config.path_dir_runtime_host);
     }
 
     // Run bwrap

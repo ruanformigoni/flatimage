@@ -153,7 +153,6 @@ inline Bwrap::Bwrap(
       , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/upperdir"
       , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/workdir"
     );
-    ns_vector::push_back(m_args, "--bind", "/", path_dir_root);
   } // if
   else
   {

@@ -391,10 +391,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Configure environment
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdEnv>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-    // Create config dir if not exists
-    fs::create_directories(config.path_file_config_environment.parent_path());
     // Determine open mode
     switch( cmd->op )
     {
@@ -442,9 +438,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Bind a device or file to the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_cmd::ns_bind::CmdBind>(*variant_cmd) )
   {
-    // Mount filesystem as RW
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
-
     // Perform selected op
     switch(cmd->op)
     {
@@ -452,7 +445,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
       case ns_cmd::ns_bind::CmdBindOp::DEL: ns_cmd::ns_bind::del(config.path_file_config_bindings, *cmd); break;
       case ns_cmd::ns_bind::CmdBindOp::LIST: ns_cmd::ns_bind::list(config.path_file_config_bindings); break;
     } // switch
-
   } // else if
   // Commit changes as a novel layer into the flatimage
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCommit>(*variant_cmd) )
@@ -480,7 +472,6 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Enable or disable casefold (useful for wine)
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdCaseFold>(*variant_cmd) )
   {
-    [[maybe_unused]] auto mount = ns_filesystems::Filesystems(config);
     ns_db::from_file(config.path_file_config_casefold, [&](auto& db)
     {
       db("enable") = std::string{cmd->op};

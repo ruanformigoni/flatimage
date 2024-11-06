@@ -68,7 +68,7 @@ struct FlatimageConfig
   fs::path path_dir_work_overlayfs;
   fs::path path_dir_mount_overlayfs;
 
-  fs::path path_dir_static;
+  fs::path path_dir_config;
   fs::path path_file_config_boot;
   fs::path path_file_config_environment;
   fs::path path_file_config_bindings;
@@ -141,6 +141,10 @@ inline FlatimageConfig config()
   config.path_dir_upper_overlayfs = config.path_dir_data_overlayfs / "upperdir";
   config.path_dir_work_overlayfs = config.path_dir_data_overlayfs / "workdir";
 
+  // Configuration files directory
+  config.path_dir_config = config.path_dir_upper_overlayfs / "fim/config";
+  fs::create_directories(config.path_dir_config);
+
   // Bwrap
   ns_env::set("BWRAP_LOG", config.path_dir_mount.string() + ".bwrap.log", ns_env::Replace::Y);
 
@@ -156,11 +160,10 @@ inline FlatimageConfig config()
   config.layer_compression_level = std::clamp(config.layer_compression_level, uint32_t{0}, uint32_t{10});
 
   // Paths to the configuration files
-  config.path_dir_static              = config.path_dir_mount_overlayfs / "fim/static";
-  config.path_file_config_boot        = config.path_dir_mount_overlayfs / "fim/config/boot.json";
-  config.path_file_config_environment = config.path_dir_mount_overlayfs / "fim/config/environment.json";
-  config.path_file_config_bindings    = config.path_dir_mount_overlayfs / "fim/config/bindings.json";
-  config.path_file_config_casefold    = config.path_dir_mount_overlayfs / "fim/config/casefold.json";
+  config.path_file_config_boot        = config.path_dir_config / "boot.json";
+  config.path_file_config_environment = config.path_dir_config / "environment.json";
+  config.path_file_config_bindings    = config.path_dir_config / "bindings.json";
+  config.path_file_config_casefold    = config.path_dir_config / "casefold.json";
 
   // PID
   ns_env::set("FIM_PID", getpid(), ns_env::Replace::Y);

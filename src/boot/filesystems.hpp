@@ -60,8 +60,12 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
     );
     ns_log::debug()("ciopfs is enabled");
   } // if
-  // Mount overlayfs
-  mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
+  // Use fuse-overlayfs
+  if ( config.is_fuse_overlayfs )
+  {
+    // Mount overlayfs
+    mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
+  } // if
   // Spawn janitor
   spawn_janitor();
 } // fn Filesystems::Filesystems }}}

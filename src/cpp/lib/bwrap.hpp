@@ -30,6 +30,13 @@ namespace fs = std::filesystem;
 
 }
 
+struct Overlay
+{
+  fs::path path_dir_layers;
+  fs::path path_dir_upper;
+  fs::path path_dir_work;
+};
+
 namespace ns_permissions
 {
 
@@ -45,22 +52,25 @@ class Bwrap
     fs::path m_path_file_program;
     std::vector<std::string> m_program_args;
     std::vector<std::string> m_program_env;
-
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
-
     // Arguments and environment to bwrap
     std::vector<std::string> m_args;
-
     // Run bwrap with uid and gid equal to 0
     bool m_is_root;
-
+    // Bwrap native --overlay options
+    void overlay(fs::path const& path_dir_layers
+      , fs::path const& path_dir_upper
+      , fs::path const& path_dir_work);
+    // Set XDG_RUNTIME_DIR
     void set_xdg_runtime_dir();
+    // Setup
     std::expected<fs::path, std::string> test_and_setup(fs::path const& path_file_bwrap);
 
   public:
     template<ns_concept::StringRepresentable... Args>
     Bwrap(bool is_root
+      , std::optional<Overlay> opt_overlay
       , fs::path const& path_dir_root
       , fs::path const& path_file_bashrc
       , fs::path const& path_file_program
@@ -93,6 +103,7 @@ class Bwrap
 template<ns_concept::StringRepresentable... Args>
 inline Bwrap::Bwrap(
       bool is_root
+    , std::optional<Overlay> opt_overlay
     , fs::path const& path_dir_root
     , fs::path const& path_file_bashrc
     , fs::path const& path_file_program
@@ -132,14 +143,27 @@ inline Bwrap::Bwrap(
   } // if
   of.close();
 
-  // Check if root exists and is a directory
-  ethrow_if(not fs::is_directory(path_dir_root)
-    , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
-  );
+  // Check if should be root in the container
+  if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+
+  // Use native bwrap --overlay options or overlayfs
+  if ( opt_overlay )
+  {
+    overlay(fs::path{ns_env::get_or_throw("FIM_DIR_MOUNT")} / "layers"
+      , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/upperdir"
+      , fs::path{ns_env::get_or_throw("FIM_DIR_CONFIG")} / "overlays/workdir"
+    );
+    ns_vector::push_back(m_args, "--bind", "/", path_dir_root);
+  } // if
+  else
+  {
+    ethrow_if(not fs::is_directory(path_dir_root)
+      , "'{}' does not exist or is not a directory"_fmt(path_dir_root)
+    );
+    ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
+  } // else
 
   // Basic bindings
-  if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
-  ns_vector::push_back(m_args, "--bind", path_dir_root, "/");
   ns_vector::push_back(m_args, "--dev", "/dev");
   ns_vector::push_back(m_args, "--proc", "/proc");
   ns_vector::push_back(m_args, "--bind", "/tmp", "/tmp");
@@ -149,6 +173,22 @@ inline Bwrap::Bwrap(
   // Check if XDG_RUNTIME_DIR is set or try to set it manually
   set_xdg_runtime_dir();
 } // Bwrap() }}}
+
+// overlayfs() {{{
+inline void Bwrap::overlay(fs::path const& path_dir_layers
+  , fs::path const& path_dir_upper
+  , fs::path const& path_dir_work)
+{
+  fs::create_directories(path_dir_upper);
+  fs::create_directories(path_dir_work);
+  for(auto const& directory : fs::directory_iterator(path_dir_layers)
+    | std::views::filter([](auto&& e){ return fs::is_directory(e.path()); })
+    | std::views::transform([](auto&& e){ return e.path(); }))
+  {
+    ns_vector::push_back(m_args, "--overlay-src", directory);
+  } // for
+  ns_vector::push_back(m_args, "--overlay", path_dir_upper, path_dir_work, "/");
+} // overlayfs() }}}
 
 // set_xdg_runtime_dir() {{{
 inline void Bwrap::set_xdg_runtime_dir()
@@ -474,19 +514,10 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
   ethrow_if(not opt_path_file_bash.has_value(), "Could not find bash");
 
   // Use builtin bwrap or native if exists
-  fs::path path_file_bwrap;
-  if ( const char* entry = ns_env::get("BWRAP_NATIVE") )
-  {
-    path_file_bwrap = entry;
-    ns_log::debug()("Using bwrap native");
-  } // if
-  else
-  {
-    auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
-    ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
-    path_file_bwrap = *opt_path_file_bwrap;
-    ns_log::debug()("Using bwrap builtin");
-  } // else
+  auto opt_path_file_bwrap = ns_subprocess::search_path("bwrap");
+  ethrow_if(not opt_path_file_bwrap.has_value(), "Could not find bwrap");
+  fs::path path_file_bwrap = *opt_path_file_bwrap;
+  ns_log::debug()("Using bwrap builtin");
 
   // Test bwrap and setup apparmor if it is required
   auto expected_path_file_bwrap = test_and_setup(path_file_bwrap);

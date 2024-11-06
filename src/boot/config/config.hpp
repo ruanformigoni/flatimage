@@ -40,6 +40,7 @@ struct FlatimageConfig
   bool is_root;
   bool is_readonly;
   bool is_debug;
+  bool is_fuse_overlayfs;
 
   uint64_t offset_reserved;
   Offset offset_permissions;
@@ -64,6 +65,7 @@ struct FlatimageConfig
   fs::path path_dir_host_config;
   fs::path path_dir_data_overlayfs;
   fs::path path_dir_upper_overlayfs;
+  fs::path path_dir_work_overlayfs;
   fs::path path_dir_mount_overlayfs;
 
   fs::path path_dir_static;
@@ -92,6 +94,7 @@ inline FlatimageConfig config()
   config.is_root = ns_env::exists("FIM_ROOT", "1");
   config.is_readonly = ns_env::exists("FIM_RO", "1");
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
+  config.is_fuse_overlayfs = ns_env::exists("FIM_FUSE_OVERLAYFS", "1");
 
   // Paths in /tmp
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
@@ -135,12 +138,10 @@ inline FlatimageConfig config()
 
   // Overlayfs write data to remain on the host
   config.path_dir_data_overlayfs = config.path_dir_host_config / "overlays";
+  config.path_dir_upper_overlayfs = config.path_dir_data_overlayfs / "upperdir";
+  config.path_dir_work_overlayfs = config.path_dir_data_overlayfs / "workdir";
 
   // Bwrap
-  if ( auto opt = ns_subprocess::search_path("bwrap") )
-  {
-    ns_env::set("BWRAP_NATIVE", *opt, ns_env::Replace::Y);
-  } // if
   ns_env::set("BWRAP_LOG", config.path_dir_mount.string() + ".bwrap.log", ns_env::Replace::Y);
 
   // Environment

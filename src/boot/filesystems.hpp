@@ -33,6 +33,7 @@ class Filesystems
     void mount_overlayfs(fs::path const& path_dir_layers
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
+      , fs::path const& path_dir_workdir
     );
     // In case the parent process fails to clean the mountpoints, this child does it
     void spawn_janitor();
@@ -66,7 +67,11 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   if ( config.is_fuse_overlayfs )
   {
     // Mount overlayfs
-    mount_overlayfs(config.path_dir_mount_layers, config.path_dir_data_overlayfs, config.path_dir_mount_overlayfs);
+    mount_overlayfs(config.path_dir_mount_layers
+      , config.path_dir_upper_overlayfs
+      , config.path_dir_mount_overlayfs
+      , config.path_dir_work_overlayfs
+    );
   } // if
   // Spawn janitor
   spawn_janitor();
@@ -231,11 +236,13 @@ inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::pa
 // fn: mount_overlayfs {{{
 inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers
   , fs::path const& path_dir_data
-  , fs::path const& path_dir_mount)
+  , fs::path const& path_dir_mount
+  , fs::path const& path_dir_workdir)
 {
   m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_layers
     , path_dir_data
     , path_dir_mount
+    , path_dir_workdir
     , getpid()
   );
   m_vec_path_dir_mountpoints.push_back(path_dir_mount);

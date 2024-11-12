@@ -29,8 +29,9 @@ class Overlayfs
 
   public:
     Overlayfs(fs::path const& path_dir_layers
-        , fs::path const& path_dir_modifications
+        , fs::path const& path_dir_upperdir
         , fs::path const& path_dir_mountpoint
+        , fs::path const& path_dir_workdir
         , pid_t pid_to_die_for
       )
       : m_path_dir_mountpoint(path_dir_mountpoint)
@@ -44,7 +45,7 @@ class Overlayfs
       } // for
       std::ranges::sort(vec_path_dir_lowerdir);
 
-      ethrow_if (not fs::exists(path_dir_modifications) and not fs::create_directories(path_dir_modifications)
+      ethrow_if (not fs::exists(path_dir_upperdir) and not fs::create_directories(path_dir_upperdir)
         , "Could not create modifications dir for overlayfs"
       );
 
@@ -62,16 +63,6 @@ class Overlayfs
       // Get user and group ids
       uid_t user_id = getuid();
       gid_t group_id = getgid();
-
-      // Create modifications directory and work directory
-      fs::path path_dir_upperdir = path_dir_modifications / "upperdir";
-      fs::path path_dir_workdir = path_dir_modifications / "workdir";
-      ethrow_if (not fs::exists(path_dir_upperdir) and not fs::create_directories(path_dir_upperdir)
-        , "Could not create upperdir for overlayfs"
-      );
-      ethrow_if (not fs::exists(path_dir_workdir) and not fs::create_directories(path_dir_workdir)
-        , "Could not create workdir for overlayfs"
-      );
 
       // Create string to represent argument of lowerdirs
       std::string arg_lowerdir="lowerdir={}"_fmt(vec_path_dir_lowerdir.back());

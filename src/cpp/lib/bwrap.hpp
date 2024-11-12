@@ -54,6 +54,10 @@ class Bwrap
     std::vector<std::string> m_program_env;
     // XDG_RUNTIME_DIR
     fs::path m_path_dir_xdg_runtime;
+    // Overlay work dir, bwrap leaves this directory with
+    // 000 permissions after usage, save it to make it 755
+    // on exit
+    std::optional<fs::path> m_opt_path_dir_work;
     // Arguments and environment to bwrap
     std::vector<std::string> m_args;
     // Run bwrap with uid and gid equal to 0
@@ -76,6 +80,7 @@ class Bwrap
       , fs::path const& path_file_program
       , std::vector<std::string> const& program_args
       , std::vector<std::string> const& program_env);
+    ~Bwrap();
     Bwrap(Bwrap const&) = delete;
     Bwrap(Bwrap&&) = delete;
     Bwrap& operator=(Bwrap const&) = delete;
@@ -111,6 +116,7 @@ inline Bwrap::Bwrap(
     , std::vector<std::string> const& program_env)
   : m_path_file_program(path_file_program)
   , m_program_args(program_args)
+  , m_opt_path_dir_work(opt_overlay.transform([](auto&& e){ return e.path_dir_work; }))
   , m_is_root(is_root)
 {
   // Push passed environment
@@ -172,6 +178,20 @@ inline Bwrap::Bwrap(
   // Check if XDG_RUNTIME_DIR is set or try to set it manually
   set_xdg_runtime_dir();
 } // Bwrap() }}}
+
+// ~Bwrap() {{{
+inline Bwrap::~Bwrap()
+{
+  if ( m_opt_path_dir_work )
+  {
+    // 755, non-fatal on error
+    lec(fs::permissions, *m_opt_path_dir_work / "work"
+      , fs::perms::owner_read  | fs::perms::owner_write | fs::perms::owner_exec
+      | fs::perms::group_read  | fs::perms::group_exec
+      | fs::perms::others_read | fs::perms::others_exec
+    );
+  } // if
+} // ~Bwrap() }}}
 
 // overlayfs() {{{
 inline void Bwrap::overlay(std::vector<fs::path> const& vec_path_dir_layer

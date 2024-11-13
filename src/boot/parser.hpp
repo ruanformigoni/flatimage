@@ -317,7 +317,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     ereturn_if(not bits_permissions, bits_permissions.error());
 
     // Create bwrap instance
-    std::optional<ns_bwrap::Overlay> bwrap_overlay = ( not config.is_fuse_overlayfs )?
+    std::optional<ns_bwrap::Overlay> bwrap_overlay = ( config.is_bwrap_overlayfs )?
         std::make_optional(ns_bwrap::Overlay
         {
             .vec_path_dir_layer = ns_config::get_mounted_layers(config.path_dir_mount_layers)

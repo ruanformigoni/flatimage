@@ -36,7 +36,7 @@ function _fetch_static()
   wget -O ./bin/proot "https://github.com/ruanformigoni/proot-static-musl/releases/download/bf747c8/proot-x86_64"
 
   # Fetch overlayfs
-  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs-static-musl/releases/download/1861741/fuse-overlayfs-x86_64"
+  wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs-static-musl/releases/download/6da6352/fuse-overlayfs-x86_64"
 
   # Fetch ciopfs
   wget -O ./bin/ciopfs "https://github.com/ruanformigoni/ciopfs-static-musl/releases/download/39d5d5a/ciopfs-x86_64"

@@ -30,7 +30,7 @@ function _fetch_static()
   wget -O./bin/lsof "https://github.com/ruanformigoni/lsof-static-musl/releases/download/720c914/lsof-x86_64"
 
   # Fetch bwrap
-  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/0526b78/bwrap-x86_64"
+  wget -O ./bin/bwrap "https://github.com/ruanformigoni/bubblewrap-musl-static/releases/download/b881755/bwrap-x86_64"
 
   # Fetch proot
   wget -O ./bin/proot "https://github.com/ruanformigoni/proot-static-musl/releases/download/bf747c8/proot-x86_64"
@@ -161,10 +161,9 @@ function _create_subsystem_blueprint()
   cp "$FIM_DIR"/mime/icon.svg      "/tmp/$dist/fim/desktop"
   cp "$FIM_DIR"/mime/flatimage.xml "/tmp/$dist/fim/desktop"
 
-  # Create root filesystem and layers folder
+  # Create root filesystem directory
   mkdir ./root
   mv /tmp/"$dist"/fim ./root
-  mkdir ./root/fim/layers
 
   # Create image
   # mksquashfs ./root "$dist.img" -comp zstd -Xcompression-level 15

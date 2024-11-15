@@ -55,6 +55,7 @@ struct FlatimageConfig
   bool is_readonly;
   bool is_debug;
   bool is_bwrap_overlayfs;
+  bool is_fuse_overlayfs;
 
   uint64_t offset_reserved;
   Offset offset_permissions;
@@ -109,6 +110,17 @@ inline FlatimageConfig config()
   config.is_readonly = ns_env::exists("FIM_RO", "1");
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
   config.is_bwrap_overlayfs = ns_env::exists("FIM_BWRAP_OVERLAYFS", "1");
+  config.is_fuse_overlayfs = ns_env::exists("FIM_FUSE_OVERLAYFS", "1");
+  if ( config.is_bwrap_overlayfs and config.is_fuse_overlayfs )
+  {
+    ns_log::debug()("Trying to set both bwrap and fuse overlay options, using bwrap");
+    config.is_fuse_overlayfs = false;
+  } // if
+  if ( not config.is_bwrap_overlayfs and not config.is_fuse_overlayfs )
+  {
+    ns_log::debug()("No explicit overlay option specified, using bwrap");
+    config.is_bwrap_overlayfs = true;
+  } // if
 
   // Paths in /tmp
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));

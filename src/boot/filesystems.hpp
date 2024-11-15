@@ -64,7 +64,7 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
     ns_log::debug()("ciopfs is enabled");
   } // if
   // Use fuse-overlayfs
-  if ( not config.is_bwrap_overlayfs )
+  if ( config.is_fuse_overlayfs )
   {
     // Mount overlayfs
     mount_overlayfs(config.path_dir_mount_layers

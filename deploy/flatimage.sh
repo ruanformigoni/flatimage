@@ -46,7 +46,7 @@ function _fetch_static()
   # wget -O ./bin/squashfuse "https://github.com/ruanformigoni/squashfuse-static-musl/releases/download/f2b4067/squashfuse-x86_64"
 
   # Fetch dwarfs
-  wget -O bin/dwarfs_aio "https://github.com/ruanformigoni/dwarfs/releases/download/187a5b65/dwarfs-universal"
+  wget -O bin/dwarfs_aio "https://github.com/ruanformigoni/dwarfs/releases/download/84e4b830/dwarfs-universal"
   ln -s dwarfs_aio bin/mkdwarfs
   ln -s dwarfs_aio bin/dwarfs
 

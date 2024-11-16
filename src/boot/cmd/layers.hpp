@@ -30,6 +30,16 @@ inline void create(fs::path const& path_dir_src, fs::path const& path_file_dst, 
   // Compression level must be at least 1 and less or equal to 10
   compression_level = std::clamp(compression_level, uint64_t{0}, uint64_t{9});
 
+  // Change permissions on source directory files if possible
+  // Required for bwrap, since --uid and --gid do not affect the overlay permissions
+  // which leads to permission issues, since the layer user does not match the sandbox user
+  // A solution would be to use -o uid=xxxx,gid=xxxx in dwarfs' mount options, but these
+  // seem to currently be unavailable
+  for(auto entry : fs::directory_iterator(path_dir_src))
+  {
+    lec(fs::permissions,entry.path(), fs::perms::all, fs::perm_options::replace);
+  } // for
+
   // // Convert to non-percentual compression level
   // compression_level = std::ceil(22 * (static_cast<double>(compression_level) / 10));
 

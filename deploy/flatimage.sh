@@ -155,6 +155,7 @@ function _create_subsystem_blueprint()
 
   # Set permissions
   chown -R 1000:1000 "/tmp/$dist"
+  chmod -R 777 "/tmp/$dist"
 
   # MIME
   mkdir -p "/tmp/$dist/fim/desktop"
@@ -272,6 +273,7 @@ function _create_subsystem_alpine()
 
   # Create layer 0 compressed filesystem
   chown -R 1000:1000 /tmp/"$dist"
+  chmod -R 777 /tmp/"$dist"
   # mksquashfs /tmp/"$dist" "$dist".layer -comp zstd -Xcompression-level 15
   ./bin/mkdwarfs -i /tmp/"$dist" -o "$dist".layer
 
@@ -496,6 +498,7 @@ function _create_subsystem_arch()
 
   # Create layer 0 compressed filesystem
   chown -R 1000:1000 ./arch
+  chmod -R 777 ./arch
   # chmod 777 -R ./arch
   # mksquashfs ./arch ./arch.layer -comp zstd -Xcompression-level 15
   ./bin/mkdwarfs -i ./arch -o ./arch.layer

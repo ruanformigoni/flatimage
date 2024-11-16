@@ -150,7 +150,14 @@ inline Bwrap::Bwrap(
   of.close();
 
   // Check if should be root in the container
-  if ( m_is_root ) { ns_vector::push_back(m_args, "--uid", "0", "--gid", "0"); }
+  if ( m_is_root )
+  {
+    ns_vector::push_back(m_args, "--uid", "0", "--gid", "0");
+  }
+  else
+  {
+    ns_vector::push_back(m_args, "--uid", std::to_string(getuid()), "--gid", std::to_string(getgid()));
+  }
 
   // Use native bwrap --overlay options or overlayfs
   if ( opt_overlay )

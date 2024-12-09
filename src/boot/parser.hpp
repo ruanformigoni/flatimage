@@ -278,7 +278,7 @@ inline std::expected<CmdType, std::string> parse(int argc , char** argv)
     ns_match::equal("fim-help") >>= [&]
     {
       if ( argc < 3 ) { f_error(true, ns_cmd::ns_help::help_usage(), "fim-help"); } // if
-      (void) ns_match::match(std::string_view{argv[2]},
+      std::ignore = ns_match::match(std::string_view{argv[2]},
         ns_match::equal("exec")     >>= [&]{ f_error(true, ns_cmd::ns_help::exec_usage(), ""); },
         ns_match::equal("root")     >>= [&]{ f_error(true, ns_cmd::ns_help::root_usage(), ""); },
         ns_match::equal("perms")    >>= [&]{ f_error(true, ns_cmd::ns_help::perms_usage(), ""); },

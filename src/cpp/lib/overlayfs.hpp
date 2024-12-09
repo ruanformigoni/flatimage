@@ -72,7 +72,7 @@ class Overlayfs
       } // for
 
       // Include arguments and spawn process
-      (void) m_subprocess->
+      std::ignore = m_subprocess->
          with_args("-f")
         .with_args("-o", "squash_to_uid={}"_fmt(user_id))
         .with_args("-o", "squash_to_gid={}"_fmt(group_id))

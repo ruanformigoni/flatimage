@@ -440,7 +440,7 @@ inline void integrate(ns_config::FlatimageConfig const& config)
       .or_else([&]{ return get_path_file_icon_svg(desktop->get_name(), template_dir_apps_scalable); });
     ereturn_if(not path_file_icon, "Could not find icon for notify-send");
     // Path to mimetype icon
-    (void) ns_subprocess::Subprocess(*path_file_binary_bash)
+    std::ignore = ns_subprocess::Subprocess(*path_file_binary_bash)
       .with_piped_outputs()
       .with_args("-c", "notify-send -i \"{}\" \"Started '{}' flatimage\""_fmt(*path_file_icon, desktop->get_name()))
       .spawn();

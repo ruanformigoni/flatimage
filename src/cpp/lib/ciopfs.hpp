@@ -48,7 +48,7 @@ class Ciopfs
 
 
       // Include arguments and spawn process
-      (void) m_subprocess->
+      std::ignore = m_subprocess->
          with_args(path_dir_lower, path_dir_upper)
         .spawn()
         .wait();

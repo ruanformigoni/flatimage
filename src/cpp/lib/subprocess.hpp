@@ -143,7 +143,7 @@ Subprocess::Subprocess(T&& t)
 // Subprocess::~Subprocess {{{
 inline Subprocess::~Subprocess()
 {
-  (void) this->wait();
+  std::ignore = this->wait();
 } // Subprocess::~Subprocess }}}
 
 // env_clear() {{{
@@ -250,7 +250,7 @@ Subprocess& Subprocess::with_env(T&& t)
       auto parts = ns_vector::from_string(entry, '=');
       econtinue_if(parts.size() < 2, "Entry '{}' is not valid"_fmt(entry));
       std::string key = parts.front();
-      (void) this->rm_var(key);
+      std::ignore = this->rm_var(key);
     } // for
   };
 

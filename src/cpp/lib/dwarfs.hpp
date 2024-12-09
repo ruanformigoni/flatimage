@@ -55,7 +55,7 @@ class Dwarfs
       m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_file_dwarfs);
 
       // Spawn command
-      (void) m_subprocess->with_piped_outputs()
+      std::ignore = m_subprocess->with_piped_outputs()
         .with_args(path_file_image, path_dir_mount, "-f", "-o", "auto_unmount,offset={},imagesize={}"_fmt(offset, size_image))
         .with_die_on_pid(pid_to_die_for)
         .spawn();

@@ -55,7 +55,7 @@ class SquashFs
       m_subprocess = std::make_unique<ns_subprocess::Subprocess>(*opt_path_file_squashfs);
 
       // Spawn command
-       (void) m_subprocess->with_piped_outputs()
+       std::ignore = m_subprocess->with_piped_outputs()
         .with_args("-f", "-o", "offset={}"_fmt(offset))
         .with_args(path_file_image, path_dir_mount)
         .spawn();

@@ -45,7 +45,7 @@ struct Portal
     m_process = std::make_unique<ns_subprocess::Subprocess>(m_path_file_daemon);
 
     // Spawn process to background
-    (void) m_process->with_piped_outputs()
+    std::ignore = m_process->with_piped_outputs()
       .with_die_on_pid(getpid())
       .with_args(path_file_reference)
       .spawn();
@@ -54,7 +54,7 @@ struct Portal
   ~Portal()
   {
     m_process->kill(SIGTERM);
-    (void) m_process->wait();
+    std::ignore = m_process->wait();
   } // ~Portal()
 }; // struct Portal }}}
 

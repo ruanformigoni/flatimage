@@ -37,7 +37,7 @@ struct Bits
   void set(std::string permission, bool value)
   {
     std::ranges::transform(permission, permission.begin(), [](char c) { return std::tolower(c); });
-    (void) ns_match::match(permission
+    std::ignore = ns_match::match(permission
       , ns_match::equal("home")        >>= [&,this]{ home = value; }
       , ns_match::equal("media")       >>= [&,this]{ media = value; }
       , ns_match::equal("audio")       >>= [&,this]{ audio = value; }

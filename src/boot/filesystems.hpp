@@ -9,9 +9,11 @@
 #include <fcntl.h>
 
 #include "../cpp/lib/overlayfs.hpp"
+#include "../cpp/lib/unionfs.hpp"
 #include "../cpp/lib/squashfs.hpp"
 #include "../cpp/lib/dwarfs.hpp"
 #include "../cpp/lib/ciopfs.hpp"
+#include "./config/config.hpp"
 
 #include "config/config.hpp"
 
@@ -27,9 +29,15 @@ class Filesystems
     std::vector<std::unique_ptr<ns_dwarfs::Dwarfs>> m_layers;
     std::unique_ptr<ns_ciopfs::Ciopfs> m_ciopfs;
     std::unique_ptr<ns_overlayfs::Overlayfs> m_overlayfs;
+    std::unique_ptr<ns_unionfs::UnionFs> m_unionfs;
     std::optional<pid_t> m_opt_pid_janitor;
     uint64_t mount_dwarfs(fs::path const& path_dir_mount, fs::path const& path_file_binary, uint64_t offset);
     void mount_ciopfs(fs::path const& path_dir_lower, fs::path const& path_dir_upper);
+    void mount_unionfs(std::vector<fs::path> const& vec_path_dir_layer
+      , fs::path const& path_dir_data
+      , fs::path const& path_dir_mount
+      , fs::path const& path_dir_workdir
+    );
     void mount_overlayfs(fs::path const& path_dir_layers
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
@@ -63,8 +71,17 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
     );
     ns_log::debug()("ciopfs is enabled");
   } // if
+  if ( config.overlay_type == ns_config::OverlayType::FUSE_UNIONFS )
+  {
+    // Mount overlayfs
+    mount_unionfs(ns_config::get_mounted_layers(config.path_dir_mount_layers)
+      , config.path_dir_upper_overlayfs
+      , config.path_dir_mount_overlayfs
+      , config.path_dir_work_overlayfs
+    );
+  }
   // Use fuse-overlayfs
-  if ( config.overlay_type == ns_config::OverlayType::FUSE_OVERLAYFS )
+  else if ( config.overlay_type == ns_config::OverlayType::FUSE_OVERLAYFS )
   {
     // Mount overlayfs
     mount_overlayfs(config.path_dir_mount_layers
@@ -232,6 +249,20 @@ inline uint64_t Filesystems::mount_dwarfs(fs::path const& path_dir_mount, fs::pa
 
   return index_fs;
 } // fn: mount_dwarfs }}}
+
+// fn: mount_unionfs {{{
+inline void Filesystems::mount_unionfs(std::vector<fs::path> const& vec_path_dir_layer
+  , fs::path const& path_dir_data
+  , fs::path const& path_dir_mount
+  , fs::path const& path_dir_workdir)
+{
+  m_unionfs = std::make_unique<ns_unionfs::UnionFs>(vec_path_dir_layer
+    , path_dir_data
+    , path_dir_mount
+    , getpid()
+  );
+  m_vec_path_dir_mountpoints.push_back(path_dir_mount);
+} // fn: mount_unionfs }}}
 
 // fn: mount_overlayfs {{{
 inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers

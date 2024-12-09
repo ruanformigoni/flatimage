@@ -35,6 +35,9 @@ function _fetch_static()
   # Fetch proot
   wget -O ./bin/proot "https://github.com/ruanformigoni/proot-static-musl/releases/download/bf747c8/proot-x86_64"
 
+  # Fetch unionfs
+  wget -O ./bin/unionfs "https://github.com/ruanformigoni/unionfs-fuse-static-musl/releases/download/71e9b09/unionfs"
+
   # Fetch overlayfs
   wget -O ./bin/overlayfs "https://github.com/ruanformigoni/fuse-overlayfs-static-musl/releases/download/6da6352/fuse-overlayfs-x86_64"
 
@@ -84,7 +87,7 @@ function _create_elf()
   # Boot is the program on top of the image
   cp bin/boot "$out"
   # Append binaries
-  for binary in bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,fim_bwrap_apparmor,janitor,lsof,overlayfs,proot}; do
+  for binary in bin/{bash,busybox,bwrap,ciopfs,dwarfs_aio,fim_portal,fim_portal_daemon,fim_bwrap_apparmor,janitor,lsof,overlayfs,unionfs,proot}; do
     hex_size_binary="$( du -b "$binary" | awk '{print $1}' | xargs -I{} printf "%016x\n" {} )"
     # Write binary size
     for byte_index in $(seq 0 7 | sort -r); do

@@ -52,6 +52,7 @@ enum class OverlayType
 {
   BWRAP,
   FUSE_OVERLAYFS,
+  FUSE_UNIONFS,
 }; // }}}
 
 // struct FlatimageConfig {{{
@@ -115,7 +116,9 @@ inline FlatimageConfig config()
   config.is_root = ns_env::exists("FIM_ROOT", "1");
   config.is_readonly = ns_env::exists("FIM_RO", "1");
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
-  config.overlay_type = ns_env::exists("FIM_FUSE_OVERLAYFS", "1")? OverlayType::FUSE_OVERLAYFS : OverlayType::BWRAP;
+  config.overlay_type = ns_env::exists("FIM_FUSE_UNIONFS", "1")? OverlayType::FUSE_UNIONFS
+    : ns_env::exists("FIM_FUSE_OVERLAYFS", "1")? OverlayType::FUSE_OVERLAYFS
+    : OverlayType::BWRAP;
   // Paths in /tmp
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
   // Reserve 8 first bytes for permission data

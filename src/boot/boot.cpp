@@ -207,6 +207,7 @@ void relocate(char** argv)
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "janitor", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "lsof", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "overlayfs", offset_end);
+  std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "unionfs", offset_end);
   std::tie(offset_beg, offset_end) = f_write_from_offset(file_binary, path_dir_app_bin / "proot", offset_end);
   file_binary.close();
   std::error_code ec;

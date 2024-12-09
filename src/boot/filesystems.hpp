@@ -38,7 +38,7 @@ class Filesystems
       , fs::path const& path_dir_mount
       , fs::path const& path_dir_workdir
     );
-    void mount_overlayfs(fs::path const& path_dir_layers
+    void mount_overlayfs(std::vector<fs::path> const& vec_path_dir_layer
       , fs::path const& path_dir_data
       , fs::path const& path_dir_mount
       , fs::path const& path_dir_workdir
@@ -84,7 +84,7 @@ inline Filesystems::Filesystems(ns_config::FlatimageConfig const& config)
   else if ( config.overlay_type == ns_config::OverlayType::FUSE_OVERLAYFS )
   {
     // Mount overlayfs
-    mount_overlayfs(config.path_dir_mount_layers
+    mount_overlayfs(ns_config::get_mounted_layers(config.path_dir_mount_layers)
       , config.path_dir_upper_overlayfs
       , config.path_dir_mount_overlayfs
       , config.path_dir_work_overlayfs
@@ -265,12 +265,12 @@ inline void Filesystems::mount_unionfs(std::vector<fs::path> const& vec_path_dir
 } // fn: mount_unionfs }}}
 
 // fn: mount_overlayfs {{{
-inline void Filesystems::mount_overlayfs(fs::path const& path_dir_layers
+inline void Filesystems::mount_overlayfs(std::vector<fs::path> const& vec_path_dir_layer
   , fs::path const& path_dir_data
   , fs::path const& path_dir_mount
   , fs::path const& path_dir_workdir)
 {
-  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(path_dir_layers
+  m_overlayfs = std::make_unique<ns_overlayfs::Overlayfs>(vec_path_dir_layer
     , path_dir_data
     , path_dir_mount
     , path_dir_workdir

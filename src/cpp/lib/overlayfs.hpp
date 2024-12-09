@@ -28,7 +28,7 @@ class Overlayfs
     fs::path m_path_dir_mountpoint;
 
   public:
-    Overlayfs(fs::path const& path_dir_layers
+    Overlayfs(std::vector<fs::path> const& vec_path_dir_layers
         , fs::path const& path_dir_upperdir
         , fs::path const& path_dir_mountpoint
         , fs::path const& path_dir_workdir
@@ -36,15 +36,6 @@ class Overlayfs
       )
       : m_path_dir_mountpoint(path_dir_mountpoint)
     {
-      ethrow_if (not fs::exists(path_dir_layers), "Layers directory does not exist");
-
-      std::vector<fs::path> vec_path_dir_lowerdir;
-      for(auto&& path_dir_lowerdir : fs::directory_iterator(path_dir_layers))
-      {
-        vec_path_dir_lowerdir.push_back(path_dir_lowerdir);
-      } // for
-      std::ranges::sort(vec_path_dir_lowerdir);
-
       ethrow_if (not fs::exists(path_dir_upperdir) and not fs::create_directories(path_dir_upperdir)
         , "Could not create modifications dir for overlayfs"
       );
@@ -65,11 +56,11 @@ class Overlayfs
       gid_t group_id = getgid();
 
       // Create string to represent argument of lowerdirs
-      std::string arg_lowerdir="lowerdir={}"_fmt(vec_path_dir_lowerdir.back());
-      for (auto&& path_dir_lowerdir : std::ranges::subrange(vec_path_dir_lowerdir.rbegin()+1, vec_path_dir_lowerdir.rend()))
-      {
-        arg_lowerdir += ":{}"_fmt(path_dir_lowerdir);
-      } // for
+      std::string arg_lowerdir = vec_path_dir_layers
+        | std::views::transform([](auto&& e){ return e.string(); })
+        | std::views::join_with(std::string{":"})
+        | std::ranges::to<std::string>();
+      arg_lowerdir = "lowerdir=" + arg_lowerdir;
 
       // Include arguments and spawn process
       std::ignore = m_subprocess->

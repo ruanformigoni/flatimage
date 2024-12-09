@@ -18,6 +18,13 @@ void ignore(F&& f)
   try { f(); } catch (...) {}
 } // function: ignore
 
+template<std::regular_invocable F, typename T>
+requires std::convertible_to<std::remove_cvref_t<std::invoke_result_t<F>>, std::remove_cvref_t<T>>
+auto value_or(F&& f, T&& t)
+{
+  try { return f(); } catch (...) { return t; }
+} // function: or_default
+
 template<std::regular_invocable F>
 requires std::is_default_constructible_v<std::invoke_result_t<F>>
 auto or_default(F&& f) -> std::invoke_result_t<F>

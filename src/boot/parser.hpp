@@ -308,15 +308,16 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     , config.offset_permissions.size
   );
 
-  auto f_bwrap = [&](std::string const& program
-    , std::vector<std::string> const& args
-    , std::vector<std::string> const& environment)
+  auto f_bwrap_impl = [&](auto&& program, auto&& args)
   {
+    // Mount filesystems
+    auto mount = ns_filesystems::Filesystems(config);
+    // Execute specified command
+    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
     // Read permissions
     auto bits_permissions = permissions.get();
-    ereturn_if(not bits_permissions, bits_permissions.error());
-
-    // Create bwrap instance
+    elog_if(not bits_permissions, bits_permissions.error());
+    // Check if should use bwrap native overlayfs
     std::optional<ns_bwrap::Overlay> bwrap_overlay = ( config.is_bwrap_overlayfs )?
         std::make_optional(ns_bwrap::Overlay
         {
@@ -325,27 +326,40 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
           , .path_dir_work = config.path_dir_work_overlayfs
         })
       : std::nullopt;
+    // Create bwrap command
     ns_bwrap::Bwrap bwrap = ns_bwrap::Bwrap(config.is_root
       , bwrap_overlay
       , config.path_dir_mount_overlayfs
       , config.path_file_bashrc
-      , program
-      , args
+      , program()
+      , args()
       , environment);
-
     // Include root binding and custom user-defined bindings
-    (void) bwrap
+    std::ignore = bwrap
       .with_bind_ro("/", config.path_dir_runtime_host)
       .with_binds_from_file(config.path_file_config_bindings);
-
     // Check if should enable GPU
     if ( bits_permissions->gpu )
     {
-      (void) bwrap.with_bind_gpu(config.path_dir_upper_overlayfs, config.path_dir_runtime_host);
+      std::ignore = bwrap.with_bind_gpu(config.path_dir_upper_overlayfs, config.path_dir_runtime_host);
     }
-
     // Run bwrap
-    bwrap.run(*bits_permissions);
+    return bwrap.run(*bits_permissions);
+  };
+
+  auto f_bwrap = [&]<typename T, typename U>(T&& program, U&& args)
+  {
+    // Run bwrap
+    auto [syscall_nr,errno_nr] = f_bwrap_impl(program, args);
+    // Retry with fallback if bwrap overlayfs failed
+    ns_log::error()("Bwrap failed syscall '{}' with errno '{}'", syscall_nr, errno_nr);
+    if ( config.is_bwrap_overlayfs and syscall_nr == SYS_mount )
+    {
+      ns_log::error()("Bwrap failed SYS_mount, retrying with fuse-overlayfs...");
+      config.is_bwrap_overlayfs = false;
+      config.is_fuse_overlayfs = true;
+      std::ignore = f_bwrap_impl(program, args);
+    } // if
   };
 
   // Define logger verbosity for all commands except the ones below
@@ -359,21 +373,13 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Execute a command as a regular user
   if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdExec>(*variant_cmd) )
   {
-    // Mount filesystem as RO
-    auto mount = ns_filesystems::Filesystems(config);
-    // Execute specified command
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment);
+    f_bwrap([&]{ return cmd->program; }, [&]{ return cmd->args; });
   } // if
   // Execute a command as root
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdRoot>(*variant_cmd) )
   {
-    // Mount filesystem as RO
-    auto mount = ns_filesystems::Filesystems(config);
-    // Execute specified command as 'root'
     config.is_root = true;
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd->program, cmd->args, environment);
+    f_bwrap([&]{ return cmd->program; }, [&]{ return cmd->args; });
   } // if
   // Configure permissions
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdPerms>(*variant_cmd) )
@@ -492,37 +498,34 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
   // Update default command on database
   else if ( auto cmd = ns_variant::get_if_holds_alternative<ns_parser::CmdNone>(*variant_cmd) )
   {
-    // Mount filesystem as RO
-    auto mount = ns_filesystems::Filesystems(config);
-    // Build exec command
-    ns_parser::CmdExec cmd_exec;
-    // Fetch default command from database or fallback to bash
-    ns_exception::or_else([&]
-    {
-      ns_db::from_file(config.path_file_config_boot, [&](auto& db)
-      {
-        cmd_exec.program = db["program"];
-        cmd_exec.args = db["args"].as_vector();
-        // Expand 'program'
-        if ( auto expected = ns_env::expand(cmd_exec.program) )
-        {
-          cmd_exec.program = *expected;
-        } // if
-        else
-        {
-          ns_log::error()("Failed to expand 'program': {}", expected.error());
-        } // else
-      }, ns_db::Mode::UPDATE_OR_CREATE);
-    }, [&]
-    {
-      cmd_exec.program = "bash";
-      cmd_exec.args = {};
-    });
-    // Append argv args
-    if ( argc > 1 ) { std::for_each(argv+1, argv+argc, [&](auto&& e){ cmd_exec.args.push_back(e); }); } // if
     // Execute default command
-    auto environment = ns_exception::or_default([&]{ return ns_config::ns_environment::get(config.path_file_config_environment); });
-    f_bwrap(cmd_exec.program, cmd_exec.args, environment);
+    f_bwrap(
+      [&]
+      {
+        return ns_exception::value_or([&]
+        {
+          std::string program;
+          ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+          {
+            program = db["program"];
+          }, ns_db::Mode::READ);
+          return program;
+        }, std::string{"bash"});
+      }
+      ,
+      [&]
+      {
+        return ns_exception::or_default([&]
+        {
+          std::vector<std::string> args;
+          ns_db::from_file(config.path_file_config_boot, [&](auto& db)
+          {
+            args = db["args"].as_vector();
+          }, ns_db::Mode::READ);
+          return args;
+        });
+      }
+    );
   } // else if
 
   return EXIT_SUCCESS;

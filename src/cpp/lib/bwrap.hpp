@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <fcntl.h>
 #include <filesystem>
 #include <sys/types.h>
 #include <pwd.h>
@@ -101,7 +102,7 @@ class Bwrap
     Bwrap& with_bind_gpu(fs::path const& path_dir_root_guest, fs::path const& path_dir_root_host);
     Bwrap& with_bind(fs::path const& src, fs::path const& dst);
     Bwrap& with_bind_ro(fs::path const& src, fs::path const& dst);
-    void run(ns_permissions::PermissionBits const& permissions);
+    [[nodiscard]] std::pair<int,int> run(ns_permissions::PermissionBits const& permissions);
 }; // class: Bwrap
 
 // Bwrap() {{{
@@ -519,7 +520,7 @@ inline Bwrap& Bwrap::with_bind_gpu(fs::path const& path_dir_root_guest, fs::path
 } // with_bind_gpu() }}}
 
 // run() {{{
-inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
+inline std::pair<int,int> Bwrap::run(ns_permissions::PermissionBits const& permissions)
 {
   // Configure bindings
   ns_functional::call_if(permissions.home        , [&]{ bind_home()        ; });
@@ -547,9 +548,17 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
   auto expected_path_file_bwrap = test_and_setup(path_file_bwrap);
   ethrow_if(not expected_path_file_bwrap, expected_path_file_bwrap.error());
 
+  // Pipe to receive errors from bwrap
+  int pipe_error[2];
+  ethrow_if(pipe(pipe_error) == -1, strerror(errno));
+
+  // Configure pipe read end as non-blocking
+  fcntl(pipe_error[0], F_SETFL, fcntl(pipe_error[0], F_GETFL, 0) | O_NONBLOCK);
+
   // Run Bwrap
   auto ret = ns_subprocess::Subprocess(*opt_path_file_bash)
     .with_args("-c", R"("{}" "$@")"_fmt(*expected_path_file_bwrap), "--")
+    .with_args("--error-fd", std::to_string(pipe_error[1]))
     .with_args(m_args)
     .with_args(m_path_file_program)
     .with_args(m_program_args)
@@ -558,6 +567,21 @@ inline void Bwrap::run(ns_permissions::PermissionBits const& permissions)
     .wait();
   if ( not ret ) { ns_log::error()("bwrap exited abnormally"); }
   if ( *ret != 0 ) { ns_log::error()("bwrap exited with non-zero exit code '{}'", *ret); }
+
+  // Failed syscall and errno
+  int syscall_nr = -1;
+  int errno_nr = -1;
+
+  // Read possible errors if any
+  elog_if(read(pipe_error[0], &syscall_nr, sizeof(syscall_nr)) < 0, "Could not read syscall error");
+  elog_if(read(pipe_error[0], &errno_nr, sizeof(errno_nr)) < 0, "Could not read errno number");
+
+  // Close pipe
+  close(pipe_error[0]);
+  close(pipe_error[1]);
+
+  // Return possible errors
+  return std::make_pair(syscall_nr, errno_nr);
 } // run() }}}
 
 } // namespace ns_bwrap

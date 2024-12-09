@@ -318,7 +318,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     auto bits_permissions = permissions.get();
     elog_if(not bits_permissions, bits_permissions.error());
     // Check if should use bwrap native overlayfs
-    std::optional<ns_bwrap::Overlay> bwrap_overlay = ( config.is_bwrap_overlayfs )?
+    std::optional<ns_bwrap::Overlay> bwrap_overlay = ( config.overlay_type == ns_config::OverlayType::BWRAP )?
         std::make_optional(ns_bwrap::Overlay
         {
             .vec_path_dir_layer = ns_config::get_mounted_layers(config.path_dir_mount_layers)
@@ -353,11 +353,10 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     auto [syscall_nr,errno_nr] = f_bwrap_impl(program, args);
     // Retry with fallback if bwrap overlayfs failed
     ns_log::error()("Bwrap failed syscall '{}' with errno '{}'", syscall_nr, errno_nr);
-    if ( config.is_bwrap_overlayfs and syscall_nr == SYS_mount )
+    if ( config.overlay_type == ns_config::OverlayType::BWRAP and syscall_nr == SYS_mount )
     {
       ns_log::error()("Bwrap failed SYS_mount, retrying with fuse-overlayfs...");
-      config.is_bwrap_overlayfs = false;
-      config.is_fuse_overlayfs = true;
+      config.overlay_type = ns_config::OverlayType::FUSE_OVERLAYFS;
       std::ignore = f_bwrap_impl(program, args);
     } // if
   };

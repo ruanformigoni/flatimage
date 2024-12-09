@@ -47,6 +47,13 @@ inline decltype(auto) impl_update_get_config_files(std::vector<fs::path> const& 
 constexpr int64_t const SIZE_RESERVED_TOTAL = 2097152;
 constexpr int64_t const SIZE_RESERVED_IMAGE = 1048576;
 
+// enum class OverlayType {{{
+enum class OverlayType
+{
+  BWRAP,
+  FUSE_OVERLAYFS,
+}; // }}}
+
 // struct FlatimageConfig {{{
 struct FlatimageConfig
 {
@@ -54,9 +61,8 @@ struct FlatimageConfig
   bool is_root;
   bool is_readonly;
   bool is_debug;
-  bool is_bwrap_overlayfs;
-  bool is_fuse_overlayfs;
 
+  OverlayType overlay_type;
   uint64_t offset_reserved;
   Offset offset_permissions;
   Offset offset_notify;
@@ -109,19 +115,7 @@ inline FlatimageConfig config()
   config.is_root = ns_env::exists("FIM_ROOT", "1");
   config.is_readonly = ns_env::exists("FIM_RO", "1");
   config.is_debug = ns_env::exists("FIM_DEBUG", "1");
-  config.is_bwrap_overlayfs = ns_env::exists("FIM_BWRAP_OVERLAYFS", "1");
-  config.is_fuse_overlayfs = ns_env::exists("FIM_FUSE_OVERLAYFS", "1");
-  if ( config.is_bwrap_overlayfs and config.is_fuse_overlayfs )
-  {
-    ns_log::debug()("Trying to set both bwrap and fuse overlay options, using bwrap");
-    config.is_fuse_overlayfs = false;
-  } // if
-  if ( not config.is_bwrap_overlayfs and not config.is_fuse_overlayfs )
-  {
-    ns_log::debug()("No explicit overlay option specified, using bwrap");
-    config.is_bwrap_overlayfs = true;
-  } // if
-
+  config.overlay_type = ns_env::exists("FIM_FUSE_OVERLAYFS", "1")? OverlayType::FUSE_OVERLAYFS : OverlayType::BWRAP;
   // Paths in /tmp
   config.offset_reserved          = std::stoll(ns_env::get_or_throw("FIM_OFFSET"));
   // Reserve 8 first bytes for permission data

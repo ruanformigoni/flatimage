@@ -355,8 +355,8 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
     ns_log::error()("Bwrap failed syscall '{}' with errno '{}'", syscall_nr, errno_nr);
     if ( config.overlay_type == ns_config::OverlayType::BWRAP and syscall_nr == SYS_mount )
     {
-      ns_log::error()("Bwrap failed SYS_mount, retrying with fuse-overlayfs...");
-      config.overlay_type = ns_config::OverlayType::FUSE_OVERLAYFS;
+      ns_log::error()("Bwrap failed SYS_mount, retrying with fuse-unionfs...");
+      config.overlay_type = ns_config::OverlayType::FUSE_UNIONFS;
       std::ignore = f_bwrap_impl(program, args);
     } // if
   };

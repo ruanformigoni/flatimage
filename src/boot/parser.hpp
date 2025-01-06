@@ -508,7 +508,7 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
           {
             program = db["program"];
           }, ns_db::Mode::READ);
-          return program;
+          return ns_env::expand(program).value_or(program);
         }, std::string{"bash"});
       }
       ,

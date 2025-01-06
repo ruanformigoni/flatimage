@@ -521,6 +521,11 @@ inline int parse_cmds(ns_config::FlatimageConfig config, int argc, char** argv)
           {
             args = db["args"].as_vector();
           }, ns_db::Mode::READ);
+          // Append arguments from argv
+          if ( argc > 1 )
+          {
+            std::for_each(argv+1, argv+argc, [&](auto&& e){ args.push_back(e); });
+          } // if
           return args;
         });
       }
